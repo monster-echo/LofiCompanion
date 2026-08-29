@@ -17,7 +17,7 @@ cd /Volumes/MacMiniDisk/workspace/mobiestarter
 
 dart run tool/mobileui/bin/mobileui.dart create loficompanion \
   --output /Volumes/MacMiniDisk/workspace/LofiCompanion \
-  --profile react-native \
+  --profile react-native,server \
   --display-name "Lofi Companion" \
   --organization tech.zhongbei \
   --app-id lofi-companion \
@@ -30,7 +30,9 @@ dart run tool/mobileui/bin/mobileui.dart create loficompanion \
 /Volumes/MacMiniDisk/workspace/LofiCompanion/loficompanion/
   .mobileui/template.json
   .github/workflows/react-native-*.yml
+  .github/workflows/server-*.yml
   react-native/
+  server/
 ```
 
 这里使用不带连字符的 repository name `loficompanion`，使 iOS/Android 身份成为
@@ -60,15 +62,26 @@ dart run tool/mobileui/bin/mobileui.dart feature add generation \
   --project /Volumes/MacMiniDisk/workspace/LofiCompanion/loficompanion
 ```
 
-重要边界：CLI 0.2.0 的 `react-native` Profile 只复制客户端、React Native CI 和模板
-元数据，不复制 `server/`、共享 `assets/` 或产品文档。LofiCompanion 需要收费、排行榜、
-成就和生成任务服务端，因此创建正式产品前必须二选一并形成独立任务：
+重要边界（已决策并实现，2026-08-29）：采用方案 1——MobileUI CLI 已新增 `server`
+Profile（`profiles/server/profile.json`），`create --profile react-native,server`
+一次生成客户端与服务端，`.mobileui/template.json` 记录模板 commit（本地 main，
+含会话/JWT 修复），来源可追踪、可升级。`feature add` 与 `doctor` 均已支持 server
+边界（`server/src/features/<id>`）。不得手工复制 `server/`。
 
-1. 扩展 MobileUI CLI，增加可复用的 `server`/shared product Profile；或
-2. 明确将现有 MobileStarter Server 作为多租户共享控制面，并在原服务内增加本产品业务域。
+已知后续项：server 深链 `.well-known` 路由与 `server-publish.yml` 镜像名仍为模板
+身份字符串，接入深链或发布 CI 前须为 server Profile 实现身份改写与 doctor markers。
 
-不得在没有来源 manifest 和升级策略的情况下手工复制 `server/`，否则客户端可追踪模板、
-服务端不可追踪，后续安全修复无法可靠合并。
+### 1.2 脚手架基线验证记录（2026-08-29）
+
+- React Native 门禁与模板 CI 一致：`typecheck` 与 vitest payment 套件通过；
+  `apiClient`/`purchaseFlow` 为访问真实 dev server 的集成套件，与模板 CI 一样
+  不纳入基线门禁，待服务端就绪后运行。
+- Server 门禁：`typecheck`、`lint` 与 `payment-apple` 套件通过；`core`/`auth`/
+  `payment` 套件需要活动 PostgreSQL（导出 `AUTH_DATABASE_URL`），本地数据库
+  就绪前作为已知前置条件处理。
+- 已知模板项：server `.gitignore` 未覆盖 `.env`；模板存在嵌套重复资产目录
+  （`assets/icons/icons/*`、`assets/illustrations/illustrations/*`），随模板
+  一并复制，留待模板清理。
 
 ## 2. 阶段
 
@@ -78,6 +91,10 @@ dart run tool/mobileui/bin/mobileui.dart feature add generation \
 - 实现皮肤 manifest、视频缓存和播放器状态机。
 - 实现创建、开始、暂停、喝水、继续、完成和强杀恢复。
 - 使用一套“雨夜书房”完整资产和静态降级图。
+
+  资产策略（2026-08-29 决策）：P0-A 以六个状态的完整静态海报集（ready/focusing/
+  paused/drinking/resting/completed，同构图同焦点）先通过验收；播放器按 manifest
+  视频路径实现，静态图走 poster/降级路径，视频循环后置替换，不改业务代码。
 - 实现本地历史、完成页和基础成就。
 
 验收：飞行模式下可连续完成三轮；喝水动作结束后自动回到同一学习状态；强杀恢复误差小于 1 秒。
