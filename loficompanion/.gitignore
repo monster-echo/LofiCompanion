@@ -1,0 +1,11 @@
+.dart_tool/
+build/
+node_modules/
+.expo/
+.hvigor/
+.idea/
+.vscode/
+**/local.properties
+**/signing-config.json
+.next/
+*.tsbuildinfo

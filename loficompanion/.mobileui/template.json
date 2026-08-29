@@ -1,0 +1,35 @@
+{
+  "templateVersion": "0.2.0",
+  "profile": "all",
+  "profiles": [
+    "react-native",
+    "server"
+  ],
+  "repositoryName": "loficompanion",
+  "packageName": "loficompanion",
+  "displayName": "Lofi Companion",
+  "organization": "tech.zhongbei",
+  "appId": "lofi-companion",
+  "features": [
+    "achievements",
+    "auth",
+    "billing",
+    "config",
+    "console",
+    "focus",
+    "generation",
+    "leaderboards",
+    "logs",
+    "membership",
+    "notifications",
+    "settings",
+    "skins",
+    "support",
+    "telemetry",
+    "tenant"
+  ],
+  "templateSource": {
+    "type": "local",
+    "commit": "c779b4d90508225d5b640f01a3650f3c14282a6a"
+  }
+}
