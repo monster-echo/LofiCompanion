@@ -82,6 +82,8 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
 - 已知模板项：server `.gitignore` 未覆盖 `.env`；模板存在嵌套重复资产目录
   （`assets/icons/icons/*`、`assets/illustrations/illustrations/*`），随模板
   一并复制，留待模板清理。
+- 已修复（2026-08-29）：`doctor` 的 marker 扫描在 `node_modules` 内遇到二进制
+  `.plist` 会崩溃；现已跳过 `node_modules` 子树并容错不可解码文件。
 
 ## 2. 阶段
 
