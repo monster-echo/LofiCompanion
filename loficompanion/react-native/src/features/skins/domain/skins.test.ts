@@ -32,6 +32,13 @@ describe('雨夜书房清单', () => {
     expect(rainyStudyRoomManifest.id).toBe('rainy-study-room-v1');
   });
 
+  it('主题令牌：rain.500 强调色 / night.850 表面色（doc-01 §5.2）', () => {
+    expect(rainyStudyRoomManifest.themeTokens).toEqual({
+      accent: '#4F8FE8',
+      surface: '#0D1B2B',
+    });
+  });
+
   it('事件表与 doc-01 §5.4 逐项一致（优先级/可打断/冷却/回归态）', () => {
     const table: readonly [
       CompanionEventType, number, boolean, number, CompanionState,

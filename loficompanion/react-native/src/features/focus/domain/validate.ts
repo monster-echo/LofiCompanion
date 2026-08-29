@@ -16,3 +16,29 @@ export function validateCustomDuration(minutes: number): number | null {
   if (minutes < MIN_MINUTES || minutes > MAX_MINUTES) return null;
   return minutes;
 }
+
+/** 全部合法活动类型（doc-01 §5.3 P0 五类）。 */
+const ACTIVITY_TYPES: readonly ActivityType[] = [
+  'homework',
+  'reading',
+  'coding',
+  'vocab',
+  'free',
+];
+
+export interface SessionInput {
+  activity: ActivityType;
+  plannedSeconds: number;
+}
+
+/**
+ * 会话创建输入的整体校验：activity 必须是 5 类之一，时长须是合法自定义
+ * 分钟数或快捷时长之一（同一 5..180 规则）。任一不合法返回 null。
+ */
+export function validateSessionInput(activity: string, minutes: number): SessionInput | null {
+  const knownActivity = (ACTIVITY_TYPES as readonly string[]).includes(activity);
+  const validMinutes =
+    validateCustomDuration(minutes) ?? (QUICK_DURATIONS.includes(minutes) ? minutes : null);
+  if (!knownActivity || validMinutes === null) return null;
+  return { activity: activity as ActivityType, plannedSeconds: validMinutes * 60 };
+}

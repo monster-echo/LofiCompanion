@@ -57,4 +57,6 @@ export interface SkinManifest {
   defaultState: CompanionState;
   states: SkinStateAsset[];
   eventMappings: SkinEventMapping[];
+  /** 主题令牌（doc-01 §5.2）：皮肤自带的强调色/表面色，界面点缀随皮肤切换 */
+  themeTokens: { accent: string; surface: string };
 }

@@ -13,6 +13,7 @@ import {
   DEFAULT_DURATION,
   QUICK_DURATIONS,
   validateCustomDuration,
+  validateSessionInput,
 } from './validate';
 import type { FocusSessionDoc } from './types';
 
@@ -188,5 +189,38 @@ describe('输入校验', () => {
     expect(DEFAULT_ACTIVITY).toBe('homework');
     expect(DEFAULT_DURATION).toBe(25);
     expect(QUICK_DURATIONS).toEqual([15, 25, 45, 60]);
+  });
+});
+
+describe('会话输入校验', () => {
+  it('合法组合：五类活动 + 快捷/自定义分钟数 → 规划秒数', () => {
+    expect(validateSessionInput('reading', 25)).toEqual({
+      activity: 'reading',
+      plannedSeconds: 1500,
+    });
+    expect(validateSessionInput('vocab', 45)).toEqual({
+      activity: 'vocab',
+      plannedSeconds: 2700,
+    });
+    expect(validateSessionInput('free', 90)).toEqual({
+      activity: 'free',
+      plannedSeconds: 5400,
+    });
+    for (const activity of ['homework', 'reading', 'coding', 'vocab', 'free']) {
+      expect(validateSessionInput(activity, 15)).not.toBeNull();
+    }
+  });
+
+  it('非法活动拒绝：不在五类之内返回 null', () => {
+    expect(validateSessionInput('jogging', 25)).toBeNull();
+    expect(validateSessionInput('', 25)).toBeNull();
+    expect(validateSessionInput('HOMEWORK', 25)).toBeNull();
+  });
+
+  it('非法时长拒绝：4 分钟过短，181/非整数同样拒绝', () => {
+    expect(validateSessionInput('homework', 4)).toBeNull();
+    expect(validateSessionInput('homework', 181)).toBeNull();
+    expect(validateSessionInput('homework', 25.5)).toBeNull();
+    expect(validateSessionInput('homework', Number.NaN)).toBeNull();
   });
 });

@@ -82,4 +82,6 @@ export const rainyStudyRoomManifest: SkinManifest = {
   defaultState: 'ready',
   states: ALL_STATES.map(stateAsset),
   eventMappings: [...EVENT_MAPPINGS],
+  // doc-01 §5.2：rain.500 / night.850
+  themeTokens: { accent: '#4F8FE8', surface: '#0D1B2B' },
 };

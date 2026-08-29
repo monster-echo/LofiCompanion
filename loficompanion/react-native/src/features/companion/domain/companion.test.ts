@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rainyStudyRoomManifest as manifest } from '../../skins/domain/rainyStudyRoom';
+import type { SkinManifest } from '../../skins/domain/types';
 import type { CompanionRuntimeState } from './stateMachine';
 import { advance, dispatch, initialState } from './stateMachine';
 
@@ -14,6 +15,14 @@ function at(ms: number) {
 function drinkingNow(offsetMs = 0): CompanionRuntimeState {
   return dispatch(initialState('focusing'), 'wellness.drink', at(offsetMs)).next;
 }
+
+/** 合成清单：仅把 wellness.drink 的回归态改成 resting，验证 returnState 真的生效 */
+const restReturnManifest: SkinManifest = {
+  ...manifest,
+  eventMappings: manifest.eventMappings.map((m) =>
+    m.eventType === 'wellness.drink' ? { ...m, returnState: 'resting' } : m,
+  ),
+};
 
 describe('陪伴状态机', () => {
   it('初始运行态：无播放动作、空队列、无冷却记录', () => {
@@ -31,6 +40,7 @@ describe('陪伴状态机', () => {
     expect(next.playing).toEqual({
       eventType: 'wellness.drink',
       state: 'drinking',
+      baseAtStart: 'focusing',
       startedAt: T0,
       durationMs: 4000,
     });
@@ -42,7 +52,7 @@ describe('陪伴状态机', () => {
     ]);
   });
 
-  it('advance 未到时长为空操作；到时且队列空则回到基态', () => {
+  it('advance 未到时长为空操作；到时且队列空则按清单 returnState 回归', () => {
     const drinking = drinkingNow();
     const early = advance(drinking, T0 + 3999, manifest);
     expect(early.next).toEqual(drinking);
@@ -50,8 +60,38 @@ describe('陪伴状态机', () => {
 
     const done = advance(drinking, T0 + 4000, manifest);
     expect(done.next.playing).toBeNull();
-    expect(done.next.state).toBe('focusing');
+    expect(done.next.state).toBe('focusing'); // 内置清单 drink.returnState = focusing
     expect(done.effects).toEqual([{ kind: 'swapPoster', state: 'focusing' }]);
+  });
+
+  it('advance 回归清单声明的 returnState，而非开播基态（合成清单 drink→resting）', () => {
+    const drinking = dispatch(initialState('focusing'), 'wellness.drink', {
+      now: T0,
+      manifest: restReturnManifest,
+      reducedMotion: false,
+    }).next;
+    const done = advance(drinking, T0 + 4000, restReturnManifest);
+    expect(done.next.state).toBe('resting');
+    expect(done.effects).toEqual([{ kind: 'swapPoster', state: 'resting' }]);
+  });
+
+  it('播放期间基态被改写时，advance 回当前基态（returnState 让位）', () => {
+    const manual: CompanionRuntimeState = {
+      state: 'paused', // 播放中被 focus.paused 改写
+      playing: {
+        eventType: 'wellness.drink',
+        state: 'drinking',
+        baseAtStart: 'focusing',
+        startedAt: T0,
+        durationMs: 4000,
+      },
+      lastFiredAt: { 'wellness.drink': T0 },
+      queue: [],
+    };
+    const after = advance(manual, T0 + 4000, manifest);
+    expect(after.next.state).toBe('paused');
+    expect(after.next.playing).toBeNull();
+    expect(after.effects).toEqual([{ kind: 'swapPoster', state: 'paused' }]);
   });
 
   it('60s 冷却内重复喝水：状态完全不变，只给 cooldownNotice 剩余秒数', () => {
@@ -65,17 +105,29 @@ describe('陪伴状态机', () => {
     expect(again.next.lastFiredAt['wellness.drink']).toBe(T0);
   });
 
-  it('focus.completed 是终态事件：无视 drinking 不可打断，总是打断并转入 ready', () => {
+  it('focus.completed 是终态事件：无视 drinking 不可打断，总是打断并转入 completed 基态', () => {
     const drinking = drinkingNow();
     const done = dispatch(drinking, 'focus.completed', at(500));
-    expect(done.next.state).toBe('ready');
+    expect(done.next.state).toBe('completed'); // doc-03 §6：focusing --> completed
     expect(done.next.playing).toEqual({
       eventType: 'focus.completed',
-      state: 'ready',
+      state: 'completed',
+      baseAtStart: 'completed',
       startedAt: T0 + 500,
       durationMs: 4000,
     });
     expect(done.next.queue).toEqual([]);
+  });
+
+  it('completed 基态在动作播完后保持，直到 session.ready 才回 ready（doc-03 §6）', () => {
+    const done = dispatch(drinkingNow(), 'focus.completed', at(500)).next;
+    const settled = advance(done, T0 + 4500, manifest); // completed 动作播完（4000ms）
+    expect(settled.next.playing).toBeNull();
+    expect(settled.next.state).toBe('completed'); // 不按 returnState('ready') 自动离开
+    expect(settled.effects).toEqual([{ kind: 'swapPoster', state: 'completed' }]);
+
+    const renewed = dispatch(settled.next, 'session.ready', at(6000));
+    expect(renewed.next.state).toBe('ready'); // completed --> ready: new.session
   });
 
   it('playing 不可打断时高优先级事件入队，但基态转移立即生效', () => {
@@ -93,6 +145,7 @@ describe('陪伴状态机', () => {
     expect(after.next.playing).toEqual({
       eventType: 'focus.paused',
       state: 'paused',
+      baseAtStart: 'paused',
       startedAt: T0 + 5000,
       durationMs: 4000,
     });
@@ -147,7 +200,7 @@ describe('陪伴状态机', () => {
     const expired = advance(queued, T0 + 11_001, manifest); // 10001ms → 过期
     expect(expired.next.playing).toBeNull();
     expect(expired.next.queue).toEqual([]);
-    expect(expired.next.state).toBe('paused'); // 回到基态（已随入队转为 paused）
+    expect(expired.next.state).toBe('paused'); // 播放期间基态已变 → 回当前基态
     expect(expired.effects).toEqual([{ kind: 'swapPoster', state: 'paused' }]);
   });
 
@@ -175,6 +228,7 @@ describe('陪伴状态机', () => {
     expect(resumed.next.playing).toEqual({
       eventType: 'focus.resumed',
       state: 'focusing',
+      baseAtStart: 'focusing',
       startedAt: T0 + 9500,
       durationMs: 4000,
     });

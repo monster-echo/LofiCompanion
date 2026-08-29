@@ -32,7 +32,8 @@ const EVENT_STATE: Record<CompanionEventType, CompanionState> = {
   'focus.paused': 'paused',
   'break.started': 'resting',
   'focus.resumed': 'focusing',
-  'focus.completed': 'ready',
+  // doc-03 §6：focusing --> completed: focus.completed，完成海报即可见状态
+  'focus.completed': 'completed',
 };
 
 /** 事件 → 基态转移（无条件立即生效，即使动作被打断/排队/丢弃） */
@@ -42,9 +43,15 @@ const BASE_TRANSITION: Partial<Record<CompanionEventType, CompanionState>> = {
   'focus.paused': 'paused',
   'break.started': 'resting',
   'focus.resumed': 'focusing',
-  // focus.completed → ready（终态）；wellness.drink / focus.loop 不改基态
-  'focus.completed': 'ready',
+  // doc-03 §6：focus.completed → completed（终态）；completed --> ready 由
+  // session.ready（= new.session）触发。wellness.drink / focus.loop 不改基态。
+  'focus.completed': 'completed',
 };
+
+/** 终态事件：播完后不按 returnState 自动离开（completed 保持到 new.session）。 */
+function isTerminalEvent(eventType: CompanionEventType): boolean {
+  return eventType === 'focus.completed';
+}
 
 export interface QueuedEvent {
   eventType: CompanionEventType;
@@ -54,6 +61,8 @@ export interface QueuedEvent {
 export interface PlayingAction {
   eventType: CompanionEventType;
   state: CompanionState;
+  /** 动作开播时刻的基态快照：advance 据此判断播放期间基态是否被改写 */
+  baseAtStart: CompanionState;
   startedAt: number;
   durationMs: number;
 }
@@ -110,13 +119,14 @@ function durationMsOf(
 function startPlaying(
   manifest: SkinManifest,
   eventType: CompanionEventType,
+  base: CompanionState,
   now: number,
   reducedMotion: boolean,
 ): { action: PlayingAction; effects: CompanionEffect[] } {
   const state = EVENT_STATE[eventType];
   const durationMs = durationMsOf(manifest, state, reducedMotion);
   return {
-    action: { eventType, state, startedAt: now, durationMs },
+    action: { eventType, state, baseAtStart: base, startedAt: now, durationMs },
     effects: [
       { kind: 'showBanner', eventType },
       { kind: 'swapPoster', state },
@@ -173,7 +183,7 @@ export function dispatch(
   }
 
   if (interrupt) {
-    const started = startPlaying(manifest, eventType, now, reducedMotion);
+    const started = startPlaying(manifest, eventType, base, now, reducedMotion);
     return {
       next: {
         state: base,
@@ -208,7 +218,11 @@ export function dispatch(
 /**
  * 播放推进：应用层在 playing.durationMs 到点（或定时器触发）时调用。
  * 未到时长为空操作；到点后弹出队列中未过期（≤10s）的最高优先级事件继续播，
- * 队列空/全过期则回到基态。
+ * 队列空/全过期则收尾回归。
+ *
+ * 回归目标：播放期间基态被改写（如喝水时按下暂停）→ 回当前基态；
+ * 否则终态事件停在当前基态（completed 等待 new.session），其余事件回到
+ * 清单声明的 returnState（未声明则回开播时的基态）。
  */
 export function advance(
   prev: CompanionRuntimeState,
@@ -216,7 +230,8 @@ export function advance(
   manifest: SkinManifest,
   reducedMotion = false,
 ): { next: CompanionRuntimeState; effects: CompanionEffect[] } {
-  if (prev.playing === null || now - prev.playing.startedAt < prev.playing.durationMs) {
+  const playing = prev.playing;
+  if (playing === null || now - playing.startedAt < playing.durationMs) {
     return { next: prev, effects: [] };
   }
 
@@ -230,7 +245,7 @@ export function advance(
       }
     }
     const nextEvent = fresh[best];
-    const started = startPlaying(manifest, nextEvent.eventType, now, reducedMotion);
+    const started = startPlaying(manifest, nextEvent.eventType, prev.state, now, reducedMotion);
     return {
       next: {
         state: prev.state,
@@ -242,9 +257,15 @@ export function advance(
     };
   }
 
-  // 队列空或全部过期：清掉过期项，回到基态
+  // 队列空或全部过期：清掉过期项，收尾回归
+  const baseChanged = prev.state !== playing.baseAtStart;
+  const returnTo: CompanionState = baseChanged
+    ? prev.state // 播放期间基态已变 → 以当前基态为准
+    : isTerminalEvent(playing.eventType)
+      ? prev.state // completed 持续到 new.session，不按 returnState 自动离开
+      : (mappingFor(manifest, playing.eventType)?.returnState ?? playing.baseAtStart);
   return {
-    next: { ...prev, playing: null, queue: [] },
-    effects: [{ kind: 'swapPoster', state: prev.state }],
+    next: { ...prev, state: returnTo, playing: null, queue: [] },
+    effects: [{ kind: 'swapPoster', state: returnTo }],
   };
 }
