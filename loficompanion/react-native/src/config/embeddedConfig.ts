@@ -38,7 +38,7 @@ export const embeddedConfig: RuntimeConfig = {
   brand: {
     appName: 'MobileStarter',
     tagline: '把灵感变成作品',
-    primaryColor: '#A84444',
+    primaryColor: '#4F8FE8',
   },
   splash: {
     id: 'embedded',
