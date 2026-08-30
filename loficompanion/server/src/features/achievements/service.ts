@@ -82,7 +82,7 @@ async function loadGranted(userId: string): Promise<AchievementRuleKey[]> {
  */
 export async function grantNewlyEarnedForSession(
   userId: string,
-  sourceSessionId: string,
+  sourceSessionId: string | null,
 ): Promise<Array<{ ruleKey: AchievementRuleKey; rewardItemId: RoomItemId }>> {
   const history = await loadHistory(userId);
   const already = await loadGranted(userId);
