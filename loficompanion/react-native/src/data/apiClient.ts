@@ -121,6 +121,77 @@ export interface FocusCompleteRemote {
   replayed: boolean;
 }
 
+// —— LofiCompanion P0-C：好友/小组/榜单远端形态（snake_case 不进域层，由
+// 服务端保证只含昵称/头像/分钟/名次——任务正文与活动字段永不出现，docs/01 §5.7）——
+export interface LeaderboardRankingRemote {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  minutes: number;
+  sessionCount: number;
+  rank: number;
+  /** 仅本人行且已退出榜单时出现（S10 当前用户卡提示「已退出榜单」） */
+  youOptedOut?: true;
+}
+
+export interface LeaderboardViewRemote {
+  weekId: string;
+  isWeekOver: boolean;
+  rankings: readonly LeaderboardRankingRemote[];
+  snapshotUsed: boolean;
+}
+
+export interface GroupLeaderboardViewRemote extends LeaderboardViewRemote {
+  weeklyGoalMinutes: number;
+  goalMet: boolean;
+  groupTotalSeconds: number;
+}
+
+export interface FriendSummaryRemote {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  weekMinutes: number;
+}
+
+export interface GroupSummaryRemote {
+  id: string;
+  name: string;
+  ownerUserId: string;
+  joinCode: string;
+  weeklyGoalMinutes: number;
+  createdAt: string;
+}
+
+export interface GroupMemberRemote {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  role: 'owner' | 'member';
+  joinedAt: string;
+}
+
+export interface GroupDetailRemote {
+  group: GroupSummaryRemote;
+  members: readonly GroupMemberRemote[];
+  weekId: string;
+  thisWeekMinutes: number;
+  goalMet: boolean;
+  onlineCount: number;
+}
+
+export interface LeaderboardPrivacyRemote {
+  publicDisplay: boolean;
+  optedOut: boolean;
+  updatedAt: string;
+}
+
+export interface AcceptInviteRemote {
+  accepted: boolean;
+  alreadyFriends: boolean;
+  friend: { userId: string; nickname: string; avatarUrl: string | null };
+}
+
 export const apiClient = {
   uploadAvatarToStorage,
   resolveObjectUrl,
@@ -262,6 +333,39 @@ export const apiClient = {
     request<{ migrated: number; skipped: number; grants: readonly string[] }>(
       '/api/v1/sync/migrate',
       jsonOptions('POST', { sessions }),
+    ),
+  // —— LofiCompanion P0-C：好友邀请码/小组/榜单/隐私（docs/04 §3）——
+  // 我的邀请码（幂等，无则生成——服务端为 POST）。
+  myInviteCode: () => request<{ code: string }>('/api/v1/friends/invitations', { method: 'POST' }),
+  acceptInvite: (code: string) => request<AcceptInviteRemote>(
+    '/api/v1/friends/invitations/accept',
+    jsonOptions('POST', { code }),
+  ),
+  listFriends: () => request<{ friends: readonly FriendSummaryRemote[] }>('/api/v1/friends'),
+  createGroup: (name: string, weeklyGoalMinutes?: number) => request<{ group: GroupSummaryRemote }>(
+    '/api/v1/study-groups',
+    jsonOptions('POST', {
+      name,
+      ...(weeklyGoalMinutes !== undefined ? { weeklyGoalMinutes } : {}),
+    }),
+  ),
+  joinGroup: (code: string) => request<{ group: GroupSummaryRemote; alreadyMember: boolean }>(
+    '/api/v1/study-groups/join',
+    jsonOptions('POST', { code }),
+  ),
+  getGroupDetail: (id: string) => request<GroupDetailRemote>(`/api/v1/study-groups/${id}`),
+  friendsLeaderboard: (week?: string) => request<LeaderboardViewRemote>(
+    `/api/v1/leaderboards/friends${week ? `?week=${encodeURIComponent(week)}` : ''}`,
+  ),
+  groupLeaderboard: (id: string, week?: string) => request<GroupLeaderboardViewRemote>(
+    `/api/v1/leaderboards/groups/${id}${week ? `?week=${encodeURIComponent(week)}` : ''}`,
+  ),
+  getLeaderboardPrivacy: () =>
+    request<LeaderboardPrivacyRemote>('/api/v1/me/leaderboard-privacy'),
+  updateLeaderboardPrivacy: (patch: { publicDisplay?: boolean; optedOut?: boolean }) =>
+    request<LeaderboardPrivacyRemote>(
+      '/api/v1/me/leaderboard-privacy',
+      jsonOptions('PATCH', patch),
     ),
   serverAchievements: () =>
     request<{ achievements: readonly unknown[] }>('/api/v1/me/achievements'),

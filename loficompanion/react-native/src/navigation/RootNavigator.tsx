@@ -26,6 +26,7 @@ import { AboutScreen, NotificationsScreen, OrdersScreen } from '../screens/DataS
 import { SupportHomeScreen, TicketDetailScreen } from '../screens/SupportScreens';
 import { NewTicketScreen, ProductFeedbackScreen } from '../screens/SupportFormScreens';
 import { PermissionsScreen, StorageScreen, TextSizeScreen } from '../screens/SettingsUtilityScreens';
+import { useApp } from '../state/AppStore';
 import { FocusHomeScreen } from '../features/focus/presentation/FocusHomeScreen';
 import { FocusSetupSheet } from '../features/focus/presentation/FocusSetupSheet';
 import { FocusActiveScreen } from '../features/focus/presentation/FocusActiveScreen';
@@ -35,6 +36,10 @@ import { AchievementsScreen } from '../features/achievements/presentation/Achiev
 import { HistoryScreen } from '../features/achievements/presentation/HistoryScreen';
 import { RoomScreen } from '../features/achievements/presentation/RoomScreen';
 import { LeaderboardSignInScreen } from '../features/leaderboards/presentation/LeaderboardSignInScreen';
+import { LeaderboardHomeScreen } from '../features/leaderboards/presentation/LeaderboardHomeScreen';
+import { GroupDetailScreen } from '../features/leaderboards/presentation/GroupDetailScreen';
+import { LeaderboardRulesScreen } from '../features/leaderboards/presentation/LeaderboardRulesScreen';
+import { WeeklySettlementScreen } from '../features/leaderboards/presentation/WeeklySettlementScreen';
 
 const Stack = createNativeStackNavigator<RootParamList>();
 
@@ -68,6 +73,12 @@ function PreferenceRoute() {
   return (
     <PreferenceScreen kind={cfg?.kind ?? 'general'} title={cfg?.title ?? ''} />
   );
+}
+
+// 排行 Tab 根页：已登录 → 真实榜单（S10），未登录 → 保留登录引导壳。
+function LeaderboardRoute() {
+  const { signedIn } = useApp();
+  return signedIn ? <LeaderboardHomeScreen /> : <LeaderboardSignInScreen />;
 }
 
 // The native stack keeps source screens mounted on push, so going back from a
@@ -109,11 +120,15 @@ export function RootNavigator() {
         options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
       />
 
-      {/* 成就 Tab 根页 + 记录/房间 push 页（doc-08 §8–§10）+ 排行登录壳（§11） */}
+      {/* 成就 Tab 根页 + 记录/房间 push 页（doc-08 §8–§10）+ 排行 Tab 根页与
+          规则隐私/小组/周结算 push 页（doc-08 §11–§14，P0-C） */}
       <Stack.Screen name="achievements.home" component={AchievementsScreen} />
       <Stack.Screen name="history.week" component={HistoryScreen} />
       <Stack.Screen name="room.home" component={RoomScreen} />
-      <Stack.Screen name="leaderboard.home" component={LeaderboardSignInScreen} />
+      <Stack.Screen name="leaderboard.home" component={LeaderboardRoute} />
+      <Stack.Screen name="leaderboard.rules" component={LeaderboardRulesScreen} />
+      <Stack.Screen name="groups.detail" component={GroupDetailScreen} />
+      <Stack.Screen name="weekly.settlement" component={WeeklySettlementScreen} />
 
       <Stack.Screen name="auth.signIn" component={AuthRoute} />
       <Stack.Screen name="auth.signUp" component={AuthRoute} />

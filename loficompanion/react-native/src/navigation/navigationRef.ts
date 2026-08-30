@@ -2,10 +2,14 @@ import { createNavigationContainerRef } from '@react-navigation/native';
 import { StackActions } from '@react-navigation/routers';
 import type { AppRoute } from './routes';
 
-// Every route takes no params. AuthScreen mode and PreferenceScreen kind are
-// derived from the route name inside the screen wrapper (AuthRoute/PreferenceRoute),
-// not passed as nav params — keeps RootParamList uniform.
-export type RootParamList = { [K in AppRoute]: undefined };
+// Most routes take no params. AuthScreen mode and PreferenceScreen kind are
+// derived from the route name inside the screen wrapper (AuthRoute/PreferenceRoute).
+// P0-C: groups.detail / weekly.settlement carry the target groupId.
+export type GroupRouteParams = Readonly<{ groupId: string }>;
+
+export type RootParamList = {
+  [K in AppRoute]: K extends 'groups.detail' | 'weekly.settlement' ? GroupRouteParams : undefined;
+};
 
 // Imperative navigation handle. AppStore.navigate/replace/back forward to this
 // ref so existing useApp().navigate(...) call sites work unchanged after the
@@ -16,8 +20,13 @@ export const navigationRef = createNavigationContainerRef<RootParamList>();
 // @react-navigation's navigate() overloads require a literal route name; a
 // dynamic union (AppRoute) won't satisfy them, so this helper centralizes the
 // cast. See https://reactnavigation.org/docs/typescript.
-export function navigateRoute(name: AppRoute): void {
-  if (navigationRef.isReady()) navigationRef.navigate(name as never);
+export function navigateRoute(name: AppRoute, params?: RootParamList[AppRoute]): void {
+  if (!navigationRef.isReady()) return;
+  if (params === undefined) {
+    navigationRef.navigate(name as never);
+    return;
+  }
+  (navigationRef.navigate as (screen: string, params?: unknown) => void)(name, params);
 }
 
 // 原位替换栈顶路由、保留其余栈（AppStore.replace 是整栈 reset，语义不同）。

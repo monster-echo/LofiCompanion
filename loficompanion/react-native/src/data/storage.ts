@@ -106,3 +106,29 @@ export async function clearNonEssentialStorage() {
   await AsyncStorage.multiRemove([telemetryQueueKey]);
   return measureLocalStorage();
 }
+
+// —— P0-C：我的小组本地引用 ——
+// 服务端无「我所在小组」查询端点（docs/04 §3 只有小组成员视角的组详情），
+// 客户端在建组/入组成功时记录 {groupId, groupName}；组已不可见（403/404）时清除。
+const myGroupKey = 'loficompanion.leaderboard.myGroup';
+
+export interface MyGroupRef {
+  groupId: string;
+  groupName: string;
+}
+
+export async function readMyGroup(): Promise<MyGroupRef | null> {
+  const raw = await AsyncStorage.getItem(myGroupKey);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as MyGroupRef;
+    return typeof parsed.groupId === 'string' && parsed.groupId ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveMyGroup(group: MyGroupRef | null): Promise<void> {
+  if (group) await AsyncStorage.setItem(myGroupKey, JSON.stringify(group));
+  else await AsyncStorage.removeItem(myGroupKey);
+}

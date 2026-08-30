@@ -23,7 +23,7 @@ import {
   Credentials, SocialCredentials, useAccountActions,
 } from './useAccountActions';
 import { ConfirmState, ToastState, useFeedbackState } from './useAppShellState';
-import { navigationRef, navigateRoute } from '../navigation/navigationRef';
+import { navigationRef, navigateRoute, type RootParamList } from '../navigation/navigationRef';
 type ToastTone = 'success' | 'info' | 'error';
 export type { ToastState } from './useAppShellState';
 
@@ -57,7 +57,10 @@ type AppContextValue = Readonly<{
   confirm: ConfirmState | null;
   lastAuthError: string | null;
   clearAuthError: () => void;
-  navigate: (route: AppRoute) => void;
+  navigate: <RouteName extends AppRoute>(
+    route: RouteName,
+    params?: RootParamList[RouteName],
+  ) => void;
   replace: (route: AppRoute) => void;
   back: () => void;
   signIn: (credentials: Credentials) => Promise<boolean>;
@@ -156,11 +159,14 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     }
   }, [feedback]);
 
-  const navigate = useCallback((route: AppRoute) => {
+  const navigate = useCallback(<RouteName extends AppRoute,>(
+    route: RouteName,
+    params?: RootParamList[RouteName],
+  ) => {
     const decision = guardRoute(route, { signedIn: user !== null, features: config.features });
     if (decision.pending) setPendingRoute(decision.pending);
     if (decision.unavailable) feedback.showToast('当前 App 未启用此功能', 'info');
-    navigateRoute(decision.route);
+    navigateRoute(decision.route, params);
   }, [config.features, feedback, user]);
   const replace = useCallback((route: AppRoute) => {
     const decision = guardRoute(route, { signedIn: user !== null, features: config.features });

@@ -1,4 +1,4 @@
-import { primitives } from '../theme/tokens';
+import { colors, primitives } from '../theme/tokens';
 
 /**
  * 语义令牌之外的派生色（tokens.ts 的键集被测试钉死为 doc-07 §4.2 表，
@@ -23,5 +23,23 @@ export const mediaSurface = withAlpha(primitives.night[900], 0.88);
 /** 成就强调行软底 = lamp.500（achievement）的 16% 透明底 */
 export const achievementSoft = withAlpha(primitives.lamp[500], 0.16);
 
+/** doc-08 §11：当前用户卡低透明 achievement 边框 = lamp.500 的 45% */
+export const achievementBorder = withAlpha(primitives.lamp[500], 0.45);
+
 /** 媒体上的图标按钮底 = night.950 的 35% 透明底（保证纸白图标对比，doc-07 §5） */
 export const mediaControl = withAlpha(primitives.night[950], 0.35);
+
+/** doc-08 §11 前三名次圆片（低饱和旧金/雾银/木铜，无领奖台、无大面积金色） */
+export type RankAccentTone = 'gold' | 'silver' | 'bronze';
+
+export const rankAccentColors: Record<RankAccentTone, string> = {
+  gold: primitives.lamp[500], // 旧金（lamp.500 调）
+  silver: primitives.mist[300], // 雾银
+  bronze: colors.membershipBronze, // 木铜（低饱和）
+};
+
+export const rankAccentSoft: Record<RankAccentTone, string> = {
+  gold: withAlpha(primitives.lamp[500], 0.16),
+  silver: withAlpha(primitives.mist[300], 0.16),
+  bronze: withAlpha(colors.membershipBronze, 0.16),
+};
