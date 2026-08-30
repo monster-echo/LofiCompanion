@@ -95,6 +95,81 @@ export async function initializeLofiSchema(database: PostgresDatabase) {
       unlocked_at TEXT NOT NULL,
       UNIQUE(user_id, room_item_id)
     );
+
+    -- ── P0-C 排行与小组（docs/06 P0-C、docs/04 §1/§2）─────────────────────────
+
+    -- 好友邀请码：每人一个有效码（user_id UNIQUE）；8 位可读码全局唯一。
+    CREATE TABLE IF NOT EXISTS friend_invitations (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL UNIQUE REFERENCES users(id),
+      code TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    );
+
+    -- 好友关系双向两行（A→B 与 B→A 同事务写入，docs/06 P0-C 决策），UNIQUE 兜底幂等。
+    CREATE TABLE IF NOT EXISTS friendships (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      friend_id TEXT NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      UNIQUE(user_id, friend_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_friendships_friend
+      ON friendships(friend_id);
+
+    -- 私密自习小组：加入码制，共同目标 = 周目标分钟。
+    CREATE TABLE IF NOT EXISTS study_groups (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      owner_user_id TEXT NOT NULL REFERENCES users(id),
+      join_code TEXT NOT NULL UNIQUE,
+      weekly_goal_minutes INTEGER NOT NULL DEFAULT 600,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS group_members (
+      group_id TEXT NOT NULL REFERENCES study_groups(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'member')),
+      joined_at TEXT NOT NULL,
+      UNIQUE(group_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_group_members_user
+      ON group_members(user_id);
+
+    -- 榜单分账本：从 focus_sessions 派生（rule_version=2 含每日 180 分钟上限），
+    -- 原子 upsert；friends 榜 scope_id=发起查询者的好友圈聚合键，group 榜=group_id。
+    CREATE TABLE IF NOT EXISTS leaderboard_scores (
+      user_id TEXT NOT NULL REFERENCES users(id),
+      scope_type TEXT NOT NULL CHECK (scope_type IN ('friends', 'group')),
+      scope_id TEXT NOT NULL,
+      week_id TEXT NOT NULL,
+      effective_seconds INTEGER NOT NULL DEFAULT 0,
+      session_count INTEGER NOT NULL DEFAULT 0,
+      rule_version INTEGER NOT NULL DEFAULT 2,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY(user_id, scope_type, scope_id, week_id, rule_version)
+    );
+
+    -- 周快照不可变（周末后惰性结算写入；rankings JSON 只含昵称/头像/分钟/名次）。
+    CREATE TABLE IF NOT EXISTS leaderboard_snapshots (
+      id TEXT PRIMARY KEY,
+      scope_type TEXT NOT NULL CHECK (scope_type IN ('friends', 'group')),
+      scope_id TEXT NOT NULL,
+      week_id TEXT NOT NULL,
+      rankings TEXT NOT NULL,
+      settled_at TEXT NOT NULL,
+      rule_version INTEGER NOT NULL DEFAULT 2,
+      UNIQUE(scope_type, scope_id, week_id, rule_version)
+    );
+
+    -- 榜单隐私：public_display=0 隐藏昵称仍参与排名；opted_out=1 从榜单消失。
+    CREATE TABLE IF NOT EXISTS leaderboard_settings (
+      user_id TEXT PRIMARY KEY REFERENCES users(id),
+      public_display INTEGER NOT NULL DEFAULT 1,
+      opted_out INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );
   `);
 }
 

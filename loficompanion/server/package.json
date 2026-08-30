@@ -9,7 +9,7 @@
     "start": "next start --hostname 0.0.0.0 --port 3210",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node --env-file-if-exists=.env --import ./tests/register.mjs --test --experimental-transform-types --test-concurrency=1 tests/core.test.ts tests/auth.test.ts tests/payment.test.ts tests/payment-apple.test.ts tests/schema.test.ts tests/skins.test.ts tests/focus.test.ts tests/achievements.test.ts tests/migrate.test.ts"
+    "test": "node --env-file-if-exists=.env --import ./tests/register.mjs --test --experimental-transform-types --test-concurrency=1 tests/core.test.ts tests/auth.test.ts tests/payment.test.ts tests/payment-apple.test.ts tests/schema.test.ts tests/skins.test.ts tests/focus.test.ts tests/achievements.test.ts tests/friends-groups.test.ts tests/migrate.test.ts"
   },
   "dependencies": {
     "@apple/app-store-server-library": "^3.1.0",
