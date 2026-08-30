@@ -40,7 +40,9 @@ function makeController({ driver, granted = [] }: HarnessOptions) {
     achievementRepo: createAchievementRepository(driver),
     skinRepo: createSkinSelectionRepository(driver),
     manifest,
-    loadGranted: async () => granted,
+    loadGranted: async () =>
+      granted.map((ruleKey) => ({ ruleKey, grantedAtUtc: T0 })),
+    loadRoomItems: async () => [],
   });
 }
 
@@ -101,6 +103,10 @@ describe('FocusStore 编排：完整专注流程', () => {
     expect(s.summary.todaySessions).toBe(1);
     expect(s.summary.weekMinutes).toBe(25);
     expect(s.summary.weekTargetMinutes).toBe(300);
+    // 成就/房间快照同步进状态（成就卡/房间页免等磁盘）
+    expect(s.history).toHaveLength(1);
+    expect(s.granted).toEqual([{ ruleKey: 'first_focus', grantedAtUtc: T0 + 30 * MIN }]);
+    expect(s.roomItems).toEqual([{ itemId: 'bookmark', unlockedAtUtc: T0 + 30 * MIN }]);
 
     await controller.flush();
     const repo = createFocusRepository(driver);
@@ -173,6 +179,11 @@ describe('FocusStore 编排：强杀恢复', () => {
     expect(s.completions?.grants).toEqual(['first_focus']);
     expect(s.newGrants).toEqual(['first_focus']);
     expect(s.companion.state).toBe('completed');
+    // 快照入状态：授予时刻取结算时刻（强杀补完成的 now）
+    expect(s.granted).toEqual([
+      { ruleKey: 'first_focus', grantedAtUtc: T0 + 30 * MIN },
+    ]);
+    expect(s.roomItems.map((item) => item.itemId)).toEqual(['bookmark']);
 
     const repo = createFocusRepository(driver);
     expect(await repo.loadActive()).toBeNull();

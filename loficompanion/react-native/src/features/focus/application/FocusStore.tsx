@@ -26,6 +26,8 @@ import {
   type CompletionView,
   type FocusController,
   type FocusState,
+  type GrantRecord,
+  type RoomItemSnapshot,
   type StartSessionResult,
 } from './orchestrate';
 
@@ -50,6 +52,12 @@ export interface FocusApi {
   effectiveSeconds: number;
   today: { minutes: number; sessions: number };
   week: { minutes: number; targetMinutes: number };
+  /** 全量本地历史（含 abandoned 审计文档；统计口径由各屏选择器过滤 completed） */
+  history: readonly FocusSessionDoc[];
+  /** 已授予成就（成就卡解锁态/解锁时刻） */
+  granted: readonly GrantRecord[];
+  /** 已解锁房间收藏物（房间页热点） */
+  roomItems: readonly RoomItemSnapshot[];
   skin: SkinManifest;
   selectedSkinId: string;
   companion: CompanionRuntimeState;
@@ -90,6 +98,9 @@ function toFocusApi(controller: FocusController, state: FocusState): FocusApi {
       minutes: state.summary.weekMinutes,
       targetMinutes: state.summary.weekTargetMinutes,
     },
+    history: state.history,
+    granted: state.granted,
+    roomItems: state.roomItems,
     skin: state.skin,
     selectedSkinId: state.selectedSkinId,
     companion: state.companion,
@@ -122,8 +133,8 @@ export function FocusProvider({ children }: Readonly<{ children: ReactNode }>): 
       achievementRepo,
       skinRepo: createSkinSelectionRepository(storageDriver),
       manifest: rainyStudyRoomManifest,
-      loadGranted: async () =>
-        (await achievementRepo.loadGranted()).map((grant) => grant.ruleKey),
+      loadGranted: async () => achievementRepo.loadGranted(),
+      loadRoomItems: async () => achievementRepo.loadRoomItems(),
     });
   });
 

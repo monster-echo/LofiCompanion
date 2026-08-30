@@ -7,6 +7,8 @@ export type AppRoute =
   | 'focus.active'
   | 'focus.complete'
   | 'achievements.home'
+  | 'history.week'
+  | 'room.home'
   | 'leaderboard.home'
   | 'auth.signIn'
   | 'auth.signUp'

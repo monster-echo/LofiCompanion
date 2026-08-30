@@ -34,6 +34,7 @@ import {
 import type {
   AchievementRuleKey,
   CompletedSession,
+  RoomItemId,
 } from '../../achievements/domain/rules';
 
 /**
@@ -51,13 +52,27 @@ type FocusRepository = ReturnType<typeof createFocusRepository>;
 type AchievementRepository = ReturnType<typeof createAchievementRepository>;
 type SkinSelectionRepository = ReturnType<typeof createSkinSelectionRepository>;
 
+/** 已授予成就的最小快照（成就卡解锁时刻展示用；与仓储解耦的读取口径） */
+export interface GrantRecord {
+  ruleKey: AchievementRuleKey;
+  grantedAtUtc: number;
+}
+
+/** 已解锁房间收藏物的最小快照（房间页热点定位用） */
+export interface RoomItemSnapshot {
+  itemId: RoomItemId;
+  unlockedAtUtc: number;
+}
+
 export interface FocusControllerDeps {
   repo: FocusRepository;
   achievementRepo: AchievementRepository;
   skinRepo: SkinSelectionRepository;
   manifest: SkinManifest;
-  /** 已授予成就的 ruleKey（与仓储解耦，测试可直接桩定） */
-  loadGranted: () => Promise<AchievementRuleKey[]>;
+  /** 已授予成就（含授予时刻；与仓储解耦，测试可直接桩定） */
+  loadGranted: () => Promise<readonly GrantRecord[]>;
+  /** 已解锁房间收藏物；缺省视为空（兼容未接线的旧调用方） */
+  loadRoomItems?: () => Promise<readonly RoomItemSnapshot[]>;
 }
 
 /** 完成页载荷：一次完成的会话 + 统计 + 本次新授予的成就 */
@@ -87,6 +102,12 @@ export interface FocusState {
   remainingSeconds: number;
   effectiveSeconds: number;
   summary: StudySummary;
+  /** 全量本地历史（含 abandoned 审计文档；统计口径由读取方过滤 completed） */
+  history: readonly FocusSessionDoc[];
+  /** 已授予成就（成就卡解锁态/解锁时刻） */
+  granted: readonly GrantRecord[];
+  /** 已解锁房间收藏物（房间页热点） */
+  roomItems: readonly RoomItemSnapshot[];
   skin: SkinManifest;
   selectedSkinId: string;
   companion: CompanionRuntimeState;
@@ -146,6 +167,9 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     remainingSeconds: 0,
     effectiveSeconds: 0,
     summary: summarize([], 0),
+    history: [],
+    granted: [],
+    roomItems: [],
     skin: manifest,
     selectedSkinId: manifest.id,
     companion: initialState(manifest.defaultState),
@@ -160,6 +184,8 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
   // 内存权威副本：磁盘为持久化投影；同步读保证状态转换无异步缝隙
   let history: FocusSessionDoc[] = [];
   let grantedKeys = new Set<AchievementRuleKey>();
+  let grantedRecords: readonly GrantRecord[] = [];
+  let roomItemSnapshots: readonly RoomItemSnapshot[] = [];
   let restoreInFlight: Promise<void> | null = null;
 
   function commit(patch: Partial<FocusState>): void {
@@ -241,13 +267,21 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       }));
   }
 
-  /** 评估并授予新成就（recordGrant/recordRoomItem 幂等，写入异步跟进）。 */
+  /** 评估并授予新成就（recordGrant/recordRoomItem 幂等，写入异步跟进）。
+   *  内存快照同步追加，成就/房间两屏无需等待磁盘。 */
   function grantNewlyEarned(sourceSessionId: string, now: number): AchievementRuleKey[] {
     const grants = evaluateGrants(completedSnapshots(), [...grantedKeys], now);
     for (const ruleKey of grants) {
       grantedKeys.add(ruleKey);
+      grantedRecords = [...grantedRecords, { ruleKey, grantedAtUtc: now }];
       const def = ACHIEVEMENT_DEFS.find((item) => item.ruleKey === ruleKey);
       if (!def) continue;
+      if (!roomItemSnapshots.some((item) => item.itemId === def.rewardItemId)) {
+        roomItemSnapshots = [
+          ...roomItemSnapshots,
+          { itemId: def.rewardItemId, unlockedAtUtc: now },
+        ];
+      }
       void track(achievementRepo.recordGrant(ruleKey, def, sourceSessionId, now)).catch(noop);
       void track(achievementRepo.recordRoomItem(def, now)).catch(noop);
     }
@@ -264,6 +298,9 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       remainingSeconds: remainingSeconds(doc, now),
       effectiveSeconds: effectiveSeconds(doc, now),
       summary,
+      history,
+      granted: grantedRecords,
+      roomItems: roomItemSnapshots,
       newGrants: grants,
       completions: {
         session: doc,
@@ -307,19 +344,25 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
   }
 
   async function doRestore(now: number): Promise<void> {
-    const [storedHistory, grantedList, selected, active] = await Promise.all([
+    const [storedHistory, grantedList, storedRoomItems, selected, active] = await Promise.all([
       repo.loadHistory(),
       deps.loadGranted(),
+      deps.loadRoomItems?.() ?? [],
       skinRepo.loadSelected(),
       repo.loadActive(),
     ]);
     history = storedHistory;
-    grantedKeys = new Set(grantedList);
+    grantedKeys = new Set(grantedList.map((grant) => grant.ruleKey));
+    grantedRecords = grantedList;
+    roomItemSnapshots = storedRoomItems;
     commit({
       hydrated: true,
       skin: manifest,
       selectedSkinId: selected?.skinId ?? manifest.id,
       summary: summarize(history, now),
+      history,
+      granted: grantedRecords,
+      roomItems: roomItemSnapshots,
     });
     applyDerived(active, now, true);
   }
@@ -412,6 +455,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       remainingSeconds: 0,
       effectiveSeconds: effectiveSeconds(abandoned, now),
       summary: summarize(history, now),
+      history,
       banner: null,
       companion: initialState(manifest.defaultState),
     });

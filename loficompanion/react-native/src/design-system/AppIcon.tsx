@@ -11,6 +11,7 @@ export type IconName =
   | 'chevron-down'
   | 'chevron-left'
   | 'chevron-right'
+  | 'clock'
   | 'close'
   | 'crown'
   | 'droplet'
@@ -40,7 +41,7 @@ type IconProps = Readonly<{
 }>;
 
 /** 环形底座的图标在渲染处单独补 Circle，这里只存描边路径。 */
-const ringedIcons: ReadonlySet<string> = new Set(['globe', 'check-circle', 'help']);
+const ringedIcons: ReadonlySet<string> = new Set(['globe', 'check-circle', 'help', 'clock']);
 
 const paths: Record<Exclude<IconName, 'user'>, string[]> = {
   alert: [
@@ -56,6 +57,7 @@ const paths: Record<Exclude<IconName, 'user'>, string[]> = {
   'chevron-down': ['m6 9 6 6 6-6'],
   'chevron-left': ['m15 18-6-6 6-6'],
   'chevron-right': ['m9 18 6-6-6-6'],
+  clock: ['M12 7.5V12l3 1.8'],
   close: ['M18 6 6 18', 'M6 6l12 12'],
   crown: ['m3 6 4 5 5-7 5 7 4-5-2 13H5L3 6Z', 'M5 19h14'],
   droplet: ['M12 3c3.1 3.7 6 6.9 6 10a6 6 0 0 1-12 0c0-3.1 2.9-6.3 6-10Z'],

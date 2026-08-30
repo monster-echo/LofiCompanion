@@ -5,10 +5,6 @@ import type { RootParamList } from './navigationRef';
 
 import { AuthScreen, AuthMode } from '../screens/AuthScreens';
 import { OnboardingScreen, SplashScreen } from '../screens/LaunchScreens';
-import {
-  AchievementsHomeStub,
-  LeaderboardHomeStub,
-} from '../screens/TabStubScreens';
 import { EditProfileScreen, ProfileScreen } from '../screens/ProfileScreens';
 import { MembershipScreen } from '../screens/MembershipScreen';
 import { CheckoutScreen } from '../screens/CheckoutScreen';
@@ -35,6 +31,10 @@ import { FocusSetupSheet } from '../features/focus/presentation/FocusSetupSheet'
 import { FocusActiveScreen } from '../features/focus/presentation/FocusActiveScreen';
 import { FocusCompleteScreen } from '../features/focus/presentation/FocusCompleteScreen';
 import { SkinGalleryScreen } from '../features/skins/presentation/SkinGalleryScreen';
+import { AchievementsScreen } from '../features/achievements/presentation/AchievementsScreen';
+import { HistoryScreen } from '../features/achievements/presentation/HistoryScreen';
+import { RoomScreen } from '../features/achievements/presentation/RoomScreen';
+import { LeaderboardSignInScreen } from '../features/leaderboards/presentation/LeaderboardSignInScreen';
 
 const Stack = createNativeStackNavigator<RootParamList>();
 
@@ -109,9 +109,11 @@ export function RootNavigator() {
         options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
       />
 
-      {/* P0-A 占位 Tab 根页，Task 10 替换 */}
-      <Stack.Screen name="achievements.home" component={AchievementsHomeStub} />
-      <Stack.Screen name="leaderboard.home" component={LeaderboardHomeStub} />
+      {/* 成就 Tab 根页 + 记录/房间 push 页（doc-08 §8–§10）+ 排行登录壳（§11） */}
+      <Stack.Screen name="achievements.home" component={AchievementsScreen} />
+      <Stack.Screen name="history.week" component={HistoryScreen} />
+      <Stack.Screen name="room.home" component={RoomScreen} />
+      <Stack.Screen name="leaderboard.home" component={LeaderboardSignInScreen} />
 
       <Stack.Screen name="auth.signIn" component={AuthRoute} />
       <Stack.Screen name="auth.signUp" component={AuthRoute} />
