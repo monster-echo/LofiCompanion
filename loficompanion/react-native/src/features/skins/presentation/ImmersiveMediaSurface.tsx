@@ -6,6 +6,8 @@ import {
   LayoutChangeEvent,
   StyleSheet,
   View,
+  StyleProp,
+  ViewStyle,
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { stateAsset } from '../domain/resolve';
@@ -19,6 +21,8 @@ export type ImmersiveMediaSurfaceProps = Readonly<{
   resizeMode?: 'cover' | 'contain';
   /** 减少动态：状态切换不做 150ms 交叉淡化，直接换海报（doc-07 §10） */
   reducedMotion?: boolean;
+  /** 容器尺寸由调用方决定（absoluteFill / 56% 高等），缺省跟随父级布局 */
+  style?: StyleProp<ViewStyle>;
 }>;
 
 // doc-07 §9.3 叠层：顶部约 136dp（scrimTop→透明），底部约 260dp（透明→scrimBottom）
@@ -53,6 +57,7 @@ export function ImmersiveMediaSurface({
   state,
   resizeMode = 'cover',
   reducedMotion = false,
+  style,
 }: ImmersiveMediaSurfaceProps) {
   const gradientIds = useMemo(() => {
     gradientSeq += 1;
@@ -129,7 +134,7 @@ export function ImmersiveMediaSurface({
 
   return (
     <View
-      style={styles.container}
+      style={[styles.container, style]}
       onLayout={onLayout}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"

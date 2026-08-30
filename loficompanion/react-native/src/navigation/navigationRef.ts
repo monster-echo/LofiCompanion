@@ -1,4 +1,5 @@
 import { createNavigationContainerRef } from '@react-navigation/native';
+import { StackActions } from '@react-navigation/routers';
 import type { AppRoute } from './routes';
 
 // Every route takes no params. AuthScreen mode and PreferenceScreen kind are
@@ -17,4 +18,12 @@ export const navigationRef = createNavigationContainerRef<RootParamList>();
 // cast. See https://reactnavigation.org/docs/typescript.
 export function navigateRoute(name: AppRoute): void {
   if (navigationRef.isReady()) navigationRef.navigate(name as never);
+}
+
+// 原位替换栈顶路由、保留其余栈（AppStore.replace 是整栈 reset，语义不同）。
+// 闭环推进专用：focus.setup → focus.active、focus.active → focus.complete。
+export function replaceRoute(name: AppRoute): void {
+  if (navigationRef.isReady()) {
+    navigationRef.dispatch(StackActions.replace(name));
+  }
 }

@@ -22,3 +22,6 @@ export const mediaSurface = withAlpha(primitives.night[900], 0.88);
 
 /** 成就强调行软底 = lamp.500（achievement）的 16% 透明底 */
 export const achievementSoft = withAlpha(primitives.lamp[500], 0.16);
+
+/** 媒体上的图标按钮底 = night.950 的 35% 透明底（保证纸白图标对比，doc-07 §5） */
+export const mediaControl = withAlpha(primitives.night[950], 0.35);

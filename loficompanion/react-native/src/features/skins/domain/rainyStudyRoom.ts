@@ -6,32 +6,41 @@ import type {
 } from './types';
 
 /**
- * Metro 静态收集 require('<literal>') 的海报资产；非 Metro 环境回退为 0
- * （域逻辑只透传 module ref，从不加载它）。
- *
- * 不能只判断 require：node/vitest 会注入 CJS require（createRequire），它
- * 会把 PNG 当 JavaScript 解析直接抛 SyntaxError。Metro bundle 的 prelude
- * 总是先定义 __DEV__，用它区分 Metro 与其它环境。
+ * 海报资产加载。Metro 静态收集 require('<literal>') 完成资源注册；非 Metro
+ * 环境（node/vitest）没有资源 require——PNG 解析失败交给 try/catch 回退为
+ * 0（域逻辑只透传 module ref，从不加载它）。Metro 拒绝非字面量 require
+ * （"Invalid call"），因此所有路径必须写成字面量，不能封装成函数传参。
  */
-declare const __DEV__: boolean | undefined;
-declare const require: ((id: string) => number) | undefined;
+declare const require: (id: string) => number;
 
-function poster(id: string): number {
-  return typeof __DEV__ !== 'undefined' && typeof require === 'function'
-    ? require(id)
-    : 0;
+const POSTERS: Readonly<Record<CompanionState, number>> = (() => {
+  try {
+    return {
+      ready: require('../../../../assets/skins/rainy-study-room/ready.png'),
+      focusing: require('../../../../assets/skins/rainy-study-room/focusing.png'),
+      paused: require('../../../../assets/skins/rainy-study-room/paused.png'),
+      drinking: require('../../../../assets/skins/rainy-study-room/drinking.png'),
+      resting: require('../../../../assets/skins/rainy-study-room/resting.png'),
+      completed: require('../../../../assets/skins/rainy-study-room/completed.png'),
+    };
+  } catch {
+    return { ready: 0, focusing: 0, paused: 0, drinking: 0, resting: 0, completed: 0 };
+  }
+})();
+
+function poster(state: CompanionState): number {
+  return POSTERS[state];
 }
 
 const FOCAL_X = 0.5;
 const FOCAL_Y = 0.38;
 const STATIC_DURATION_MS = 4000;
 
-const ASSET_BASE = '../../../../assets/skins/rainy-study-room';
 
 function stateAsset(state: CompanionState): SkinStateAsset {
   return {
     state,
-    poster: poster(`${ASSET_BASE}/${state}.png`),
+    poster: poster(state),
     focalPointX: FOCAL_X,
     focalPointY: FOCAL_Y,
     // loopUrl 缺省：P0-A 静态优先，Task 11 起接入视频

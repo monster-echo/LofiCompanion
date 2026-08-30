@@ -7,6 +7,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 import { AppRoute } from './src/navigation/routes';
 import { AppProvider } from './src/state/AppStore';
+import { FocusProvider } from './src/features/focus/application/FocusStore';
 import { FeedbackHost } from './src/design-system/FeedbackHost';
 import { styles } from './src/theme/styles';
 import { telemetry } from './src/telemetry/Telemetry';
@@ -34,7 +35,9 @@ export default function App() {
         <PreferencesProvider>
           <AuthRecoveryProvider>
             <SupportProvider>
-              <AppSurface />
+              <FocusProvider>
+                <AppSurface />
+              </FocusProvider>
             </SupportProvider>
           </AuthRecoveryProvider>
         </PreferencesProvider>

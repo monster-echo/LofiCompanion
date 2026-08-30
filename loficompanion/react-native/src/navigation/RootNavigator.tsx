@@ -4,8 +4,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootParamList } from './navigationRef';
 
 import { AuthScreen, AuthMode } from '../screens/AuthScreens';
-import { HomeScreen } from '../screens/HomeScreen';
 import { OnboardingScreen, SplashScreen } from '../screens/LaunchScreens';
+import {
+  AchievementsHomeStub,
+  LeaderboardHomeStub,
+} from '../screens/TabStubScreens';
 import { EditProfileScreen, ProfileScreen } from '../screens/ProfileScreens';
 import { MembershipScreen } from '../screens/MembershipScreen';
 import { CheckoutScreen } from '../screens/CheckoutScreen';
@@ -27,6 +30,11 @@ import { AboutScreen, NotificationsScreen, OrdersScreen } from '../screens/DataS
 import { SupportHomeScreen, TicketDetailScreen } from '../screens/SupportScreens';
 import { NewTicketScreen, ProductFeedbackScreen } from '../screens/SupportFormScreens';
 import { PermissionsScreen, StorageScreen, TextSizeScreen } from '../screens/SettingsUtilityScreens';
+import { FocusHomeScreen } from '../features/focus/presentation/FocusHomeScreen';
+import { FocusSetupSheet } from '../features/focus/presentation/FocusSetupSheet';
+import { FocusActiveScreen } from '../features/focus/presentation/FocusActiveScreen';
+import { FocusCompleteScreen } from '../features/focus/presentation/FocusCompleteScreen';
+import { SkinGalleryScreen } from '../features/skins/presentation/SkinGalleryScreen';
 
 const Stack = createNativeStackNavigator<RootParamList>();
 
@@ -73,7 +81,37 @@ export function RootNavigator() {
     >
       <Stack.Screen name="launch.splash" component={SplashScreen} />
       <Stack.Screen name="launch.onboarding" component={OnboardingScreen} />
-      <Stack.Screen name="home" component={HomeScreen} />
+
+      {/* 专注 Tab 根页 + 核心闭环（doc-08 §1 路由表） */}
+      <Stack.Screen name="home" component={FocusHomeScreen} />
+      <Stack.Screen name="skins.gallery" component={SkinGalleryScreen} />
+      <Stack.Screen
+        name="focus.setup"
+        component={FocusSetupSheet}
+        options={{
+          presentation: 'transparentModal',
+          animation: 'none', // 入场动效由 SheetOverlay 按 doc-07 §10 自绘
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="focus.active"
+        component={FocusActiveScreen}
+        options={{
+          presentation: 'fullScreenModal',
+          // 专注中不允许手势下滑退出（doc-08 §5 ending 语义由确认 sheet 承担）
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="focus.complete"
+        component={FocusCompleteScreen}
+        options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
+      />
+
+      {/* P0-A 占位 Tab 根页，Task 10 替换 */}
+      <Stack.Screen name="achievements.home" component={AchievementsHomeStub} />
+      <Stack.Screen name="leaderboard.home" component={LeaderboardHomeStub} />
 
       <Stack.Screen name="auth.signIn" component={AuthRoute} />
       <Stack.Screen name="auth.signUp" component={AuthRoute} />
