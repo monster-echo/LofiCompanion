@@ -102,6 +102,25 @@ export function invalidateAssetUrl(objectKey: string): void {
   assetUrlCache.delete(objectKey);
 }
 
+// —— LofiCompanion 远端会话形态（snake_case 对齐服务端 focus_sessions 行）——
+export interface FocusSessionRemote {
+  id: string;
+  user_id: string;
+  activity: string;
+  planned_seconds: number;
+  status: 'active' | 'paused' | 'completed' | 'abandoned';
+  started_at: string;
+  ended_at: string | null;
+  effective_seconds: number;
+  pauses: string;
+  client_request_id: string;
+}
+
+export interface FocusCompleteRemote {
+  session: FocusSessionRemote;
+  replayed: boolean;
+}
+
 export const apiClient = {
   uploadAvatarToStorage,
   resolveObjectUrl,
@@ -209,6 +228,44 @@ export const apiClient = {
     '/api/v1/me/deletion',
     jsonOptions('DELETE', { password, confirmation: 'DELETE' }),
   ),
+  // —— LofiCompanion P0-B：专注同步端点（完成幂等键 = clientRequestId）——
+  createFocusSession: (input: {
+    activity: string;
+    plannedSeconds: number;
+    clientRequestId: string;
+    startedAt: number;
+    installationId?: string;
+  }) => request<FocusSessionRemote>('/api/v1/focus/sessions', {
+    ...jsonOptions('POST', input),
+    headers: { ...clientHeaders(), 'Content-Type': 'application/json' },
+  }),
+  completeFocusSession: (
+    id: string,
+    body: {
+      pauses: ReadonlyArray<{ start: number; end: number }>;
+      completedAt: number;
+      outcome: 'completed' | 'abandoned';
+    },
+    idempotencyKey: string,
+  ) => request<FocusCompleteRemote>(
+    `/api/v1/focus/sessions/${id}/complete`,
+    {
+      ...jsonOptions('POST', body),
+      headers: {
+        ...clientHeaders(),
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
+      },
+    },
+  ),
+  migrateGuestSessions: (sessions: ReadonlyArray<Record<string, unknown>>) =>
+    request<{ migrated: number; skipped: number; grants: readonly string[] }>(
+      '/api/v1/sync/migrate',
+      jsonOptions('POST', { sessions }),
+    ),
+  serverAchievements: () =>
+    request<{ achievements: readonly unknown[] }>('/api/v1/me/achievements'),
+  serverRoom: () => request<{ items: readonly unknown[] }>('/api/v1/me/room'),
   telemetry: (batch: {
     anonymousId: string;
     sessionId: string;

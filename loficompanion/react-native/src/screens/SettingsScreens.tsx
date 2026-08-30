@@ -7,6 +7,7 @@ import { SessionView } from '../domain/models';
 import { AppRoute } from '../navigation/routes';
 import { TranslationKey, usePreferences } from '../preferences/PreferencesProvider';
 import { useApp } from '../state/AppStore';
+import { SyncStatusRow } from '../features/sync/presentation/SyncStatusRow';
 import { styles } from '../theme/styles';
 
 type SettingItem = Readonly<{
@@ -56,6 +57,7 @@ export function SettingsScreen() {
           <Text style={styles.secondary}>
             {user ? (user.hasEmail && user.email ? user.email : '未绑定邮箱') : text('signInSync')}
           </Text>
+          <SyncStatusRow />
         </AppCard>
         {groups.map((group) => (
           <View key={group.title}>
