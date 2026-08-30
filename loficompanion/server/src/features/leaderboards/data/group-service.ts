@@ -80,6 +80,23 @@ async function getGroupRow(groupId: string): Promise<GroupRow> {
   return row;
 }
 
+/** 组榜等跨域读取的授权入口：组不存在 → 404；请求者非成员 → 403 GROUP_FORBIDDEN。 */
+export async function assertGroupMember(groupId: string, userId: string): Promise<void> {
+  await getGroupRow(groupId);
+  const membership = await database.prepare(
+    'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?',
+  ).get(groupId, userId);
+  if (!membership) throw new ApiError(403, 'GROUP_FORBIDDEN', '仅小组成员可查看该小组');
+}
+
+/** 全体成员 id（建组必有 owner，非空）。 */
+export async function getGroupMemberIds(groupId: string): Promise<string[]> {
+  const rows = await database.prepare(
+    'SELECT user_id FROM group_members WHERE group_id = ? ORDER BY joined_at, user_id',
+  ).all(groupId) as Array<{ user_id: string }>;
+  return rows.map((row) => row.user_id);
+}
+
 /** 建组：owner 自动入组（role='owner'），同事务写入；join_code 撞 UNIQUE 换码重试。 */
 export async function createGroup(
   userId: string,
