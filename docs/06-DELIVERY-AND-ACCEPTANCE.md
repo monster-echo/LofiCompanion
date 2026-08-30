@@ -204,3 +204,22 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
   提示横幅，入口意图在导航挂载完成前解析的竞态，不影响功能与生产构建），后续
   任务中修复；会话开始的陪伴横幅当前复用喝水文案，随静态先行实现一并后置。
 - 门禁：typecheck 0 错误；vitest 109 通过（8 个文件，src/theme + src/features）。
+
+## 9. P0-B 验收记录（2026-08-30）
+
+- 服务端基线：本地 PostgreSQL 16 + 独立库 `zhongbei_lofi`；`npm test` **78/78
+  双跑全绿**；typecheck 0 错误。基线测试修复已镜像回模板（mobiestarter `1050469`）。
+- 核心验收（真实 HTTP 全链路，`next dev` :3210）：
+  - 注册 → RS256 JWT → 创建会话（active）；
+  - **同一完成请求重放十次：effective_seconds 全部一致、唯一结算行数 1、
+    `first_focus` 成就只发放一次、房间收藏物 `bookmark` 入库**；
+  - 游客迁移 3 条（migrated 3 / skipped 0）；重放迁移 migrated 0 / skipped 1，
+    零副作用；
+  - `weekly-summary` 今日/本周口径正确。
+- 客户端：`typecheck` 0 错误；RN 门禁测试 113 通过；SyncEngine 纯逻辑用例 +
+  SyncProvider（登录后一次性迁移、前后台补同步、失败重试不阻塞本地闭环）；
+  设置页账户卡同步状态行。
+- 已知偏离：对象存储/CDN 为接口预留（manifest API 直发，poster 暂用本地内置
+  资产）；模拟器 UI 登录→迁移走查待与服务端常驻联调时补录（迁移链路已在
+  HTTP 层与纯逻辑层验证）；`EXPO_PUBLIC_APP_ID` 已从模板占位 `mobileui`
+  归位为 `loficompanion`。
