@@ -32,6 +32,8 @@ import { FocusSetupSheet } from '../features/focus/presentation/FocusSetupSheet'
 import { FocusActiveScreen } from '../features/focus/presentation/FocusActiveScreen';
 import { FocusCompleteScreen } from '../features/focus/presentation/FocusCompleteScreen';
 import { SkinGalleryScreen } from '../features/skins/presentation/SkinGalleryScreen';
+import { SkinStoreScreen } from '../features/store/presentation/SkinStoreScreen';
+import { SkinDetailScreen } from '../features/store/presentation/SkinDetailScreen';
 import { AchievementsScreen } from '../features/achievements/presentation/AchievementsScreen';
 import { HistoryScreen } from '../features/achievements/presentation/HistoryScreen';
 import { RoomScreen } from '../features/achievements/presentation/RoomScreen';
@@ -96,6 +98,10 @@ export function RootNavigator() {
       {/* 专注 Tab 根页 + 核心闭环（doc-08 §1 路由表） */}
       <Stack.Screen name="home" component={FocusHomeScreen} />
       <Stack.Screen name="skins.gallery" component={SkinGalleryScreen} />
+      {/* 皮肤商店与详情购买（doc-08 §15/§16，P1-A）：未登录可浏览，
+          购买时在详情页内引导登录，不走受保护路由 */}
+      <Stack.Screen name="store.home" component={SkinStoreScreen} />
+      <Stack.Screen name="store.skinDetail" component={SkinDetailScreen} />
       <Stack.Screen
         name="focus.setup"
         component={FocusSetupSheet}

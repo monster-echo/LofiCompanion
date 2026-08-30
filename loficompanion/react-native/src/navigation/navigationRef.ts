@@ -7,8 +7,13 @@ import type { AppRoute } from './routes';
 // P0-C: groups.detail / weekly.settlement carry the target groupId.
 export type GroupRouteParams = Readonly<{ groupId: string }>;
 
+// P1-A: store.skinDetail 携带目标皮肤 slug（S15 详情/购买）。
+export type SkinDetailRouteParams = Readonly<{ skinSlug: string }>;
+
 export type RootParamList = {
-  [K in AppRoute]: K extends 'groups.detail' | 'weekly.settlement' ? GroupRouteParams : undefined;
+  [K in AppRoute]: K extends 'groups.detail' | 'weekly.settlement' ? GroupRouteParams
+    : K extends 'store.skinDetail' ? SkinDetailRouteParams
+    : undefined;
 };
 
 // Imperative navigation handle. AppStore.navigate/replace/back forward to this

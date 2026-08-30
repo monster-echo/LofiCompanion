@@ -3,6 +3,8 @@ export type AppRoute =
   | 'launch.onboarding'
   | 'home'
   | 'skins.gallery'
+  | 'store.home'
+  | 'store.skinDetail'
   | 'focus.setup'
   | 'focus.active'
   | 'focus.complete'

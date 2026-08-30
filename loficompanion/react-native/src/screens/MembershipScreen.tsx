@@ -56,6 +56,14 @@ export function MembershipScreen() {
             />
           </>
         ) : <Text style={styles.secondary}>当前 App 暂未配置可售方案。</Text>}
+        {/* P1-A S16 轻量补充（计划 Task 3）：Plus 皮肤目录价值文案 + 商店联动
+            入口——Plus 精选皮肤由 catalog.premium.active 权益键解锁。 */}
+        <ListRow
+          label="浏览 Plus 皮肤目录"
+          value="Plus 会员解锁官方精选皮肤"
+          icon="palette"
+          onPress={() => navigate('store.home')}
+        />
         <ListRow label="查看订单记录" route="membership.orders" icon="gift" />
       </ScrollView>
     </View>

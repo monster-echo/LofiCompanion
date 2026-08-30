@@ -1,0 +1,46 @@
+/**
+ * 皮肤商店 zh-CN 文案常量（doc-08 §15/§16 S14/S15，P1-A Task 3）。
+ * 价格文案一律由服务端数据格式化，这里不出现任何具体价格。
+ */
+
+export const STORE_STRINGS = {
+  appBarTitle: '陪伴皮肤',
+  ownedEntry: '已拥有',
+  browsingAll: '全部皮肤',
+  inUse: '正在使用',
+  inUseBadge: '使用中',
+  ownedBadge: '已拥有',
+  stateCount: (n: number) => `${n} 个状态`,
+  sectionFree: '免费',
+  sectionPaid: '永久购买',
+  sectionPremium: 'Plus 精选',
+  plusLabel: 'Plus',
+  loadFailed: '价格加载失败，请检查网络',
+  retry: '重新加载',
+  storeEntry: '更多皮肤商店',
+  storeEntryHint: '浏览免费与付费皮肤',
+  // —— S15 详情 ——
+  officialCreator: '官方出品',
+  audioTrack: '环境白噪音（以上线资源为准）',
+  offlineSize: '离线包约 100 MB（估算，以上线包为准）',
+  commercialNote: '仅供个人学习陪伴使用，不可商用或二次分发',
+  priceLoading: '价格加载中…',
+  unlockForever: (price: string) => `${price} 永久解锁`,
+  joinPlus: '加入 Plus',
+  ownedUse: '已拥有 · 立即使用',
+  processing: '处理中…',
+  confirmTitle: '确认购买',
+  confirmPermanent: '永久解锁 · 一次购买，无需续费',
+  confirmPay: '确认支付',
+  restorePurchases: '恢复购买',
+  purchaseSuccess: '皮肤已解锁，感谢支持',
+  purchaseFailed: '购买未完成，可稍后重试',
+  plusComingSoon: 'Plus 订阅即将上线，敬请期待',
+  signInRequired: '登录后即可购买',
+  manifestPending: '该皮肤资源包上线后即可一键使用',
+  recoveryFound: '检测到未完成的订单，正在恢复…',
+  recoveryDone: '订单已恢复，皮肤已解锁',
+  recoveryStuck: '订单仍在处理，稍后回到本页会自动恢复',
+  restoreNone: '没有找到可恢复的购买',
+  restoreDone: '已恢复你的购买',
+} as const;

@@ -192,6 +192,39 @@ export interface AcceptInviteRemote {
   friend: { userId: string; nickname: string; avatarUrl: string | null };
 }
 
+// —— LofiCompanion P1-A：皮肤商店/订单远端形态（docs/04 §3 store 路由，
+// 与 server product-repository/order-service 的 wire shape 逐字段对齐）——
+export interface SkinProductRemote {
+  id: string;
+  skinId: string;
+  slug: string;
+  skinName: string;
+  /** 'free' | 'paid' | 'premium'（服务端 skins.access_type） */
+  accessType: string;
+  entitlementKey: string;
+  storeProductIds: Record<string, string>;
+  /** 分为单位（docs/05 §8：价格只来自服务端，客户端不硬编码） */
+  priceMinor: number;
+  currency: string;
+  /** 只有 active 商品会出现在目录里 */
+  status: string;
+}
+
+export interface SkinOrderRemote {
+  orderId: string;
+  skinId: string;
+  slug: string;
+  entitlementKey: string;
+  priceMinor: number;
+  currency: string;
+  status: string;
+  provider: string;
+  createdAt: string;
+  completedAt: string | null;
+  /** 皮肤权益是否已生效（中断恢复轮询的终态判据） */
+  entitled: boolean;
+}
+
 export const apiClient = {
   uploadAvatarToStorage,
   resolveObjectUrl,
@@ -334,6 +367,25 @@ export const apiClient = {
       '/api/v1/sync/migrate',
       jsonOptions('POST', { sessions }),
     ),
+  // —— LofiCompanion P1-A：皮肤商店（docs/04 §3）。目录公开可浏览（S14 未登录
+  // 可看价格）；下单幂等键 = 客户端 uuid；验证复用 /purchases/verify（服务端
+  // 检测 skin_orders 绑定自动委托皮肤订单流程）；查单用于中断恢复轮询。——
+  skinProducts: () => request<{ products: readonly SkinProductRemote[] }>(
+    '/api/v1/store/skin-products',
+  ),
+  createSkinOrder: (skinId: string, idempotencyKey: string) => request<SkinOrderRemote>(
+    '/api/v1/store/skin-orders',
+    {
+      ...jsonOptions('POST', { skinId }),
+      headers: {
+        ...clientHeaders(),
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
+      },
+    },
+  ),
+  getSkinOrder: (orderId: string) =>
+    request<SkinOrderRemote>(`/api/v1/store/skin-orders/${orderId}`),
   // —— LofiCompanion P0-C：好友邀请码/小组/榜单/隐私（docs/04 §3）——
   // 我的邀请码（幂等，无则生成——服务端为 POST）。
   myInviteCode: () => request<{ code: string }>('/api/v1/friends/invitations', { method: 'POST' }),

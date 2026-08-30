@@ -16,15 +16,17 @@ import {
 import { useApp } from '../../../state/AppStore';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
+import { STORE_STRINGS as STORE } from '../../store/presentation/strings';
 import { SKIN_STRINGS as STR, UPCOMING_SKINS } from './strings';
 
 /**
  * S01 陪伴皮肤选择（doc-08 §2）。本屏唯一焦点：被选中的大幅皮肤预览。
  * P0-A 仅「雨夜书房」可选；两张占位卡展示「即将推出」，不参与选择。
+ * P1-A：页底新增「更多皮肤商店」入口行 → store.home（S14）。
  */
 export function SkinGalleryScreen() {
   const focus = useFocus();
-  const { back } = useApp();
+  const { back, navigate } = useApp();
   const { width: windowWidth } = useWindowDimensions();
   // 358 基准宽；窄屏由调用方收窄，几何比例不变（doc-07 §3）
   const cardWidth = Math.min(SKIN_PREVIEW_CARD_WIDTH, windowWidth - space.x4 * 2);
@@ -66,6 +68,21 @@ export function SkinGalleryScreen() {
           <UpcomingSkinCard key={skin.id} name={skin.name} width={cardWidth} />
         ))}
         <Text style={styles.countCaption}>{STR.freeCount(1)}</Text>
+
+        {/* 更多皮肤商店入口（P1-A S14）：轻量插入行，不改既有选择流程 */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={STORE.storeEntry}
+          onPress={() => navigate('store.home')}
+          style={({ pressed }) => [styles.storeEntry, pressed && styles.pressed]}
+        >
+          <AppIcon name="palette" color={semantic.actionFocus} size={20} />
+          <View style={styles.storeEntryTexts}>
+            <Text style={styles.storeEntryTitle}>{STORE.storeEntry}</Text>
+            <Text style={styles.storeEntryHint}>{STORE.storeEntryHint}</Text>
+          </View>
+          <AppIcon name="chevron-right" color={semantic.textMuted} size={18} />
+        </Pressable>
       </ScrollView>
 
       {/* 底部固定主按钮（安全区 + 12 由外层 SafeArea + paddingBottom 承担） */}
@@ -147,6 +164,29 @@ const styles = StyleSheet.create({
     color: semantic.textMuted,
     textAlign: 'center',
     marginTop: space.x1,
+  },
+  storeEntry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.x3,
+    borderRadius: radii.card,
+    backgroundColor: semantic.surface,
+    borderWidth: 1,
+    borderColor: semantic.borderSoft,
+    paddingHorizontal: space.x4,
+    minHeight: 64,
+  },
+  storeEntryTexts: {
+    flex: 1,
+    gap: 2,
+  },
+  storeEntryTitle: {
+    ...type.bodyStrong,
+    color: semantic.textPrimary,
+  },
+  storeEntryHint: {
+    ...type.caption,
+    color: semantic.textMuted,
   },
   upcomingCard: {
     height: SKIN_PREVIEW_CARD_HEIGHT,
