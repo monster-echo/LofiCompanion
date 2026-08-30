@@ -82,9 +82,9 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
   夹具依赖「每次全新库」：dev 测试账号无人播种、固定订单/事件 id 二跑冲突、
   `u-<counter>` 用户名跨运行撞名、`profileSchema` 已支持改名的旧断言未跟进——
   已修复并镜像回模板（mobiestarter `1050469`）。
-- 已知模板项：server `.gitignore` 未覆盖 `.env`；模板存在嵌套重复资产目录
-  （`assets/icons/icons/*`、`assets/illustrations/illustrations/*`），随模板
-  一并复制，留待模板清理。
+- 已清偿（2026-08-31）：server `.gitignore` 已补齐（.env/构建产物）；模板
+  嵌套重复资产目录（`icons/icons/*`、`illustrations/illustrations/*`，内容与
+  外层完全相同且代码零引用）已从模板与本项目移除（模板 `b0e4057`）。
 - 已修复（2026-08-29）：`doctor` 的 marker 扫描在 `node_modules` 内遇到二进制
   `.plist` 会崩溃；现已跳过 `node_modules` 子树并容错不可解码文件。
 
