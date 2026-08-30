@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { ApiError } from '@/server/http';
-import { database, nowIso } from '@/server/database';
+import { database, nowIso, runTransaction } from '@/server/database';
 import type { SettleInput } from '../domain/settlement';
 import { settleSession, validateSettleInput } from '../domain/settlement';
+import { grantNewlyEarnedForSession, type AchievementRuleKey } from '@/features/achievements/service';
 
 // 专注会话数据访问与幂等结算（docs/04 §3 路由子集的服务端实现）。
 // 幂等三件套：创建按 UNIQUE(user_id, client_request_id)；完成按 idempotency_keys；
@@ -107,36 +108,44 @@ export async function settleAndFinishSession(
   userId: string,
   payload: CompletePayload,
   idempotencyKey: string | null,
-): Promise<{ session: FocusSessionRow; replayed: boolean }> {
+): Promise<{ session: FocusSessionRow; replayed: boolean; grants: AchievementRuleKey[] }> {
   const endpoint = `focus.complete:${id}`;
   const key = idempotencyKey ?? `complete:${id}`;
-  const result = await withIdempotency<{ session: FocusSessionRow }>(key, userId, endpoint, async () => {
-    const row = await getSession(id, userId);
-    if (row.status === 'completed' || row.status === 'abandoned') {
-      return { body: { session: row }, status: 200 }; // 终态重放幂等返回
-    }
-    const error = validateSettleInput(
-      { plannedSeconds: row.planned_seconds, startedAt: Date.parse(row.started_at),
-        pauses: payload.pauses, completedAt: payload.completedAt },
-      Date.now(),
-    );
-    if (error) {
-      throw new ApiError(422, error, '会话区间无效');
-    }
-    const { effectiveSeconds } = settleSession(
-      { plannedSeconds: row.planned_seconds, startedAt: Date.parse(row.started_at),
-        pauses: payload.pauses, completedAt: payload.completedAt },
-    );
-    const endedAtIso = new Date(payload.completedAt).toISOString();
-    // TODO(Task 4): 成就评估与发放 hook —— 与本更新同事务执行。
-    await database.prepare(
-      `UPDATE focus_sessions SET status = ?, ended_at = ?, effective_seconds = ?, pauses = ?, updated_at = ?
-       WHERE id = ? AND user_id = ?`,
-    ).run(payload.outcome, endedAtIso, effectiveSeconds,
-      JSON.stringify(payload.pauses), nowIso(), id, userId);
-    return { body: { session: await getSession(id, userId) }, status: 200 };
-  });
-  return { session: result.body.session, replayed: result.replayed };
+  const result = await withIdempotency<{ session: FocusSessionRow; grants: AchievementRuleKey[] }>(
+    key, userId, endpoint,
+    async () => {
+      const row = await getSession(id, userId);
+      if (row.status === 'completed' || row.status === 'abandoned') {
+        return { body: { session: row, grants: [] }, status: 200 }; // 终态重放幂等返回
+      }
+      const error = validateSettleInput(
+        { plannedSeconds: row.planned_seconds, startedAt: Date.parse(row.started_at),
+          pauses: payload.pauses, completedAt: payload.completedAt },
+        Date.now(),
+      );
+      if (error) {
+        throw new ApiError(422, error, '会话区间无效');
+      }
+      const { effectiveSeconds } = settleSession(
+        { plannedSeconds: row.planned_seconds, startedAt: Date.parse(row.started_at),
+          pauses: payload.pauses, completedAt: payload.completedAt },
+      );
+      const endedAtIso = new Date(payload.completedAt).toISOString();
+      // 结算与成就发放同一事务（docs/03 §9）：重放被 idempotency_keys 挡住，
+      // 成就被 achievement_grants UNIQUE 兜底——重放十次只结算/发放一次。
+      const grants = await runTransaction(async () => {
+        await database.prepare(
+          `UPDATE focus_sessions SET status = ?, ended_at = ?, effective_seconds = ?, pauses = ?, updated_at = ?
+           WHERE id = ? AND user_id = ?`,
+        ).run(payload.outcome, endedAtIso, effectiveSeconds,
+          JSON.stringify(payload.pauses), nowIso(), id, userId);
+        const earned = await grantNewlyEarnedForSession(userId, id);
+        return earned.map((grant) => grant.ruleKey);
+      });
+      return { body: { session: await getSession(id, userId), grants }, status: 200 };
+    },
+  );
+  return { session: result.body.session, replayed: result.replayed, grants: result.body.grants };
 }
 
 export async function listHistory(userId: string, limit = 100): Promise<FocusSessionRow[]> {
