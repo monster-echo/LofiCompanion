@@ -21,36 +21,36 @@ const policy = defaultConfig.auth.passwordPolicy;
 let counter = 0;
 const nextEmail = () => `${prefix}-${counter++}@test.local`;
 
-// 开发测试账号自举：套件假定 test@zhongbei.local / test123 / 用户名 test /
-// 手机号 +8613800000000 已存在。CI 每次给全新库，本地持久库重跑时账号可能
-// 缺失或密码漂移——这里幂等补种，保证两种环境行为一致。
+// 开发测试账号对齐模板约定（database.ts ensureAppTestAccount：
+// test@test.local / Test1234 / username 'test'）。套件额外依赖手机号登录，
+// 这里幂等补挂 phone external_identity 并确保密码与库内历史漂移无关；
+// 同时清退其他占用 username 'test' 的历史行，保证 username 登录不歧义。
 {
   const { hashPassword } = await import('../src/server/passwords.ts');
-  const existing = await database.prepare(
-    'SELECT id FROM users WHERE app_id = ? AND (email = ? OR username = ?) LIMIT 1',
-  ).get(APP, 'test@zhongbei.local', 'test') as { id: string } | undefined;
-  const id = existing?.id ?? `dev-test-${process.pid}`;
   const ts = nowIso();
-  const passwordHash = await hashPassword('test123');
-  if (existing) {
-    await database.prepare(
-      "UPDATE users SET email = ?, username = 'test', password_hash = ?, email_verified = 1, "
-      + "consent_version = COALESCE(consent_version, '2026-07-29'), consented_at = COALESCE(consented_at, ?), updated_at = ? "
-      + 'WHERE id = ?',
-    ).run('test@zhongbei.local', passwordHash, ts, ts, id);
-  } else {
-    await database.prepare(
-      `INSERT INTO users(id, app_id, email, password_hash, username, display_name, email_verified, consent_version, consented_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'test', '测试账号', 1, '2026-07-29', ?, ?, ?)`,
-    ).run(id, APP, 'test@zhongbei.local', passwordHash, ts, ts, ts);
-  }
-  const hasPhone = await database.prepare(
-    "SELECT 1 FROM external_identities WHERE provider = 'phone' AND provider_subject = ?",
-  ).get(`${APP}:+8613800000000`);
-  if (!hasPhone) {
+  const account = await database.prepare(
+    'SELECT id FROM users WHERE app_id = ? AND email = ?',
+  ).get(APP, 'test@test.local') as { id: string } | undefined;
+  if (!account) throw new Error('模板测试账号缺失：bootstrap 未播种 test@test.local');
+  await database.prepare(
+    'UPDATE users SET password_hash = ?, email_verified = 1, updated_at = ? WHERE id = ?',
+  ).run(await hashPassword('Test1234'), ts, account.id);
+  await database.prepare(
+    "UPDATE users SET username = 'test_legacy_' || substr(id, 1, 6), updated_at = ? "
+    + "WHERE app_id = ? AND username = 'test' AND email <> 'test@test.local'",
+  ).run(ts, APP);
+  const phone = await database.prepare(
+    "SELECT user_id FROM external_identities WHERE provider = 'phone' AND provider_subject = ?",
+  ).get(`${APP}:+8613800000000`) as { user_id: string } | undefined;
+  if (!phone) {
     await database.prepare(
       "INSERT INTO external_identities(id, user_id, provider, provider_subject, created_at) VALUES (?, ?, 'phone', ?, ?)",
-    ).run(`dev-test-phone-${process.pid}`, id, `${APP}:+8613800000000`, ts);
+    ).run(`dev-test-phone-${process.pid}`, account.id, `${APP}:+8613800000000`, ts);
+  } else if (phone.user_id !== account.id) {
+    // 历史运行可能把手机号身份挂到了别的行——重指向当前账号。
+    await database.prepare(
+      "UPDATE external_identities SET user_id = ? WHERE provider = 'phone' AND provider_subject = ?",
+    ).run(account.id, `${APP}:+8613800000000`);
   }
 }
 
@@ -84,14 +84,14 @@ test('sign-up schema requires consent version and a minimum password length', ()
 });
 
 test('development test account signs in with email, username, or phone', async () => {
-  for (const identifier of ['test@zhongbei.local', 'test', '+8613800000000']) {
+  for (const identifier of ['test@test.local', 'test', '+8613800000000']) {
     const result = await signIn({
       appId: APP,
       identifier,
-      password: 'test123',
+      password: 'Test1234',
       deviceName: 'test-runner',
     });
-    assert.equal(result.user.email, 'test@zhongbei.local');
+    assert.equal(result.user.email, 'test@test.local');
   }
 });
 
