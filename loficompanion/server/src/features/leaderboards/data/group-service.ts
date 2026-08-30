@@ -1,6 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { database, nowIso, runTransaction } from '@/server/database';
 import { ApiError } from '@/server/http';
+import { applyDailyCap, weekIdOf, weekStartMsOfId } from '../domain/settlement';
 import { weekStartIso } from '../domain/week';
 
 // 私密自习小组（docs/01 §5.7、docs/04 §3）：加入码制建组/入组，owner 自动入组；
@@ -55,8 +56,12 @@ export interface GroupMember {
 export interface GroupDetail {
   group: GroupSummary;
   members: GroupMember[];
-  /** 本周组贡献分钟（completed 会话求和；每日上限结算归 Task 2/3） */
-  weekTotalMinutes: number;
+  /** 所属 ISO 周（YYYY-Www） */
+  weekId: string;
+  /** 本周组贡献分钟：与榜单同口径（每成员每日 180 分钟裁剪后求和） */
+  thisWeekMinutes: number;
+  /** 本周是否已达周目标（thisWeekMinutes ≥ weekly_goal_minutes） */
+  goalMet: boolean;
   /** 在线专注人数 = 有活跃会话的成员计数 */
   onlineCount: number;
 }
@@ -176,13 +181,28 @@ export async function getGroup(groupId: string, requesterId: string): Promise<Gr
     user_id: string; role: 'owner' | 'member'; joined_at: string;
     nickname: string; avatar_url: string | null;
   }>;
-  const weekStart = weekStartIso();
-  const totals = await database.prepare(
-    `SELECT COALESCE(SUM(fs.effective_seconds), 0) AS seconds
-     FROM focus_sessions fs
-     WHERE fs.status = 'completed' AND fs.ended_at >= ?
-       AND fs.user_id IN (SELECT user_id FROM group_members WHERE group_id = ?)`,
-  ).get(weekStart, groupId) as { seconds: number };
+  // 本周进度：与榜单同口径——按成员分别做每日 180 分钟裁剪后求和（可重建）。
+  const weekId = weekIdOf(Date.now());
+  const weekStartMs = weekStartMsOfId(weekId)!;
+  const sessionRows = await database.prepare(
+    `SELECT user_id, effective_seconds, ended_at
+     FROM focus_sessions
+     WHERE status = 'completed' AND ended_at >= ? AND ended_at < ?
+       AND user_id IN (SELECT user_id FROM group_members WHERE group_id = ?)`,
+  ).all(new Date(weekStartMs).toISOString(), new Date(weekStartMs + 7 * 86_400_000).toISOString(), groupId) as Array<{
+    user_id: string; effective_seconds: number; ended_at: string;
+  }>;
+  const sessionsByUser = new Map<string, Array<{ effective_seconds: number; ended_at: string }>>();
+  for (const row of sessionRows) {
+    const list = sessionsByUser.get(row.user_id) ?? [];
+    list.push({ effective_seconds: row.effective_seconds, ended_at: row.ended_at });
+    sessionsByUser.set(row.user_id, list);
+  }
+  let cappedSeconds = 0;
+  for (const sessions of sessionsByUser.values()) {
+    cappedSeconds += applyDailyCap(sessions).totalSeconds;
+  }
+  const goalMet = cappedSeconds >= group.weekly_goal_minutes * 60;
   const online = await database.prepare(
     `SELECT count(*) AS n FROM group_members gm
      WHERE gm.group_id = ?
@@ -200,7 +220,9 @@ export async function getGroup(groupId: string, requesterId: string): Promise<Gr
       role: row.role,
       joinedAt: row.joined_at,
     })),
-    weekTotalMinutes: Math.floor(Number(totals.seconds) / 60),
+    weekId,
+    thisWeekMinutes: Math.floor(cappedSeconds / 60),
+    goalMet,
     onlineCount: Number(online.n),
   };
 }

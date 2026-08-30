@@ -11,6 +11,7 @@ const {
   getOrCreateLeaderboardSettings, updateLeaderboardSettings,
 } = await import('../src/features/leaderboards/data/settings-repository.ts');
 const { createSession } = await import('../src/features/focus/data/focus-repository.ts');
+const { weekIdOf } = await import('../src/features/leaderboards/domain/settlement.ts');
 
 after(async () => database.close());
 
@@ -156,7 +157,9 @@ test('在线专注人数：活跃会话成员计入 onlineCount', async () => {
   });
   const detail = await getGroup(group.id, owner);
   assert.equal(detail.onlineCount, 1);
-  assert.ok(detail.weekTotalMinutes >= 0);
+  assert.ok(detail.thisWeekMinutes >= 0);
+  assert.equal(detail.weekId, weekIdOf(Date.now())); // 周进度口径与榜单一致
+  assert.equal(typeof detail.goalMet, 'boolean');
 });
 
 test('非成员查询组详情：403 GROUP_FORBIDDEN', async () => {

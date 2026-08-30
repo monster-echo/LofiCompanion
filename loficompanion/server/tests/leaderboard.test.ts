@@ -5,8 +5,9 @@ const {
   weekIdOf, weekStartMsOfId, isWeekOver, applyDailyCap, weekStartIso,
 } = await import('../src/features/leaderboards/domain/settlement.ts');
 const {
-  settleUserWeek, friendsLeaderboard, groupLeaderboard, currentWeekId,
+  settleUserWeek, friendsLeaderboard, currentWeekId,
 } = await import('../src/features/leaderboards/data/score-repository.ts');
+const { getGroupWeeklyView } = await import('../src/features/leaderboards/data/weekly-settlement.ts');
 const { createGroup, joinGroup } = await import('../src/features/leaderboards/data/group-service.ts');
 const { getOrCreateInvitationCode, acceptInvitation } = await import('../src/features/leaderboards/data/friend-service.ts');
 const { updateLeaderboardSettings } = await import('../src/features/leaderboards/data/settings-repository.ts');
@@ -248,7 +249,11 @@ test('不可变快照：过去周首次查询结算并写快照；改会话再�
   assert.equal(after.length, 1);
   assert.equal(after[0].id, before[0].id);
   assert.equal(after[0].settled_at, before[0].settled_at);
-  assert.deepEqual(JSON.parse(after[0].rankings), first.rankings);
+  // 信封结构：rankings + 组榜专用字段（好友榜为 null）
+  const storedEnvelope = JSON.parse(after[0].rankings) as { rankings: unknown; goalMet: unknown; groupTotalSeconds: unknown };
+  assert.deepEqual(storedEnvelope.rankings, first.rankings);
+  assert.equal(storedEnvelope.goalMet, null);
+  assert.equal(storedEnvelope.groupTotalSeconds, null);
   // 当前周查询：live 结算，不写快照
   const currentWeek = currentWeekId(nowMs);
   const live = await friendsLeaderboard(viewer, currentWeek);
@@ -266,15 +271,17 @@ test('组周榜：成员可见按分钟排名；非成员 403 GROUP_FORBIDDEN；
   const { group } = await createGroup(owner, '共学小组');
   await joinGroup(member, group.joinCode);
   await completeTodaySession(member, 2700); // 45 分钟
-  const view = await groupLeaderboard(group.id, owner, currentWeekId());
+  const view = await getGroupWeeklyView(group.id, owner, currentWeekId());
   assert.equal(view.snapshotUsed, false);
+  assert.equal(view.goalMet, false); // 45 分钟 < 600 分钟默认目标
+  assert.equal(view.weeklyGoalMinutes, 600);
   assert.deepEqual(view.rankings.map((entry) => [entry.userId, entry.minutes, entry.rank]), [
     [member, 45, 1],
     [owner, 0, 2],
   ]);
   assertNoTaskContent(view.rankings);
   await assert.rejects(
-    () => groupLeaderboard(group.id, outsider, currentWeekId()),
+    () => getGroupWeeklyView(group.id, outsider, currentWeekId()),
     (error: { code?: string; status?: number }) =>
       error.code === 'GROUP_FORBIDDEN' && error.status === 403,
   );

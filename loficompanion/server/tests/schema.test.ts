@@ -24,7 +24,7 @@ test('lofi schema 初始化与种子幂等：连续两次执行不报错且不�
   const skins = await database.prepare('SELECT count(*) AS n FROM skins').get() as { n: number };
   const items = await database.prepare('SELECT count(*) AS n FROM room_items').get() as { n: number };
   assert.equal(skins.n, 3);
-  assert.equal(items.n, 4);
+  assert.equal(items.n, 5); // 含 P0-C weekly_group_photo
 });
 
 test('focus_sessions 同一 (user_id, client_request_id) 二次插入违反唯一约束', async () => {

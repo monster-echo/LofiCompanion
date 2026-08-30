@@ -178,6 +178,8 @@ const ROOM_ITEM_SEEDS = [
   { itemId: 'lamp', name: '小台灯', sourceRuleKey: 'streak_7' },
   { itemId: 'plant', name: '绿植', sourceRuleKey: 'rainy_10h' },
   { itemId: 'group_photo', name: '自习伙伴合影', sourceRuleKey: 'sessions_100' },
+  // P0-C Task 3：小组周目标达成收藏物（周结算发放，source 不走成就规则）
+  { itemId: 'weekly_group_photo', name: '周目标合影', sourceRuleKey: 'weekly_settlement' },
 ] as const;
 
 const SKIN_SEEDS = [

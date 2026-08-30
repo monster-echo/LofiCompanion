@@ -5,7 +5,6 @@ import {
   applyDailyCap, DAY_MS, isWeekOver, weekIdOf, weekStartMsOfId,
 } from '../domain/settlement';
 import { getOrCreateLeaderboardSettings } from './settings-repository';
-import { assertGroupMember, getGroupMemberIds } from './group-service';
 
 // 榜单结算与查询（docs/03 §9、docs/04 §3，rule_version=2）：
 // - 结算：focus_sessions 该周 completed 会话 → applyDailyCap（每日 180 分钟上限）
@@ -47,7 +46,15 @@ export interface LeaderboardView {
   snapshotUsed: boolean;
 }
 
-function assertWeekId(weekId: string): number {
+/** leaderboard_snapshots.rankings 的统一信封（两种 scope 同构）：组榜附带
+ *  goalMet/groupTotalSeconds（周结算判定随不可变快照固化）；好友榜两字段为 null。 */
+export interface SnapshotEnvelope {
+  rankings: RankingEntry[];
+  goalMet: boolean | null;
+  groupTotalSeconds: number | null;
+}
+
+export function assertWeekId(weekId: string): number {
   const startMs = weekStartMsOfId(weekId);
   if (startMs === null) {
     throw new ApiError(422, 'VALIDATION_ERROR', 'week 格式须为 YYYY-Www');
@@ -104,7 +111,7 @@ export async function settleUserWeek(userId: string, weekId: string): Promise<Le
   return await upsertScore(userId, 'friends', userId, weekId, applyDailyCap(sessions, DAILY_CAP_MINUTES));
 }
 
-async function settleScope(
+export async function settleScope(
   scopeType: LeaderboardScopeType,
   scopeId: string,
   userIds: ReadonlyArray<string>,
@@ -134,11 +141,11 @@ interface SettingsRow {
  * 排名组装（唯一出口，供 live 与快照共用）：按有效秒降序（并列按完成数、userId），
  * rank = 序号 + 1。隐私语义：opted_out=1 整行消失；public_display=0 →
  * 「已隐藏」+ null 头像但保留名次。alwaysIncludeUserId（查询者本人）永不被
- * 排除/遮罩——自己总能看到自己（组共享快照除外，见 getOrSettleSnapshot 注释）。
+ * 排除/遮罩——自己总能看到自己（组共享快照除外，见 finalizeView 注释）。
  * 条目字段仅 userId/nickname/avatarUrl/minutes/sessionCount/rank，任务正文与
  * 活动字段永不进入。
  */
-async function rankFromScores(
+export async function rankFromScores(
   rows: ReadonlyArray<LeaderboardScoreRow>,
   alwaysIncludeUserId?: string,
 ): Promise<RankingEntry[]> {
@@ -186,37 +193,43 @@ async function rankFromScores(
 }
 
 /**
- * 周末后惰性快照：周未结束不该走到这里（live 路径）。周已结束——已有快照直接
- * 返回（不可变，永不重算）；否则结算全部成员并写快照（ON CONFLICT DO NOTHING，
- * 并发下先到者赢）。组榜快照被全组共享，因此以「无特定查看者」口径落库：
- * 本人遮罩/排除语义在 finalizeView 读取时按当前用户补回。
+ * 读快照（不可变）：返回统一信封；历史上若存在旧版裸数组的 rankings JSON，
+ * 包装为信封（goalMet/groupTotalSeconds 未知 → null）。
  */
-async function getOrSettleSnapshot(
+export async function readSnapshot(
   scopeType: LeaderboardScopeType,
   scopeId: string,
-  userIds: ReadonlyArray<string>,
   weekId: string,
-  alwaysIncludeUserId?: string,
-): Promise<{ rankings: RankingEntry[]; snapshotUsed: true }> {
+): Promise<SnapshotEnvelope | null> {
   const existing = await database.prepare(
     `SELECT rankings FROM leaderboard_snapshots
      WHERE scope_type = ? AND scope_id = ? AND week_id = ? AND rule_version = ?`,
   ).get(scopeType, scopeId, weekId, LEADERBOARD_RULE_VERSION) as { rankings: string } | undefined;
-  if (existing) {
-    return { rankings: JSON.parse(existing.rankings) as RankingEntry[], snapshotUsed: true };
+  if (!existing) return null;
+  const parsed = JSON.parse(existing.rankings) as SnapshotEnvelope | RankingEntry[];
+  if (Array.isArray(parsed)) {
+    return { rankings: parsed, goalMet: null, groupTotalSeconds: null };
   }
-  const rows = await settleScope(scopeType, scopeId, userIds, weekId);
-  const rankings = await rankFromScores(rows, alwaysIncludeUserId);
-  await database.prepare(
+  return parsed;
+}
+
+/** 写快照（ON CONFLICT DO NOTHING）。返回 true=本次新建（调用方据此做一次性副作用）。 */
+export async function writeSnapshot(
+  scopeType: LeaderboardScopeType,
+  scopeId: string,
+  weekId: string,
+  envelope: SnapshotEnvelope,
+): Promise<boolean> {
+  const result = await database.prepare(
     `INSERT INTO leaderboard_snapshots(id, scope_type, scope_id, week_id, rankings, settled_at, rule_version)
      VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
-  ).run(randomUUID(), scopeType, scopeId, weekId, JSON.stringify(rankings), nowIso(), LEADERBOARD_RULE_VERSION);
-  return { rankings, snapshotUsed: true };
+  ).run(randomUUID(), scopeType, scopeId, weekId, JSON.stringify(envelope), nowIso(), LEADERBOARD_RULE_VERSION);
+  return result.changes > 0;
 }
 
 /** 视图收尾：本人行永远在场——补 youOptedOut 旗标、按当前资料还原自视图昵称；
  *  若快照中本人因退出被排除（组共享口径），末位补提示行（rank 顺延）。 */
-async function finalizeView(
+export async function finalizeView(
   viewerId: string,
   weekId: string,
   weekOver: boolean,
@@ -260,7 +273,8 @@ async function loadFriendIds(userId: string): Promise<string[]> {
   return rows.map((row) => row.friend_id);
 }
 
-/** 好友周榜：本人 + 好友（本人行永在；退出榜单时带 youOptedOut 提示）。 */
+/** 好友周榜：本人 + 好友（本人行永在；退出榜单时带 youOptedOut 提示）。
+ *  周末后惰性写查看者私有快照（scope_id=viewerId，信封两字段为 null）。 */
 export async function friendsLeaderboard(
   viewerId: string,
   weekId: string,
@@ -270,31 +284,22 @@ export async function friendsLeaderboard(
   const participants = [viewerId, ...(await loadFriendIds(viewerId))];
   if (isWeekOver(weekId, nowMs)) {
     // 好友榜快照按查看者私有（scope_id=viewerId）：本人行在结算时即保证在场。
-    const { rankings } = await getOrSettleSnapshot('friends', viewerId, participants, weekId, viewerId);
+    const existing = await readSnapshot('friends', viewerId, weekId);
+    if (existing) {
+      return await finalizeView(viewerId, weekId, true, true, existing.rankings);
+    }
+    const rows: LeaderboardScoreRow[] = [];
+    for (const userId of participants) {
+      rows.push(await settleUserWeek(userId, weekId));
+    }
+    const rankings = await rankFromScores(rows, viewerId);
+    await writeSnapshot('friends', viewerId, weekId, { rankings, goalMet: null, groupTotalSeconds: null });
     return await finalizeView(viewerId, weekId, true, true, rankings);
   }
   const rows: LeaderboardScoreRow[] = [];
   for (const userId of participants) {
     rows.push(await settleUserWeek(userId, weekId));
   }
-  return await finalizeView(viewerId, weekId, false, false, await rankFromScores(rows, viewerId));
-}
-
-/** 组周榜：仅成员可见（403 GROUP_FORBIDDEN）；组共享快照。 */
-export async function groupLeaderboard(
-  groupId: string,
-  viewerId: string,
-  weekId: string,
-  nowMs: number = Date.now(),
-): Promise<LeaderboardView> {
-  assertWeekId(weekId);
-  await assertGroupMember(groupId, viewerId);
-  const memberIds = await getGroupMemberIds(groupId);
-  if (isWeekOver(weekId, nowMs)) {
-    const { rankings } = await getOrSettleSnapshot('group', groupId, memberIds, weekId);
-    return await finalizeView(viewerId, weekId, true, true, rankings);
-  }
-  const rows = await settleScope('group', groupId, memberIds, weekId);
   return await finalizeView(viewerId, weekId, false, false, await rankFromScores(rows, viewerId));
 }
 
