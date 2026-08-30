@@ -278,3 +278,31 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
   机制已就绪待接）；管理后台目录 UI 简化为 catalog 表 + 种子（YAGNI）；
   模拟器 UI 购买走查待补录（链路已在 HTTP 层验证）；付费皮肤无本地内置清单，
   「立即使用」提示「资源包上线后即可一键使用」（远端清单下载属后续工作）。
+
+## 12. 发布前障碍排查（2026-08-30）
+
+**已修复（本轮）：**
+- 产品图标与启动屏：模板红色盾牌占位 → 产品视觉图标（深夜蓝底 + 琥珀台灯
+  照亮书页，与皮肤视觉同源）；splash 背景白 → `#002357`（消除启动白屏闪跳）；
+  移除模板遗留 `mobileui` scheme。
+- 事件横幅文案：会话开始/暂停/恢复/完成不再复用喝水文案，按事件类型区分
+  （doc-08 §22 语气规范）。
+- dev LogBox「navigation 尚未初始化」竞态（doc-06 §8 记录项）：入口意图解析
+  加 `NavigationContainer onReady` 门控。
+- **iOS Release 构建硬门禁首次通过**：prebuild（新图标/启动屏生效）→
+  Release 编译 → 模拟器安装启动 → 无 Metro 独立运行，首页/海报/本地数据/
+  四 Tab 全部正常（截图 `docs/superpowers/evidence/p0a/release-build-home.png`，
+  本地数据 15 分钟/3 轮在 Release 下持久化完好）。
+- **服务端生产启动冒烟首次通过**：`NODE_ENV=production` + RS256 JWT 私钥 +
+  独立库 → `next build` 成功 → `next start` health 200 / 注册 201。
+
+**遗留（外部依赖或用户决策，非本地可修）：**
+- 正式产品名/图标定稿（当前图标为可用初稿）、Firebase 生产项目配置
+  （`GoogleService-Info.plist` 现为模板项目）、Apple 开发者账号与签名证书、
+  App Store 商品配置（P1-A 真实购买）。
+- `LofiCompanion` 无 git 远端——已生成本地 bundle 备份
+  （`/tmp/loficompanion-backup-20260830.bundle`），建议尽快配置远端并推送；
+  mobiestarter 本地 13 个提交未推送。
+- 视觉基线自动化（doc 09 §8 SSIM 门禁）与真机（非模拟器）检查仍为发布前
+  待办；Tracked #12（RN 发布 workflow 身份改写）为 CLI 层改进，不影响本项目
+  （已就地修复）。
