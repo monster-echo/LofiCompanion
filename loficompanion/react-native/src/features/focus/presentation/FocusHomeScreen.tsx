@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CompanionState } from '../../skins/domain/types';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { AppIcon } from '../../../design-system/AppIcon';
+import type { IconName } from '../../../design-system/AppIcon';
 import { formatTimerSeconds } from '../../../design-system/FocusTimerRing';
 import { PrimaryTabs } from '../../../navigation/PrimaryTabs';
 import { useApp } from '../../../state/AppStore';
@@ -62,7 +63,7 @@ export function FocusHomeScreen() {
         <View style={styles.topBar}>
           <CircleEntry
             label={SKIN.skinEntry}
-            icon="palette"
+            icon="lamp"
             onPress={() => navigate('skins.gallery')}
           />
           <CircleEntry label="设置" icon="settings" onPress={() => navigate('settings.home')} />
@@ -115,7 +116,7 @@ export function FocusHomeScreen() {
 
 function CircleEntry({ label, icon, onPress }: Readonly<{
   label: string;
-  icon: 'palette' | 'settings';
+  icon: IconName;
   onPress: () => void;
 }>) {
   return (
