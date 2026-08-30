@@ -70,6 +70,20 @@ export async function initializeLofiSchema(database: PostgresDatabase) {
       UNIQUE(user_id, skin_id)
     );
 
+    -- P1-A 皮肤商品目录（docs/05 §4/§7）：skin ↔ 商店商品 ↔ 权益键 ↔ 上下架。
+    -- 一套皮肤至多一个在售商品（skin_id UNIQUE）；真实商店接入前 store_product_ids
+    -- 留空对象，价格/币种为目录展示数据（docs/05 §8：价格只来自服务端）。
+    CREATE TABLE IF NOT EXISTS skin_products (
+      id TEXT PRIMARY KEY,
+      skin_id TEXT NOT NULL UNIQUE REFERENCES skins(id),
+      entitlement_key TEXT NOT NULL,
+      store_product_ids TEXT NOT NULL DEFAULT '{}',
+      price_minor INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'CNY',
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+
     -- 成就账本：同一成就同一规则版本只发放一次（docs/01 §5.6）。
     CREATE TABLE IF NOT EXISTS achievement_grants (
       id TEXT PRIMARY KEY,
@@ -248,5 +262,41 @@ export async function seedLofiDefaults(database: PostgresDatabase) {
        VALUES (?, ?, 1, ?, ?)
        ON CONFLICT (skin_id, version) DO NOTHING`,
     ).run(`skin-manifest-${skin.slug}-1`, skinId, JSON.stringify(buildManifest(skin.slug, skin.name)), now);
+  }
+
+  // P1-A 收费皮肤目录语义（docs/05 §4 权益键、计划 Task 1）：rainy 免费不建商品；
+  // sunny 单买（¥12 = 1200 分，skin.official.{slug}）；midnight 属 Plus 目录
+  // （catalog.premium.active）。审核态保持 pending_assets——收费语义只落在
+  // access_type 与商品目录，不影响 P0-B 的发布/审核状态机。
+  const ACCESS_SEEDS = [
+    { slug: 'sunny-classroom', accessType: 'paid' },
+    { slug: 'midnight-workstation', accessType: 'premium' },
+  ] as const;
+  for (const access of ACCESS_SEEDS) {
+    await database.prepare(
+      `UPDATE skins SET access_type = ? WHERE slug = ?`,
+    ).run(access.accessType, access.slug);
+  }
+
+  const SKIN_PRODUCT_SEEDS = [
+    {
+      id: 'skin-product-sunny-classroom',
+      slug: 'sunny-classroom',
+      entitlementKey: 'skin.official.sunny-classroom',
+      priceMinor: 1200,
+    },
+    {
+      id: 'skin-product-midnight-workstation',
+      slug: 'midnight-workstation',
+      entitlementKey: 'catalog.premium.active',
+      priceMinor: 1800,
+    },
+  ] as const;
+  for (const product of SKIN_PRODUCT_SEEDS) {
+    await database.prepare(
+      `INSERT INTO skin_products(id, skin_id, entitlement_key, store_product_ids, price_minor, currency, status, created_at, updated_at)
+       VALUES (?, (SELECT id FROM skins WHERE slug = ?), ?, '{}', ?, 'CNY', 'active', ?, ?)
+       ON CONFLICT (id) DO NOTHING`,
+    ).run(product.id, product.slug, product.entitlementKey, product.priceMinor, now, now);
   }
 }

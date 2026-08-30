@@ -118,6 +118,19 @@ async function findUserByIdentifier(appId: string, identifier: string, normalize
   `).get(appId, `${appId}:${identifier}`) as UserRow | undefined;
 }
 
+// 可选登录（P1-A manifest 门禁）：未携带 token 视为匿名返回 undefined；携带了
+// 无效/过期 token 也降级为匿名——免费资源仍可浏览（docs/08 S14），付费资源由
+// manifest 门禁统一抛 401。
+export async function optionalAuth(request: NextRequest): Promise<AuthContext | undefined> {
+  const header = request.headers.get('authorization');
+  if (!header?.startsWith('Bearer ') || !header.slice(7).trim()) return undefined;
+  try {
+    return await requireAuth(request);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function requireAuth(request: NextRequest): Promise<AuthContext> {
   const header = request.headers.get('authorization');
   const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
