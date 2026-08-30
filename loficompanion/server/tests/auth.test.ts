@@ -21,6 +21,39 @@ const policy = defaultConfig.auth.passwordPolicy;
 let counter = 0;
 const nextEmail = () => `${prefix}-${counter++}@test.local`;
 
+// 开发测试账号自举：套件假定 test@zhongbei.local / test123 / 用户名 test /
+// 手机号 +8613800000000 已存在。CI 每次给全新库，本地持久库重跑时账号可能
+// 缺失或密码漂移——这里幂等补种，保证两种环境行为一致。
+{
+  const { hashPassword } = await import('../src/server/passwords.ts');
+  const existing = await database.prepare(
+    'SELECT id FROM users WHERE app_id = ? AND (email = ? OR username = ?) LIMIT 1',
+  ).get(APP, 'test@zhongbei.local', 'test') as { id: string } | undefined;
+  const id = existing?.id ?? `dev-test-${process.pid}`;
+  const ts = nowIso();
+  const passwordHash = await hashPassword('test123');
+  if (existing) {
+    await database.prepare(
+      "UPDATE users SET email = ?, username = 'test', password_hash = ?, email_verified = 1, "
+      + "consent_version = COALESCE(consent_version, '2026-07-29'), consented_at = COALESCE(consented_at, ?), updated_at = ? "
+      + 'WHERE id = ?',
+    ).run('test@zhongbei.local', passwordHash, ts, ts, id);
+  } else {
+    await database.prepare(
+      `INSERT INTO users(id, app_id, email, password_hash, username, display_name, email_verified, consent_version, consented_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'test', '测试账号', 1, '2026-07-29', ?, ?, ?)`,
+    ).run(id, APP, 'test@zhongbei.local', passwordHash, ts, ts, ts);
+  }
+  const hasPhone = await database.prepare(
+    "SELECT 1 FROM external_identities WHERE provider = 'phone' AND provider_subject = ?",
+  ).get(`${APP}:+8613800000000`);
+  if (!hasPhone) {
+    await database.prepare(
+      "INSERT INTO external_identities(id, user_id, provider, provider_subject, created_at) VALUES (?, ?, 'phone', ?, ?)",
+    ).run(`dev-test-phone-${process.pid}`, id, `${APP}:+8613800000000`, ts);
+  }
+}
+
 async function latestVerificationCode(email: string): Promise<string | undefined> {
   const row = await database.prepare(
     "SELECT payload FROM outbound_messages WHERE template = 'email_verification_code' AND recipient = ? ORDER BY created_at DESC LIMIT 1",
@@ -65,7 +98,7 @@ test('development test account signs in with email, username, or phone', async (
 test('sign-up enforces the runtime password policy', async () => {
   await assert.rejects(
     signUp({
-      appId: APP, email: nextEmail(), password: 'NoDigitHere', username: `u-${counter}`,
+      appId: APP, email: nextEmail(), password: 'NoDigitHere', username: `u-${prefix}-${counter}`,
       consentVersion: '2026-07-29', deviceName: 'test-runner',
     }),
     (error: { code: string }) => error.code === 'VALIDATION_ERROR',
@@ -75,7 +108,7 @@ test('sign-up enforces the runtime password policy', async () => {
 test('sign-up persists consent, leaves email unverified, and issues a verification code', async () => {
   const email = nextEmail();
   const result = await signUp({
-    appId: APP, email, password: 'Test1234', username: `u-${counter}`,
+    appId: APP, email, password: 'Test1234', username: `u-${prefix}-${counter}`,
     consentVersion: '2026-07-29', deviceName: 'test-runner',
   });
   assert.ok(result.token);
@@ -105,7 +138,7 @@ test('repeated failed sign-ins lock the account and clear after cooldown', async
   const email = nextEmail();
   const password = 'Test1234';
   await signUp({
-    appId: APP, email, password, username: `u-${counter}`,
+    appId: APP, email, password, username: `u-${prefix}-${counter}`,
     consentVersion: '2026-07-29', deviceName: 'test-runner',
   });
   for (let i = 0; i < 5; i += 1) {
@@ -127,7 +160,7 @@ test('repeated failed sign-ins lock the account and clear after cooldown', async
 test('refresh token rotates and the previous token is revoked', async () => {
   const email = nextEmail();
   const { refreshToken: first } = await signUp({
-    appId: APP, email, password: 'Test1234', username: `u-${counter}`,
+    appId: APP, email, password: 'Test1234', username: `u-${prefix}-${counter}`,
     consentVersion: '2026-07-29', deviceName: 'test-runner',
   });
   const rotated = await rotateRefreshToken(APP, first);
@@ -142,7 +175,7 @@ test('refresh token rotates and the previous token is revoked', async () => {
 test('reusing a rotated refresh token revokes the whole family', async () => {
   const email = nextEmail();
   const { refreshToken: first } = await signUp({
-    appId: APP, email, password: 'Test1234', username: `u-${counter}`,
+    appId: APP, email, password: 'Test1234', username: `u-${prefix}-${counter}`,
     consentVersion: '2026-07-29', deviceName: 'test-runner',
   });
   const { refreshToken: second } = await rotateRefreshToken(APP, first);
@@ -159,7 +192,7 @@ test('reusing a rotated refresh token revokes the whole family', async () => {
 test('sign-out-all invalidates refresh tokens', async () => {
   const email = nextEmail();
   const { refreshToken, user } = await signUp({
-    appId: APP, email, password: 'Test1234', username: `u-${counter}`,
+    appId: APP, email, password: 'Test1234', username: `u-${prefix}-${counter}`,
     consentVersion: '2026-07-29', deviceName: 'test-runner',
   });
   await revokeAllSessions(user.id);
@@ -172,7 +205,7 @@ test('sign-out-all invalidates refresh tokens', async () => {
 test('email verification rejects a wrong code, accepts the right one, and rejects reuse', async () => {
   const email = nextEmail();
   await signUp({
-    appId: APP, email, password: 'Test1234', username: `u-${counter}`,
+    appId: APP, email, password: 'Test1234', username: `u-${prefix}-${counter}`,
     consentVersion: '2026-07-29', deviceName: 'test-runner',
   });
   const code = (await latestVerificationCode(email))!;
@@ -191,7 +224,7 @@ test('email verification rejects a wrong code, accepts the right one, and reject
 test('resend verification respects the cooldown window', async () => {
   const email = nextEmail();
   await signUp({
-    appId: APP, email, password: 'Test1234', username: `u-${counter}`,
+    appId: APP, email, password: 'Test1234', username: `u-${prefix}-${counter}`,
     consentVersion: '2026-07-29', deviceName: 'test-runner',
   });
   const before = await database.prepare(
@@ -214,7 +247,7 @@ test('password reset rejects weak passwords and accepts a policy-compliant passw
   const email = nextEmail();
   const originalPassword = 'Test1234';
   await signUp({
-    appId: APP, email, password: originalPassword, username: `u-${counter}`,
+    appId: APP, email, password: originalPassword, username: `u-${prefix}-${counter}`,
     consentVersion: '2026-07-29', deviceName: 'test-runner',
   });
   await requestPasswordReset(APP, email);

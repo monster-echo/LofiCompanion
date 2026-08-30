@@ -19,6 +19,15 @@ const { paymentContractSnapshot } = await import('../src/server/contract-snapsho
 
 after(async () => database.close());
 
+// 夹具固定 id 的幂等清理：套件使用固定订单/事件 id（'o1'、'e1' 等）。CI 每次
+// 给全新库不受影响；本地持久库重跑时旧行会违反主键/唯一约束——先清再跑。
+{
+  await database.prepare("DELETE FROM user_entitlements WHERE source_order_id IN ('o1', 'o2', 'sub1', 'sub2')").run();
+  await database.prepare("DELETE FROM subscriptions WHERE current_order_id IN ('sub1', 'sub2')").run();
+  await database.prepare("DELETE FROM orders WHERE id IN ('o1', 'o2', 'sub1', 'sub2')").run();
+  await database.prepare("DELETE FROM webhook_events WHERE provider = 'mock' AND event_id IN ('e1', 'sp-atomic', 'e10')").run();
+}
+
 async function makeUser(appId: string): Promise<string> {
   const id = `u-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
   const ts = new Date().toISOString();

@@ -76,9 +76,12 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
 - React Native 门禁与模板 CI 一致：`typecheck` 与 vitest payment 套件通过；
   `apiClient`/`purchaseFlow` 为访问真实 dev server 的集成套件，与模板 CI 一样
   不纳入基线门禁，待服务端就绪后运行。
-- Server 门禁：`typecheck`、`lint` 与 `payment-apple` 套件通过；`core`/`auth`/
-  `payment` 套件需要活动 PostgreSQL（导出 `AUTH_DATABASE_URL`），本地数据库
-  就绪前作为已知前置条件处理。
+- Server 门禁（2026-08-30 更新）：本地 PostgreSQL 16（brew）+ 独立库
+  `zhongbei_lofi` 就绪（与模板旧库隔离），`.env` 配置 `AUTH_DATABASE_URL`；
+  `npm test` **58/58 全绿**（连跑两次验证幂等）。原 2 个失败套件的根因是测试
+  夹具依赖「每次全新库」：dev 测试账号无人播种、固定订单/事件 id 二跑冲突、
+  `u-<counter>` 用户名跨运行撞名、`profileSchema` 已支持改名的旧断言未跟进——
+  已修复并镜像回模板（mobiestarter `1050469`）。
 - 已知模板项：server `.gitignore` 未覆盖 `.env`；模板存在嵌套重复资产目录
   （`assets/icons/icons/*`、`assets/illustrations/illustrations/*`），随模板
   一并复制，留待模板清理。

@@ -78,12 +78,14 @@ test('sign-in accepts username, email, and international phone identifiers', () 
   }
 });
 
-test('profile updates display fields but reject username changes', () => {
+test('profile updates display fields and username', () => {
   assert.equal(profileSchema.safeParse({
     displayName: 'Test User',
     bio: 'Zhongbei Auth test account',
   }).success, true);
-  assert.equal(profileSchema.safeParse({ username: 'renamed-login' }).success, false);
+  // profileSchema 已支持修改 username（手机号登录自动生成的用户名可自定义），
+  // 旧断言「拒绝改名」与 schema 演进不一致——修正为新语义。
+  assert.equal(profileSchema.safeParse({ username: 'renamed-login' }).success, true);
 });
 
 test('feedback accepts up to three bounded image screenshots', () => {
