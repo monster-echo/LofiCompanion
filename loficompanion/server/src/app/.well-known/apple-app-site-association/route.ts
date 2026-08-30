@@ -20,7 +20,7 @@ export function GET() {
         },
         {
           // React Native app
-          appID: '<TEAM_ID>.com.mobileui.mobilestarter',
+          appID: '<TEAM_ID>.lofi-companion',
           paths: ['*'],
         },
       ],

@@ -1,8 +1,8 @@
 services:
   server:
-    image: ghcr.io/rwecho/zhongbei-auth:${ZHONGBEI_AUTH_IMAGE_TAG:-latest}
+    image: ghcr.io/rwecho/loficompanion:${ZHONGBEI_AUTH_IMAGE_TAG:-latest}
     pull_policy: always
-    container_name: zhongbei-auth
+    container_name: loficompanion
     restart: unless-stopped
     env_file:
       - .env.production

@@ -54,7 +54,7 @@ jobs:
           if [ -n "$RN_GOOGLE_SERVICES_JSON" ]; then
             printf '%s' "$RN_GOOGLE_SERVICES_JSON" | base64 -d > google-services.json
           else
-            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"placeholder"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"com.mobileui.mobilestarter"}},"oauth_client":[],"api_key":[{"current_key":"placeholder"}],"services":{}}],"configuration_version":"1"}' > google-services.json
+            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"placeholder"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"tech.zhongbei.loficompanion"}},"oauth_client":[],"api_key":[{"current_key":"placeholder"}],"services":{}}],"configuration_version":"1"}' > google-services.json
           fi
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean --no-install

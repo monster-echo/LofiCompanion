@@ -26,7 +26,7 @@ npm run build
 The GitHub `Server Publish` workflow publishes:
 
 ```text
-ghcr.io/rwecho/zhongbei-auth:latest
+ghcr.io/rwecho/loficompanion:latest
 ```
 
 Run it with the included Compose definition:
@@ -37,7 +37,7 @@ docker compose up -d
 ```
 
 The service uses the Node.js runtime and PostgreSQL 17. Compose starts both services and mounts
-the `zhongbei-auth-postgres` volume at PostgreSQL's data directory; keep that volume when
+the `loficompanion-postgres` volume at PostgreSQL's data directory; keep that volume when
 upgrading the image. Set `ZHONGBEI_AUTH_POSTGRES_PASSWORD` before production deployment.
 
 Set all secret values from `.env.example` in the hosting platform rather than committing an
@@ -50,5 +50,5 @@ tag in `.env.production` and pass that file to Compose for image-variable interp
 ```bash
 ZHONGBEI_AUTH_IMAGE_TAG=sha-<commit>
 docker compose --env-file .env.production \
-  -p zhongbei-auth -f compose.external-postgres.yml up -d
+  -p loficompanion -f compose.external-postgres.yml up -d
 ```

@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: zhongbei_auth
       POSTGRES_PASSWORD: ${ZHONGBEI_AUTH_POSTGRES_PASSWORD:-change-me}
     volumes:
-      - zhongbei-auth-postgres:/var/lib/postgresql/data
+      - loficompanion-postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U zhongbei_auth -d zhongbei_auth"]
       interval: 5s
@@ -15,7 +15,7 @@ services:
       retries: 10
 
   server:
-    image: ghcr.io/rwecho/zhongbei-auth:latest
+    image: ghcr.io/rwecho/loficompanion:latest
     restart: unless-stopped
     ports:
       - "3210:3210"
@@ -32,4 +32,4 @@ services:
         condition: service_healthy
 
 volumes:
-  zhongbei-auth-postgres:
+  loficompanion-postgres:

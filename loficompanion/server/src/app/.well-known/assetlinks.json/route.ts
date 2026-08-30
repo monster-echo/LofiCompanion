@@ -15,7 +15,7 @@ export function GET() {
       relation: ['delegate_permission/common.handle_all_urls'],
       target: {
         namespace: 'android_app',
-        package_name: 'com.mobileui.mobileui_flutter',
+        package_name: 'lofi-companion',
         sha256_cert_fingerprints: ['<SHA256_FINGERPRINT>'],
       },
     },
@@ -23,7 +23,7 @@ export function GET() {
       relation: ['delegate_permission/common.handle_all_urls'],
       target: {
         namespace: 'android_app',
-        package_name: 'com.mobileui.mobilestarter',
+        package_name: 'lofi-companion',
         sha256_cert_fingerprints: ['<SHA256_FINGERPRINT>'],
       },
     },
