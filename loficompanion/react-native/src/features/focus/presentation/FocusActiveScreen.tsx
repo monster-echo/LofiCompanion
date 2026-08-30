@@ -22,6 +22,18 @@ import { effectiveSeconds as computeEffective } from '../domain/engine';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { SheetOverlay } from './SheetOverlay';
 import { ACTIVITY_STATUS, FOCUS_STRINGS as STR } from './strings';
+import type { CompanionEventType } from '../../skins/domain/types';
+import type { IconName } from '../../../design-system/AppIcon';
+
+/** 事件横幅按事件类型的图标与文案（doc-08 §22：温和具体，不负担）。 */
+const BANNER_COPY: Partial<Record<CompanionEventType, { icon: IconName; title: string; subtitle: string }>> = {
+  'wellness.drink': { icon: 'droplet', title: STR.drinkBannerTitle, subtitle: STR.drinkBannerSubtitle },
+  'focus.started': { icon: 'play', title: STR.startBannerTitle, subtitle: STR.startBannerSubtitle },
+  'focus.resumed': { icon: 'play', title: STR.resumeBannerTitle, subtitle: STR.resumeBannerSubtitle },
+  'focus.paused': { icon: 'pause', title: STR.pauseBannerTitle, subtitle: STR.pauseBannerSubtitle },
+  'focus.completed': { icon: 'check-circle', title: STR.completeBannerTitle, subtitle: STR.completeBannerSubtitle },
+  'break.started': { icon: 'plant', title: STR.pauseBannerTitle, subtitle: STR.pauseBannerSubtitle },
+};
 
 /**
  * S04 专注中（doc-08 §5，全产品视觉金标准）。焦点依次为：角色动作、剩余
@@ -269,7 +281,7 @@ export function FocusActiveScreen() {
           />
         </Animated.View>
 
-        {/* S05 喝水事件横幅（左右 16、高 72、安全区下 12） */}
+        {/* S05 事件横幅（左右 16、高 72、安全区下 12）——文案与图标随事件类型 */}
         {displayBanner ? (
           <Animated.View
             accessibilityLiveRegion="polite"
@@ -289,11 +301,19 @@ export function FocusActiveScreen() {
             ]}
           >
             <View style={styles.bannerIcon}>
-              <AppIcon name="droplet" color={semantic.actionPrimary} size={22} />
+              <AppIcon
+                name={BANNER_COPY[displayBanner.eventType]?.icon ?? 'droplet'}
+                color={semantic.actionPrimary}
+                size={22}
+              />
             </View>
             <View style={styles.bannerText}>
-              <Text style={styles.bannerTitle}>{STR.drinkBannerTitle}</Text>
-              <Text style={styles.bannerSubtitle}>{STR.drinkBannerSubtitle}</Text>
+              <Text style={styles.bannerTitle}>
+                {BANNER_COPY[displayBanner.eventType]?.title ?? STR.drinkBannerTitle}
+              </Text>
+              <Text style={styles.bannerSubtitle}>
+                {BANNER_COPY[displayBanner.eventType]?.subtitle ?? STR.drinkBannerSubtitle}
+              </Text>
             </View>
             <View style={styles.bannerTrack} pointerEvents="none">
               <View

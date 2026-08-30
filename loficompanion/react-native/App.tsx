@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Platform, SafeAreaView } from 'react-native';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
@@ -53,12 +53,16 @@ function AppSurface() {
   const { palette } = usePreferences();
   const { openEntryRoute, refreshBootstrap } = useApp();
   const resume = useCallback(() => { void refreshBootstrap(); }, [refreshBootstrap]);
-  useEntryIntents(openEntryRoute, resume);
+  // 入口意图解析必须在 NavigationContainer onReady 之后（否则 navigate 早于
+  // mount 触发 dev LogBox「navigation 尚未初始化」竞态警告）。
+  const [navReady, setNavReady] = useState(false);
+  useEntryIntents(openEntryRoute, resume, navReady);
   return (
     <SafeAreaProvider>
       <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
         <NavigationContainer
           ref={navigationRef}
+          onReady={() => setNavReady(true)}
           onStateChange={() => {
             // Screen-view telemetry fires on every navigation state change
             // (push/pop/replace/tab switch). Replaces the old

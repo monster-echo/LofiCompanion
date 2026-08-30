@@ -18,10 +18,13 @@ const routeNames = new Set<AppRoute>([
 export function useEntryIntents(
   open: (route: AppRoute, cold: boolean, source: EntrySource) => void,
   resume: () => void,
+  /** 导航容器就绪门控：未就绪前不解析入口 URL，避免 navigate 早于 mount（LogBox 竞态）。 */
+  enabled = true,
 ) {
   const initialHandled = useRef(false);
   const previousState = useRef(AppState.currentState);
   useEffect(() => {
+    if (!enabled) return undefined;
     if (!initialHandled.current) {
       initialHandled.current = true;
       void Linking.getInitialURL().then((url) => {
@@ -42,7 +45,7 @@ export function useEntryIntents(
       linkSubscription.remove();
       stateSubscription.remove();
     };
-  }, [open, resume]);
+  }, [open, resume, enabled]);
 }
 
 export function parseEntryUrl(url: string | null) {

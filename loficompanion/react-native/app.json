@@ -3,8 +3,7 @@
     "name": "Lofi Companion",
     "slug": "lofi-companion",
     "scheme": [
-      "lofi-companion",
-      "mobileui"
+      "lofi-companion"
     ],
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,7 +16,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FFFFFF",
+          "backgroundColor": "#002357",
           "image": "./assets/splash-icon.png",
           "imageWidth": 88,
           "resizeMode": "contain"
