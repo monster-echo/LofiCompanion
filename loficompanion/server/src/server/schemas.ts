@@ -202,6 +202,11 @@ export const restorePurchasesSchema = z.object({
   receipts: z.array(z.unknown()).min(1).max(50),
 });
 
+// P1-A 皮肤下单：skinId 接受皮肤 id 或 slug；幂等键走 Idempotency-Key 头。
+export const skinOrderSchema = z.object({
+  skinId: z.string().min(1).max(120),
+});
+
 export const runtimeConfigSchema = z.object({
   schemaVersion: z.number().int().positive(),
   version: z.number().int().positive(),

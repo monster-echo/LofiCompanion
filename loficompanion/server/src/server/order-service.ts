@@ -9,6 +9,7 @@ import {
   insertPendingOrder, listOrders, markProcessing, upsertSubscription, type OrderView,
 } from './order-repository';
 import { paymentProvider, storeKeyForPlatform } from './payment-providers';
+import { findSkinOrderByOrderId, verifySkinOrder } from '@/features/skins/data/order-service';
 
 type Plan = RuntimeConfig['plans'][number];
 
@@ -72,6 +73,15 @@ export async function verifyPurchase(input: VerifyInput): Promise<OrderView> {
   let plan: Plan;
   let orderId: string;
   if (input.orderId) {
+    // P1-A 皮肤订单（skin_orders side table 绑定）不走 plan/tier/subscription
+    // 语义——委托皮肤订单验证：完成订单 + 按商品发 skin 权益，同一事务。
+    const skinOrder = await findSkinOrderByOrderId(input.orderId);
+    if (skinOrder) {
+      return await verifySkinOrder({
+        appId: input.appId, environment: input.environment, userId: input.userId,
+        orderId: input.orderId, receipt: input.receipt,
+      });
+    }
     const order = await findOrderById(input.orderId);
     if (!order || order.userId !== input.userId) throw new ApiError(404, 'ORDER_NOT_FOUND', '订单不存在');
     if (order.status === 'success' || order.status === 'refunded') return order;

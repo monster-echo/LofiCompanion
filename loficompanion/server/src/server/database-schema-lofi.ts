@@ -84,6 +84,16 @@ export async function initializeLofiSchema(database: PostgresDatabase) {
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     );
 
+    -- P1-A 皮肤订单绑定（docs/05 §5）：orders 表 plan 域仅会员订阅、无 metadata
+    -- 列——皮肤订单以 side table 显式绑定皮肤与所发权益键；webhook 退款走
+    -- revokeEntitlementsForOrder（user_entitlements.source_order_id），自动覆盖皮肤权益。
+    CREATE TABLE IF NOT EXISTS skin_orders (
+      order_id TEXT PRIMARY KEY REFERENCES orders(id),
+      skin_id TEXT NOT NULL REFERENCES skins(id),
+      entitlement_key TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     -- 成就账本：同一成就同一规则版本只发放一次（docs/01 §5.6）。
     CREATE TABLE IF NOT EXISTS achievement_grants (
       id TEXT PRIMARY KEY,
