@@ -9,3 +9,9 @@ node_modules/
 **/signing-config.json
 .next/
 *.tsbuildinfo
+.env
+.env.local
+ios/
+android/
+**/GoogleService-Info.plist
+**/google-services.json
