@@ -250,3 +250,31 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
   100 用例验证）；周结算补计采用「计入结束所在周」简单口径（rule_version=2
   固化语义）；`weekly_group_photo` 每用户一次（无周次维度，P0 简化，已在
   代码注释说明）。
+
+## 11. P1-A 验收记录（2026-08-30）
+
+- **外部依赖边界声明**：StoreKit/Play/HMS 真实购买校验需商店账号与商品配置，
+  本阶段以模板 mock 支付供应商完成全链路并验收；供应商适配层接口不变，
+  真实凭证到位后仅替换 adapter（doc 06 §6 外部确认项不因本阶段关闭）。
+- Task 0（清偿 tracked #6）：server 身份改写——深链 app id 与发布镜像名跟随
+  产品身份 + doctor markers（模板 `218a89e`，项目 `812b35b`，doctor exit 0，
+  smoke 含负向漂移检测）。
+- 服务端：`npm test` **118/118 双跑全绿**（商品/订单 18 个新用例）；typecheck 0。
+  权益键严格按 doc 05 §4：`skin.official.{slug}` / `catalog.premium.active`；
+  皮肤订单绑定用 `skin_orders` 侧表；退款撤销复用模板
+  `revokeEntitlementsForOrder`（source_order_id 自动覆盖皮肤权益，测试覆盖
+  webhook 重放十次撤销恰一次）。
+- 核心验收（真实 HTTP 全链路）：目录只列 active（¥12 单买 / ¥1800 Plus 目录）；
+  **匿名取付费 manifest 401、登录无权益 403 SKIN_NOT_ENTITLED**；下单 pending →
+  **同键重放同单（中断恢复查询点）** → verify 200 → 付费 manifest 200（6 状态）→
+  **重放 verify 幂等** → 恢复购买含 `skin.official.sunny-classroom` → 订单终态
+  entitled=true。
+- 客户端：S14 商店（当前皮肤横幅/免费·单买·Plus 分区/服务端价格/已拥有勾标/
+  骨架与重试态）、S15 详情（四态预览/价格骨架 CTA/确认 sheet/恢复购买入口/
+  pending 防重复/lastOrderId 轮询中断恢复）；未登录浏览、购买时进登录；
+  typecheck 0；RN 门禁 135 测试绿（新增 storeCatalog/pendingOrderRepository
+  用例）；Metro 冒烟通过。
+- 已知偏离：Plus 订阅完整流未实现（S15 Plus CTA 显示「即将上线」；模板订阅
+  机制已就绪待接）；管理后台目录 UI 简化为 catalog 表 + 种子（YAGNI）；
+  模拟器 UI 购买走查待补录（链路已在 HTTP 层验证）；付费皮肤无本地内置清单，
+  「立即使用」提示「资源包上线后即可一键使用」（远端清单下载属后续工作）。
