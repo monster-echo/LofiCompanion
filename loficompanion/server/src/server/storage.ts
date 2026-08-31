@@ -91,12 +91,18 @@ const ensuredBuckets = new Set<string>();
 export async function ensureBucket(bucket: string): Promise<void> {
   if (ensuredBuckets.has(bucket)) return;
   const s3 = client();
+  // Keep the head failure reason: if create also fails, both codes are
+  // reported so a broken credential (e.g. InvalidAccessKeyId — every call
+  // fails identically) isn't misread as a bucket-creation problem.
+  let headCode = '';
   try {
     await s3.send(new HeadBucketCommand({ Bucket: bucket }));
     ensuredBuckets.add(bucket);
     return;
-  } catch {
-    // Not found (or no permission to head) — attempt to create.
+  } catch (error) {
+    // Not found (or no permission to head) — attempt to create anyway:
+    // scoped RAM keys may lack ListBucket yet still read/write fine.
+    headCode = (error as { name?: string }).name ?? '';
   }
   try {
     await s3.send(new CreateBucketCommand({ Bucket: bucket }));
@@ -105,7 +111,8 @@ export async function ensureBucket(bucket: string): Promise<void> {
     // can pre-create the bucket manually on providers that forbid it.
     const code = (error as { name?: string }).name ?? '';
     if (!/BucketAlready|409|BucketAlreadyExists/i.test(code)) {
-      throw new ApiError(503, 'BUCKET_CREATE_FAILED', `无法创建 bucket ${bucket}：${code}`, true);
+      const head = headCode && headCode !== code ? `（head: ${headCode}）` : '';
+      throw new ApiError(503, 'BUCKET_CREATE_FAILED', `无法创建 bucket ${bucket}：${code}${head}`, true);
     }
   }
   ensuredBuckets.add(bucket);
