@@ -34,7 +34,8 @@ export async function findSkinOrderByOrderId(orderId: string): Promise<SkinOrder
 
 async function findSkinIdOrSlug(skinIdOrSlug: string): Promise<{ id: string; slug: string } | undefined> {
   return await database.prepare(
-    `SELECT id, slug FROM skins WHERE id = ? OR slug = ?`,
+    // P3c：skins 目录在 biz；商品行反范式化字段足够解析 id/slug
+    `SELECT skin_id AS id, slug FROM skin_products WHERE skin_id = ? OR slug = ?`,
   ).get(skinIdOrSlug, skinIdOrSlug) as { id: string; slug: string } | undefined;
 }
 

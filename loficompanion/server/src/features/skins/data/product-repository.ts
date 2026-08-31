@@ -54,11 +54,11 @@ function toView(row: ProductRow): SkinProductView {
   };
 }
 
+// P3c：skins 目录迁 biz 后，展示字段反范式化在商品行内（发布时写入）。
 const SELECT = `
-  SELECT p.id, p.skin_id, s.slug, s.name, s.access_type, p.entitlement_key,
-         p.store_product_ids, p.price_minor, p.currency, p.status
+  SELECT p.id, p.skin_id, p.slug, p.skin_name AS name, p.access_type AS access_type,
+         p.entitlement_key, p.store_product_ids, p.price_minor, p.currency, p.status
   FROM skin_products p
-  JOIN skins s ON s.id = p.skin_id
 `;
 
 // 在售商品目录（上架时间序）。只过滤商品状态；皮肤审核态不影响目录语义

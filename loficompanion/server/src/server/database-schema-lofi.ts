@@ -83,6 +83,15 @@ export async function initializeLofiSchema(database: PostgresDatabase) {
       status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     );
+    -- P3c 皮肤目录迁 biz 后的反范式化：商品目录/订单不再 JOIN skins，
+    -- 展示字段在发布时由 biz 经内部端点写入（幂等追加列 + 存量回填）。
+    ALTER TABLE skin_products ADD COLUMN IF NOT EXISTS slug TEXT;
+    ALTER TABLE skin_products ADD COLUMN IF NOT EXISTS skin_name TEXT;
+    ALTER TABLE skin_products ADD COLUMN IF NOT EXISTS access_type TEXT;
+    UPDATE skin_products SET slug = COALESCE(slug, (SELECT s.slug FROM skins s WHERE s.id = skin_id)),
+      skin_name = COALESCE(skin_name, (SELECT s.name FROM skins s WHERE s.id = skin_id)),
+      access_type = COALESCE(access_type, (SELECT s.access_type FROM skins s WHERE s.id = skin_id))
+    WHERE slug IS NULL OR skin_name IS NULL OR access_type IS NULL;
 
     -- P1-A 皮肤订单绑定（docs/05 §5）：orders 表 plan 域仅会员订阅、无 metadata
     -- 列——皮肤订单以 side table 显式绑定皮肤与所发权益键；webhook 退款走

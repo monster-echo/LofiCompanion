@@ -1,9 +1,11 @@
 import { ApiError } from '../../lib/http';
-import { getAuthInternalBaseUrl, getInternalClientId, getInternalClientSecret } from '../../env';
+import { getServiceToken } from '../../lib/service-token';
+import { getAuthInternalBaseUrl } from '../../env';
 
 // 用户资料跨服务解析（替代 legacy 对 auth `users` 表的直接 JOIN）：biz 侧无
 // users 表，昵称/头像统一走 auth 内部端点 GET /api/v1/internal/profiles?ids=…
-// （client credentials 换发的短期服务 token，Bearer 鉴权，60s 过期前预刷新）。nickname 归一口径在 auth 侧完成
+// （client credentials 换发的短期服务 token，Bearer 鉴权，scope profiles:read；
+// token 缓存/单飞刷新见 lib/service-token）。nickname 归一口径在 auth 侧完成
 // （COALESCE(NULLIF(display_name,''), username)），本层不做二次拼装。
 // 60s 内存 TTL 缓存 + 并发去重；批量上限 200，超出自动分片；auth 成功响应里
 // 缺席的 id 记 null（负缓存），调用方按各自语义兜底（'同学'/'已隐藏'/404）。
@@ -35,46 +37,12 @@ function store(id: string, profile: ProfileBrief | null): void {
   cache.set(id, { profile, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
-// ── client credentials：短期服务 token 缓存（过期前 60s 刷新，并发单飞）──
-let cachedToken: { token: string; expiresAt: number } | null = null;
-let tokenInflight: Promise<string> | null = null;
-
-async function fetchServiceToken(): Promise<string> {
-  const body = new URLSearchParams({ grant_type: 'client_credentials', scope: 'profiles:read' });
-  const basic = Buffer.from(`${getInternalClientId()}:${getInternalClientSecret()}`).toString('base64');
-  const response = await fetch(`${getAuthInternalBaseUrl()}/api/v1/internal/token`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded', authorization: `Basic ${basic}` },
-    body,
-    cache: 'no-store',
-  });
-  if (!response.ok) {
-    throw new ApiError(502, 'PROFILE_UNAVAILABLE', '服务令牌获取失败', true);
-  }
-  const payload = (await response.json()) as { access_token?: string; expires_in?: number };
-  if (typeof payload.access_token !== 'string') {
-    throw new ApiError(502, 'PROFILE_UNAVAILABLE', '服务令牌响应无效', true);
-  }
-  const ttlMs = (typeof payload.expires_in === 'number' ? payload.expires_in : 3600) * 1000;
-  cachedToken = { token: payload.access_token, expiresAt: Date.now() + ttlMs };
-  return payload.access_token;
-}
-
-async function getServiceToken(): Promise<string> {
-  // 有效期剩 60s 以上直接用；否则单飞刷新（并发请求合并为一次换 token）
-  if (cachedToken && cachedToken.expiresAt - Date.now() > 60_000) return cachedToken.token;
-  if (!tokenInflight) {
-    tokenInflight = fetchServiceToken().finally(() => { tokenInflight = null; });
-  }
-  return tokenInflight;
-}
-
 async function loadBatch(batch: ReadonlyArray<string>): Promise<void> {
   const url = `${getAuthInternalBaseUrl()}/api/v1/internal/profiles?ids=${encodeURIComponent(batch.join(','))}`;
   let response: Response;
   try {
     response = await fetch(url, {
-      headers: { authorization: `Bearer ${await getServiceToken()}` },
+      headers: { authorization: `Bearer ${await getServiceToken('profiles:read')}` },
       cache: 'no-store',
     });
   } catch {

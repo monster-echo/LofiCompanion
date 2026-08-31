@@ -35,15 +35,16 @@
  * accessType=paid 时可带 "priceMinor"（分）与 "entitlementKey"。
  */
 
-const BASE = (process.env.AUTH_BASE_URL ?? 'https://auth.zhongbei.tech').replace(/\/+$/, '');
+const BASE = (process.env.BIZ_BASE_URL ?? 'https://lofi-biz.zhongbei.tech').replace(/\/+$/, '');
 const APP_ID = process.env.AUTH_APP_ID ?? 'loficompanion';
+const BIZ_KEY = process.env.BIZ_ADMIN_KEY;
 const ENVIRONMENT = process.env.AUTH_APP_ENVIRONMENT ?? 'production';
 const COOKIE = process.env.AUTH_ADMIN_COOKIE;
 const KEY = process.env.AUTH_ADMIN_KEY;
 const DRY_RUN = process.env.SKIN_DRY_RUN === '1';
 
-if (!COOKIE && !KEY) {
-  console.error('缺少鉴权：请设置 AUTH_ADMIN_COOKIE（生产）或 AUTH_ADMIN_KEY（非生产）');
+if (!BIZ_KEY) {
+  console.error('缺少鉴权：请设置 BIZ_ADMIN_KEY（与 biz-server env 一致）');
   process.exit(1);
 }
 const manifestPath = process.env.SKIN_MANIFEST;
@@ -60,9 +61,8 @@ function headers(json = true) {
   const h = {
     'x-app-id': APP_ID,
     'x-app-environment': ENVIRONMENT,
+    'x-biz-key': BIZ_KEY ?? '',
   };
-  if (COOKIE) h.cookie = COOKIE;
-  else h['x-admin-key'] = KEY;
   if (json) h['content-type'] = 'application/json';
   return h;
 }

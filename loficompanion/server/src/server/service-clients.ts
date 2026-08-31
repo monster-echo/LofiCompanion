@@ -39,7 +39,7 @@ export async function ensureServiceClientSeed(): Promise<void> {
   if (seeded) return;
   await database.prepare(
     `INSERT INTO service_clients(client_id, secret_hash, scopes, status, created_at)
-     VALUES (?, ?, 'profiles:read', 'active', ?)
+     VALUES (?, ?, 'profiles:read store:write', 'active', ?)
      ON CONFLICT (client_id) DO NOTHING`,
   ).run(clientId, hashSecret(secret), nowIso());
 }

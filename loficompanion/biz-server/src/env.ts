@@ -41,3 +41,13 @@ export function getInternalClientSecret(): string {
 export function getAuthInternalBaseUrl(): string {
   return (process.env.AUTH_INTERNAL_BASE_URL?.trim() || AUTH_BASE_URL).replace(/\/+$/, '');
 }
+
+// biz 管理通道共享密钥（x-biz-key）：皮肤发布脚本/控制台用（对齐 legacy
+// x-admin-key 的自动化形态；管理面不面向终端用户）。运行时必填，缺失即拒。
+export function getBizAdminKey(): string {
+  const value = process.env.BIZ_ADMIN_KEY?.trim();
+  if (!value) {
+    throw new Error('环境变量 BIZ_ADMIN_KEY 未配置：请设置为皮肤发布通道的共享密钥。');
+  }
+  return value;
+}

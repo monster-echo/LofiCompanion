@@ -398,11 +398,12 @@ export const apiClient = {
   skinProducts: () => request<{ products: readonly SkinProductRemote[] }>(
     '/api/v1/store/skin-products',
   ),
-  // —— P0-B：服务器分发皮肤。目录公开可浏览；manifest 免费公开、付费按权益
-  // 门禁（401 匿名 / 403 SKIN_NOT_ENTITLED），由 remoteSkinsRepository 消费。
-  skins: () => request<{ skins: readonly SkinSummaryRemote[] }>('/api/v1/skins'),
+  // —— P0-B：服务器分发皮肤（走 biz-server）。目录公开可浏览；manifest 免费
+  // 公开、付费按权益门禁（401 匿名 / 403 SKIN_NOT_ENTITLED），由
+  // remoteSkinsRepository 消费。
+  skins: () => requestBiz<{ skins: readonly SkinSummaryRemote[] }>('/api/v1/skins'),
   skinManifest: (skinIdOrSlug: string) =>
-    request<SkinManifestRemote>(
+    requestBiz<SkinManifestRemote>(
       `/api/v1/skins/${encodeURIComponent(skinIdOrSlug)}/manifest`,
     ),
   createSkinOrder: (skinId: string, idempotencyKey: string) => request<SkinOrderRemote>(
