@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { replaceRoute } from '../../../navigation/navigationRef';
 import { useApp } from '../../../state/AppStore';
 import { colors, radii, semantic, space, type } from '../../../theme/tokens';
 import { useFocus } from '../application/FocusStore';
+import { useMusicLibrary } from '../../music/application/useMusicLibrary';
 import type { ActivityType } from '../domain/types';
 import {
   DEFAULT_ACTIVITY,
@@ -22,7 +23,8 @@ import { ACTIVITY_OPTIONS, FOCUS_STRINGS as STR } from './strings';
  */
 export function FocusSetupSheet() {
   const focus = useFocus();
-  const { back, showToast } = useApp();
+  const { back, showToast, signedIn } = useApp();
+  const music = useMusicLibrary(signedIn);
   const [activity, setActivity] = useState<ActivityType>(DEFAULT_ACTIVITY);
   const [minutes, setMinutes] = useState<number>(DEFAULT_DURATION);
   const [customText, setCustomText] = useState('');
@@ -130,6 +132,36 @@ export function FocusSetupSheet() {
         />
         <Text style={styles.customUnit}>{STR.customUnit}</Text>
       </View>
+
+      {/* 背景音乐选曲：胶囊横向滚动；访客仅内置两首并给出登录提示。
+          选择即生效（控制器记录，开始专注后自动播放） */}
+      <View style={styles.musicRow}>
+        <Text style={styles.musicLabel}>{STR.musicLabel}</Text>
+        {!signedIn ? <Text style={styles.musicHint}>{STR.musicGuestHint}</Text> : null}
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.musicChips}
+      >
+        {music.tracks.map((track) => {
+          const selected = music.selectedTrack?.id === track.id;
+          return (
+            <Pressable
+              key={track.id}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`${STR.musicLabel} ${track.title}`}
+              onPress={() => music.selectTrack(track)}
+              style={[styles.chip, selected && styles.chipSelected]}
+            >
+              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                {track.title}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
       {formError ? (
         <Text role="alert" style={styles.errorText}>
           {formError}
@@ -229,6 +261,25 @@ const styles = StyleSheet.create({
   customUnit: {
     ...type.caption,
     color: semantic.textMuted,
+  },
+  musicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.x2,
+    marginTop: space.x4,
+  },
+  musicLabel: {
+    ...type.body,
+    color: semantic.textSecondary,
+  },
+  musicHint: {
+    ...type.caption,
+    color: semantic.textMuted,
+  },
+  musicChips: {
+    flexDirection: 'row',
+    gap: space.x2,
+    paddingVertical: space.x2,
   },
   errorText: {
     ...type.caption,

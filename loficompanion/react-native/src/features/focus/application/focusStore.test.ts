@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { rainyStudyRoomManifest as manifest } from '../../skins/domain/rainyStudyRoom.generated';
+import { sunnyClassroomManifest } from '../../skins/domain/sunnyClassroom.generated';
 import type { SkinManifest } from '../../skins/domain/types';
 import type { AchievementRuleKey } from '../../achievements/domain/rules';
 import { createAchievementRepository } from '../../achievements/data/achievementRepository';
 import { createSkinSelectionRepository } from '../../skins/data/skinSelectionRepository';
 import { createFocusRepository } from '../data/focusRepository';
 import type { StorageDriver } from '../data/storageDriver';
+import type { FocusMusicEffects } from '../../music/domain/musicController';
 import { createFocusController } from './orchestrate';
 
 /**
@@ -33,23 +35,38 @@ function memoryDriver(): StorageDriver {
 interface HarnessOptions {
   driver: StorageDriver;
   granted?: AchievementRuleKey[];
-  /** 覆盖皮肤清单（自动喝水排程测试用短间隔） */
-  manifest?: SkinManifest;
+  /** 覆盖皮肤注册表（自动喝水排程测试用短间隔；多皮肤切换测试注入多套） */
+  manifests?: readonly SkinManifest[];
   /** 确定性随机源；缺省恒 0（= 取区间下界，可复现） */
   rng?: () => number;
+  /** 背景音乐效果桩（音乐钩子时序测试用） */
+  music?: FocusMusicEffects;
 }
 
-function makeController({ driver, granted = [], manifest: skin = manifest, rng }: HarnessOptions) {
+function makeController({ driver, granted = [], manifests = [manifest], rng, music }: HarnessOptions) {
   return createFocusController({
     repo: createFocusRepository(driver),
     achievementRepo: createAchievementRepository(driver),
     skinRepo: createSkinSelectionRepository(driver),
-    manifest: skin,
+    manifests,
     rng,
+    music,
     loadGranted: async () =>
       granted.map((ruleKey) => ({ ruleKey, grantedAtUtc: T0 })),
     loadRoomItems: async () => [],
   });
+}
+
+/** 录制型音乐效果桩：按序记录钩子调用（音乐时序断言用） */
+function recordingMusic() {
+  const calls: string[] = [];
+  const fake: FocusMusicEffects = {
+    sessionStarted: () => calls.push('started'),
+    paused: () => calls.push('paused'),
+    resumed: () => calls.push('resumed'),
+    sessionEnded: () => calls.push('ended'),
+  };
+  return { calls, fake };
 }
 
 // 固定时刻：2026-08-30 10:00 Asia/Shanghai（周日）。全程无 Date.now()。
@@ -64,14 +81,14 @@ describe('FocusStore 编排：完整专注流程', () => {
     await controller.restore(T0);
     expect(controller.getState().hydrated).toBe(true);
 
-    // 开始：active 文档 + focusing 基态 + focus.started 横幅（4s 到期）
+    // 开始：active 文档 + focusing 基态 + focus.started 开播
     expect(controller.startSession('homework', 25, T0)).toEqual({ ok: true });
     let s = controller.getState();
     expect(s.activeSession?.status).toBe('active');
     expect(s.activeSession?.plannedSeconds).toBe(1500);
     expect(s.remainingSeconds).toBe(1500);
     expect(s.companion.state).toBe('focusing');
-    expect(s.banner).toEqual({ eventType: 'focus.started', endsAt: T0 + ACTION_MS });
+    expect(s.companion.playing?.eventType).toBe('focus.started');
 
     // 暂停：文档 paused、陪伴基态 paused
     controller.pause(T0 + 10 * MIN);
@@ -268,7 +285,7 @@ describe('FocusStore 编排：自动喝水（主题排程）', () => {
     },
   });
 
-  it('按主题排程到点触发：开播、横幅、冷却就位、立即重排；播完回归 focusing', async () => {
+  it('按主题排程到点触发：开播、冷却就位、立即重排；播完回归 focusing', async () => {
     const driver = memoryDriver();
     const controller = makeController({ driver, rng: () => 0 });
     await controller.restore(T0);
@@ -284,10 +301,6 @@ describe('FocusStore 编排：自动喝水（主题排程）', () => {
     const s = controller.getState();
     expect(s.companion.playing?.eventType).toBe('wellness.drink');
     expect(s.companion.playing?.startedAt).toBe(T0 + 18 * MIN);
-    expect(s.banner).toEqual({
-      eventType: 'wellness.drink',
-      endsAt: T0 + 18 * MIN + ACTION_MS,
-    });
     // 首次开播不产生冷却提示（冷却提示只在冷却窗口内的再次派发时出现）
     expect(s.cooldown).toBeNull();
     expect(s.nextAutoDrinkAt).toBe(T0 + 36 * MIN); // 触发即重排下一轮
@@ -299,7 +312,7 @@ describe('FocusStore 编排：自动喝水（主题排程）', () => {
 
   it('60s 冷却内到点的下一次排程：不重播、状态引用不变、冷却提示刷新', async () => {
     const driver = memoryDriver();
-    const controller = makeController({ driver, manifest: everyMinutes(0.5) }); // 每 30s
+    const controller = makeController({ driver, manifests: [everyMinutes(0.5)] }); // 每 30s
     await controller.restore(T0);
     controller.startSession('homework', 25, T0);
 
@@ -307,15 +320,13 @@ describe('FocusStore 编排：自动喝水（主题排程）', () => {
     expect(controller.getState().companion.playing?.eventType).toBe('wellness.drink');
     expect(controller.getState().nextAutoDrinkAt).toBe(T0 + 60_000);
 
-    controller.tick(T0 + 34_000); // 第一杯播完、横幅到期
+    controller.tick(T0 + 34_000); // 第一杯播完、回归基态
     const idle = controller.getState();
     expect(idle.companion.playing).toBeNull();
-    expect(idle.banner).toBeNull();
 
     controller.tick(T0 + 60_000); // 落在 60s 冷却内：状态完全不变，仅刷新冷却提示
     const s = controller.getState();
     expect(s.companion).toBe(idle.companion);
-    expect(s.banner).toBeNull();
     // 剩余 = 60s − (60s − 30s) = 30s → until = T0 + 90s
     expect(s.cooldown).toEqual({ eventType: 'wellness.drink', until: T0 + 90_000 });
     expect(s.nextAutoDrinkAt).toBe(T0 + 90_000);
@@ -338,7 +349,7 @@ describe('FocusStore 编排：自动喝水（主题排程）', () => {
     expect(controller.getState().companion.playing).toBeNull();
   });
 
-  it('tick 推进：动作播完自动回归基态（清单 returnState），横幅到期清除', async () => {
+  it('tick 推进：动作播完自动回归基态（清单 returnState）', async () => {
     const driver = memoryDriver();
     const controller = makeController({ driver });
     await controller.restore(T0);
@@ -346,22 +357,17 @@ describe('FocusStore 编排：自动喝水（主题排程）', () => {
 
     controller.tick(T0 + 1000);
     expect(controller.getState().companion.playing?.eventType).toBe('focus.started');
-    expect(controller.getState().banner).toEqual({
-      eventType: 'focus.started',
-      endsAt: T0 + ACTION_MS,
-    });
 
     controller.tick(T0 + ACTION_MS);
     const s = controller.getState();
     expect(s.companion.playing).toBeNull();
     expect(s.companion.state).toBe('focusing'); // drink/focus.started 播完回 focusing
-    expect(s.banner).toBeNull(); // now >= endsAt
   });
 
   it('播放期间到点：focus.started 不可打断 → 喝水入队，focus.paused 后按优先级接力', async () => {
     // 每 2s 一次排程：T0+2s 的到点落在 focus.started 播放窗口内
     const driver = memoryDriver();
-    const controller = makeController({ driver, manifest: everyMinutes(2 / 60) });
+    const controller = makeController({ driver, manifests: [everyMinutes(2 / 60)] });
     await controller.restore(T0);
     controller.startSession('homework', 25, T0); // next = T0+2s；focus.started 播放中
 
@@ -452,6 +458,55 @@ describe('FocusStore 编排：输入守卫与外围动作', () => {
     });
   });
 
+  it('多皮肤 selectSkin：切到阳光教室同名状态带过、落盘；restore 解析存量选择', async () => {
+    const driver = memoryDriver();
+    const controller = makeController({ driver, manifests: [manifest, sunnyClassroomManifest] });
+    await controller.restore(T0);
+    expect(controller.getState().skin.slug).toBe('rainy-study-room');
+
+    // 计时中切肤：focusing 同名带过，不回默认基态
+    controller.startSession('homework', 25, T0);
+    expect(controller.getState().companion.state).toBe('focusing');
+    controller.selectSkin(sunnyClassroomManifest.id);
+    let s = controller.getState();
+    expect(s.skin.id).toBe('sunny-classroom-v1');
+    expect(s.selectedSkinId).toBe('sunny-classroom-v1');
+    expect(s.companion.state).toBe('focusing');
+    await controller.flush();
+    await expect(createSkinSelectionRepository(driver).loadSelected()).resolves.toMatchObject({
+      skinId: 'sunny-classroom-v1',
+    });
+
+    // 冷启动：存量选择解析回阳光教室清单
+    const relaunched = makeController({ driver, manifests: [manifest, sunnyClassroomManifest] });
+    await relaunched.restore(T0 + 10 * MIN);
+    expect(relaunched.getState().skin.slug).toBe('sunny-classroom');
+    expect(relaunched.getState().selectedSkinId).toBe('sunny-classroom-v1');
+
+    // slug 也能命中（商店路由口径）；彻底未知的 id 忽略
+    relaunched.selectSkin('rainy-study-room');
+    expect(relaunched.getState().skin.slug).toBe('rainy-study-room');
+    relaunched.selectSkin('nonexistent-skin');
+    expect(relaunched.getState().skin.slug).toBe('rainy-study-room');
+  });
+
+  it('切到 autoDrink 关闭的皮肤：计时中的喝水排程清空', async () => {
+    const driver = memoryDriver();
+    const noAutoDrink: SkinManifest = {
+      ...sunnyClassroomManifest,
+      wellness: {
+        autoDrink: { enabled: false, minIntervalMinutes: 18, maxIntervalMinutes: 30 },
+      },
+    };
+    const controller = makeController({ driver, manifests: [manifest, noAutoDrink], rng: () => 0 });
+    await controller.restore(T0);
+    controller.startSession('homework', 25, T0);
+    expect(controller.getState().nextAutoDrinkAt).toBe(T0 + 18 * MIN);
+
+    controller.selectSkin(noAutoDrink.id);
+    expect(controller.getState().nextAutoDrinkAt).toBeNull();
+  });
+
   it('无活动会话时的 complete/pause/resume/abandon 均为安全空操作', async () => {
     const driver = memoryDriver();
     const controller = makeController({ driver });
@@ -469,7 +524,7 @@ describe('FocusStore 编排：输入守卫与外围动作', () => {
     await expect(createFocusRepository(driver).loadHistory()).resolves.toEqual([]);
   });
 
-  it('reducedMotion 显式生效：动作时长降为 1000ms，横幅到期随之缩短', async () => {
+  it('reducedMotion 显式生效：动作时长降为 1000ms', async () => {
     const driver = memoryDriver();
     const controller = makeController({ driver });
     await controller.restore(T0);
@@ -479,10 +534,70 @@ describe('FocusStore 编排：输入守卫与外围动作', () => {
     const s = controller.getState();
     expect(s.reducedMotion).toBe(true);
     expect(s.companion.playing?.durationMs).toBe(1000);
-    expect(s.banner?.endsAt).toBe(T0 + 1000);
 
     controller.tick(T0 + 1000);
     expect(controller.getState().companion.playing).toBeNull();
-    expect(controller.getState().banner).toBeNull();
+  });
+});
+
+describe('FocusStore 编排：背景音乐钩子时序', () => {
+  it('start→pause→resume→complete：钩子按真实转换触发一次', async () => {
+    const driver = memoryDriver();
+    const music = recordingMusic();
+    const controller = makeController({ driver, music: music.fake });
+    await controller.restore(T0);
+
+    controller.startSession('homework', 25, T0);
+    expect(music.calls).toEqual(['started']);
+
+    controller.pause(T0 + MIN);
+    controller.pause(T0 + 2 * MIN); // 幂等：已暂停不再触发
+    expect(music.calls).toEqual(['started', 'paused']);
+
+    controller.resume(T0 + 3 * MIN);
+    controller.resume(T0 + 4 * MIN); // 幂等：活跃中 resume no-op
+    expect(music.calls).toEqual(['started', 'paused', 'resumed']);
+
+    controller.complete(T0 + 25 * MIN);
+    expect(music.calls).toEqual(['started', 'paused', 'resumed', 'ended']);
+  });
+
+  it('abandon 与强杀恢复（派生完成）都要停音乐', async () => {
+    const driver = memoryDriver();
+
+    // abandon 路径
+    const musicA = recordingMusic();
+    const a = makeController({ driver, music: musicA.fake });
+    await a.restore(T0);
+    a.startSession('homework', 25, T0);
+    a.abandon(T0 + 5 * MIN);
+    expect(musicA.calls).toEqual(['started', 'ended']);
+
+    // 冷启动恢复：active 文档已在后台越过终点 → applyDerived 派生 completed
+    await createFocusRepository(driver).saveActive({
+      id: 'session-x',
+      clientRequestId: 'req-x',
+      activity: 'homework',
+      plannedSeconds: 25 * 60,
+      status: 'active',
+      startedAtUtc: T0,
+      pauses: [],
+      docVersion: 1,
+    });
+    const musicB = recordingMusic();
+    const b = makeController({ driver, music: musicB.fake });
+    await b.restore(T0 + 30 * MIN);
+    expect(b.getState().activeSession).toBeNull();
+    expect(b.getState().completions).not.toBeNull();
+    expect(musicB.calls).toEqual(['ended']);
+  });
+
+  it('无 music dep（旧调用方）：转换照常，不抛错', async () => {
+    const driver = memoryDriver();
+    const controller = makeController({ driver });
+    await controller.restore(T0);
+    controller.startSession('reading', 15, T0);
+    controller.complete(T0 + 15 * MIN);
+    expect(controller.getState().activeSession).toBeNull();
   });
 });

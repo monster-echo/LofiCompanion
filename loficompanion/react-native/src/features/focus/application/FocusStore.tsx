@@ -1,6 +1,7 @@
 import React, {
   createContext,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -9,7 +10,9 @@ import React, {
 } from 'react';
 import { AccessibilityInfo, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { rainyStudyRoomManifest } from '../../skins/domain/rainyStudyRoom.generated';
+import { BUILT_IN_SKINS } from '../../skins/domain/registry';
+import { createSkinRegistry } from '../../skins/domain/skinRegistry';
+import { fetchRemoteSkins } from '../../skins/data/remoteSkinsRepository';
 import type {
   CompanionEventType,
   SkinManifest,
@@ -17,6 +20,8 @@ import type {
 import type { CompanionRuntimeState } from '../../companion/domain/stateMachine';
 import { createAchievementRepository } from '../../achievements/data/achievementRepository';
 import { createSkinSelectionRepository } from '../../skins/data/skinSelectionRepository';
+import { getMusicController } from '../../music/data/expoAudioMusicController';
+import { useApp } from '../../../state/AppStore';
 import type { AchievementRuleKey } from '../../achievements/domain/rules';
 import { createFocusRepository } from '../data/focusRepository';
 import type { StorageDriver } from '../data/storageDriver';
@@ -30,6 +35,7 @@ import {
   type RoomItemSnapshot,
   type StartSessionResult,
 } from './orchestrate';
+import type { MusicController } from '../../music/domain/musicController';
 
 /**
  * 专注应用层的 React 接线（P0-A Task 7）。FocusProvider 把 AsyncStorage、
@@ -60,8 +66,9 @@ export interface FocusApi {
   roomItems: readonly RoomItemSnapshot[];
   skin: SkinManifest;
   selectedSkinId: string;
+  /** 可选皮肤全量（内置 + 已下载的远端皮肤）；画廊/详情页据此渲染 */
+  skins: readonly SkinManifest[];
   companion: CompanionRuntimeState;
-  banner: { eventType: CompanionEventType; endsAt: number } | null;
   cooldown: { eventType: CompanionEventType; until: number } | null;
   reducedMotion: boolean;
   /** 最近一次完成新授予的成就（acknowledge 后清空） */
@@ -81,10 +88,20 @@ export interface FocusApi {
     selectSkin(skinId: string): void;
     tick(now: number): void;
     acknowledgeCompletions(): void;
+    /** 专注页静音开关 → 音乐控制器（focusQuickPrefs.muted 的落地点） */
+    setMusicMuted(muted: boolean): void;
+    /** 拉取远端皮肤目录并物化到注册表（挂载/登录态切换/购买成功后调用） */
+    refreshSkins(signedIn: boolean): void;
   };
 }
 
-function toFocusApi(controller: FocusController, state: FocusState): FocusApi {
+function toFocusApi(
+  controller: FocusController,
+  state: FocusState,
+  music: MusicController,
+  skins: readonly SkinManifest[],
+  refreshSkins: (signedIn: boolean) => void,
+): FocusApi {
   return {
     activeSession: state.activeSession,
     remainingSeconds: state.remainingSeconds,
@@ -102,8 +119,8 @@ function toFocusApi(controller: FocusController, state: FocusState): FocusApi {
     roomItems: state.roomItems,
     skin: state.skin,
     selectedSkinId: state.selectedSkinId,
+    skins,
     companion: state.companion,
-    banner: state.banner,
     cooldown: state.cooldown,
     reducedMotion: state.reducedMotion,
     newGrants: state.newGrants,
@@ -117,6 +134,8 @@ function toFocusApi(controller: FocusController, state: FocusState): FocusApi {
       selectSkin: controller.selectSkin,
       tick: controller.tick,
       acknowledgeCompletions: controller.acknowledgeCompletions,
+      setMusicMuted: (muted) => music.setMuted(muted),
+      refreshSkins,
     },
   };
 }
@@ -124,17 +143,37 @@ function toFocusApi(controller: FocusController, state: FocusState): FocusApi {
 const FocusContext = createContext<FocusApi | null>(null);
 
 export function FocusProvider({ children }: Readonly<{ children: ReactNode }>): React.JSX.Element {
+  // 远端皮肤目录（P0-B）：注册表是内置+远端的可观察合并视图，
+  // getManifests 让 orchestrate 的选肤/恢复实时看到新皮肤
+  const [registry] = useState(() => createSkinRegistry(BUILT_IN_SKINS));
+  const refreshSkins = useCallback(
+    (signedIn: boolean) => {
+      if (!signedIn) {
+        registry.setRemote([]);
+        return;
+      }
+      void fetchRemoteSkins().then((remote) => registry.setRemote(remote));
+    },
+    [registry],
+  );
+  const { signedIn } = useApp();
+
   const [controller] = useState<FocusController>(() => {
     const achievementRepo = createAchievementRepository(storageDriver);
+    const music = getMusicController();
     return createFocusController({
       repo: createFocusRepository(storageDriver),
       achievementRepo,
       skinRepo: createSkinSelectionRepository(storageDriver),
-      manifest: rainyStudyRoomManifest,
+      manifests: BUILT_IN_SKINS,
+      getManifests: registry.getAll,
       loadGranted: async () => achievementRepo.loadGranted(),
       loadRoomItems: async () => achievementRepo.loadRoomItems(),
+      music,
     });
   });
+  // toFocusApi 需要：静音开关直达控制器（setMusicMuted）
+  const [music] = useState<MusicController>(() => getMusicController());
 
   useEffect(() => {
     void controller.restore(Date.now());
@@ -157,10 +196,16 @@ export function FocusProvider({ children }: Readonly<{ children: ReactNode }>): 
     };
   }, [controller]);
 
+  // 远端皮肤目录：挂载与登录态切换时拉取（访客清空远端侧，仅剩内置）
+  useEffect(() => {
+    refreshSkins(signedIn);
+  }, [refreshSkins, signedIn]);
+
+  const skins = useSyncExternalStore(registry.subscribe, registry.getAll);
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getState);
   const value = useMemo<FocusApi>(
-    () => toFocusApi(controller, snapshot),
-    [controller, snapshot],
+    () => toFocusApi(controller, snapshot, music, skins, refreshSkins),
+    [controller, snapshot, music, skins, refreshSkins],
   );
   return <FocusContext.Provider value={value}>{children}</FocusContext.Provider>;
 }

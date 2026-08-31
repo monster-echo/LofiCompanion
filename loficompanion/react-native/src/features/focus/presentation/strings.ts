@@ -8,7 +8,6 @@ import type { ActivityType } from '../domain/types';
 export const FOCUS_STRINGS = {
   // S02 今日首页
   greeting: '今晚一起写作业吗？',
-  online: '正在陪你',
   boardEmpty: '从第一轮开始布置你的房间',
   startFocus: '开始专注',
   backToFocus: '返回专注',
@@ -24,7 +23,17 @@ export const FOCUS_STRINGS = {
   beginFocus: '开始专注',
   invalidSession: '活动或时长无效，请调整后再开始',
   sessionRunning: '已有一轮专注正在进行',
-  // S04 专注中（喝水无手动按钮：由主题 wellness.autoDrink 自动排程触发）
+  musicLabel: '背景音乐',
+  musicGuestHint: '登录解锁完整歌单',
+  nowPlaying: (title: string) => `正在播放 ${title}`,
+  // S04 专注中（喝水无手动按钮：由主题 wellness.autoDrink 自动排程触发；
+  // 事件提醒由陪伴画面承担，不展示文字横幅）
+  // 右上快捷设置（二级菜单，开启态读作「已选择」）：静音为预置开关，音频落地后生效
+  quickMenuLabel: '快捷设置',
+  keepAwakeLabel: '屏幕常亮',
+  muteLabel: '静音',
+  onState: '已开启',
+  offState: '已关闭',
   paused: '已暂停',
   pauseAction: '暂停',
   resumeAction: '继续',
@@ -36,18 +45,6 @@ export const FOCUS_STRINGS = {
   endConfirmKeptZero: '这轮还不足 1 分钟，结束后不会计入记录。',
   keptMinutes: (n: number) => `已保留 ${n} 分钟记录`,
   keptNothing: '已结束这轮，不足 1 分钟未计入记录',
-  drinkBannerTitle: '喝水事件',
-  drinkBannerSubtitle: '休息一下，记得补充水分',
-  startBannerTitle: '开始专注',
-  startBannerSubtitle: '这一轮开始了，慢慢进入状态',
-  pauseBannerTitle: '已暂停',
-  pauseBannerSubtitle: '时间停在这里，回来就好',
-  resumeBannerTitle: '回到专注',
-  resumeBannerSubtitle: '欢迎回来，继续刚才的节奏',
-  completeBannerTitle: '这一轮完成了',
-  completeBannerSubtitle: '去看看今天的成果吧',
-  defaultBannerTitle: '陪伴中',
-  defaultBannerSubtitle: '我们继续',
   // S06 完成结算
   completeTitle: '这一轮完成了',
   againAction: '再来一轮',
@@ -61,6 +58,15 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   coding: '编程',
   vocab: '背单词',
   free: '自由专注',
+};
+
+/** 活动类型 → 专注中左上陪伴状态（概念图：主题名下方状态行） */
+export const ACTIVITY_STATUS: Record<ActivityType, string> = {
+  homework: '正在陪你写作业',
+  reading: '正在陪你阅读',
+  coding: '正在陪你写代码',
+  vocab: '正在陪你背单词',
+  free: '正在陪你专注',
 };
 
 /** S03 活动单选项（展示顺序即标签排列顺序） */

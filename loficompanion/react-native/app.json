@@ -28,7 +28,13 @@
       "@react-native-firebase/crashlytics",
       "expo-apple-authentication",
       "./plugins/withModularHeaders",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": true
+        }
+      ]
     ],
     "ios": {
       "usesAppleSignIn": true,

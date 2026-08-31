@@ -1,80 +1,71 @@
-import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Animated,
   BackHandler,
   Easing,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
   TouchableWithoutFeedback,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { AppIcon } from '../../../design-system/AppIcon';
-import { FocusActionBar, FocusActionItem } from '../../../design-system/FocusActionBar';
-import { FocusTimerRing } from '../../../design-system/FocusTimerRing';
-import { replaceRoute } from '../../../navigation/navigationRef';
-import { useApp } from '../../../state/AppStore';
-import { radii, semantic, space, type } from '../../../theme/tokens';
-import { useFocus } from '../application/FocusStore';
-import { effectiveSeconds as computeEffective } from '../domain/engine';
-import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
-import { SheetOverlay } from './SheetOverlay';
-import { FOCUS_STRINGS as STR } from './strings';
-import type { CompanionEventType } from '../../skins/domain/types';
-import type { IconName } from '../../../design-system/AppIcon';
-
-/** 事件横幅按事件类型的图标与文案（doc-08 §22：温和具体，不负担）。 */
-const BANNER_COPY: Partial<Record<CompanionEventType, { icon: IconName; title: string; subtitle: string }>> = {
-  'wellness.drink': { icon: 'droplet', title: STR.drinkBannerTitle, subtitle: STR.drinkBannerSubtitle },
-  'focus.started': { icon: 'play', title: STR.startBannerTitle, subtitle: STR.startBannerSubtitle },
-  'focus.resumed': { icon: 'play', title: STR.resumeBannerTitle, subtitle: STR.resumeBannerSubtitle },
-  'focus.paused': { icon: 'pause', title: STR.pauseBannerTitle, subtitle: STR.pauseBannerSubtitle },
-  'focus.completed': { icon: 'check-circle', title: STR.completeBannerTitle, subtitle: STR.completeBannerSubtitle },
-  'break.started': { icon: 'plant', title: STR.pauseBannerTitle, subtitle: STR.pauseBannerSubtitle },
-};
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { AppIcon } from "../../../design-system/AppIcon";
+import { replaceRoute } from "../../../navigation/navigationRef";
+import { useApp } from "../../../state/AppStore";
+import { fonts } from "../../../design-system/fonts";
+import { radii, semantic, space, type } from "../../../theme/tokens";
+import { useFocus } from "../application/FocusStore";
+import { effectiveSeconds as computeEffective } from "../domain/engine";
+import { formatTimerSeconds } from "../../../design-system/FocusTimerRing";
+import { ImmersiveMediaSurface } from "../../skins/presentation/ImmersiveMediaSurface";
+import { SheetOverlay } from "./SheetOverlay";
+import { ACTIVITY_STATUS, FOCUS_STRINGS as STR } from "./strings";
+import { useFocusQuickPrefs } from "./focusQuickPrefs";
+import { useMusicLibrary } from "../../music/application/useMusicLibrary";
+import type { IconName } from "../../../design-system/AppIcon";
 
 /**
- * S04 专注中（doc-08 §5，全产品视觉金标准）。焦点依次为：角色动作、剩余
- * 时间、必要控制。挂载 5s 后界面弱化（控制/顶部 0.32、计时 0.82），任意
- * 触碰 160ms 恢复；读屏开启时不自动弱化。1s interval 驱动 tick；到点自动
- * complete 并原位替换为完成页。
+ * S04 专注中（概念图 app-concept.png）：内容承载于 RN Modal 独立窗口层，
+ * 陪伴内容从状态栏顶铺到 Home 指示条底（100% 全屏，不受 App.tsx 全局
+ * SafeAreaView 垫充影响）；左上主题名 + 陪伴状态，右上入口：快捷设置
+ * （二级菜单：屏幕常亮 / 静音）与调节主题；时钟大数字居中下，其下暂停/
+ * 结束胶囊。挂载 5s 后
+ * 进入沉浸弱化：除时钟外全部控制件完全隐藏，任意触碰 160ms 恢复；读屏
+ * 开启时不自动弱化。1s interval 驱动 tick；到点自动 complete 并原位替换
+ * 为完成页。
  */
 
-const RING_SIZE = 196;
-/** 计时环中心 Y（doc-08 §5：屏幕水平中心、Y≈250，从真实屏幕顶算起） */
-const RING_CENTER_Y = 250;
-/** 弱化：开始 5s 后触发；恢复 160ms；弱化淡入 600ms（doc-07 §10 只规范恢复值） */
+/** 弱化：开始 5s 后触发；恢复 160ms；弱化淡入 600ms（doc-07 §10 只规范恢复值）。
+ *  弱化语义为「只留时钟」：全部控制件完全隐藏（透明度 0），时钟常显。 */
 const WEAKEN_AFTER_MS = 5000;
 const RESTORE_MS = 160;
 const WEAKEN_MS = 600;
-const CHROME_OPACITY = 0.32;
-const RING_OPACITY = 0.82;
-/** 喝水横幅：180ms 淡入并下移 8dp；退出 140ms（doc-07 §10）；减少动态仅 100ms 淡入 */
-const BANNER_IN_MS = 180;
-const BANNER_OUT_MS = 140;
-const BANNER_REDUCED_MS = 100;
+const CHROME_OPACITY = 0;
+/** 悬浮 Tab + 底部安全区的兜底高度（insets 未透传平台用） */
+const FLOATING_TAB_FLOOR = 92;
 
 export function FocusActiveScreen() {
   const focus = useFocus();
-  const { showToast, replace } = useApp();
+  const { showToast, replace, signedIn } = useApp();
   const insets = useSafeAreaInsets();
   const [ending, setEnding] = useState(false);
+  const [quickMenu, setQuickMenu] = useState(false);
   const [screenReader, setScreenReader] = useState(false);
   const [weakened, setWeakened] = useState(false);
-  // 局部时间源：横幅进度与冷却倒计时的渲染刷新（比 store 快照更细）
-  const [nowMs, bumpNow] = useReducer(() => Date.now(), Date.now());
+  const { muted, setMuted, keepAwake, setKeepAwake } = useFocusQuickPrefs();
+  const music = useMusicLibrary(signedIn);
 
   const chrome = useRef(new Animated.Value(1)).current;
-  const ringFade = useRef(new Animated.Value(1)).current;
-  const bannerAnim = useRef(new Animated.Value(0)).current;
   const weakenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef(false);
 
   const session = focus.activeSession;
-  const paused = session?.status === 'paused';
+  const paused = session?.status === "paused";
   const mediaState = focus.companion.playing
     ? focus.companion.playing.state
     : focus.companion.state;
@@ -94,6 +85,15 @@ export function FocusActiveScreen() {
     };
   }, [scheduleWeaken]);
 
+  // ---- 屏幕常亮：专注期间防息屏（右上快捷区可关，卸载自动释放）----
+  useEffect(() => {
+    if (!keepAwake) return undefined;
+    activateKeepAwakeAsync("focus-active").catch(() => undefined);
+    return () => {
+      void deactivateKeepAwake("focus-active");
+    };
+  }, [keepAwake]);
+
   useEffect(() => {
     let alive = true;
     void AccessibilityInfo.isScreenReaderEnabled()
@@ -101,7 +101,10 @@ export function FocusActiveScreen() {
         if (alive) setScreenReader(enabled);
       })
       .catch(() => undefined);
-    const sub = AccessibilityInfo.addEventListener('screenReaderChanged', setScreenReader);
+    const sub = AccessibilityInfo.addEventListener(
+      "screenReaderChanged",
+      setScreenReader,
+    );
     return () => {
       alive = false;
       sub.remove();
@@ -110,31 +113,27 @@ export function FocusActiveScreen() {
 
   useEffect(() => {
     const target = weakened && !screenReader;
-    const duration = target ? WEAKEN_MS : RESTORE_MS;
-    Animated.parallel([
-      Animated.timing(chrome, {
-        toValue: target ? CHROME_OPACITY : 1,
-        duration,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(ringFade, {
-        toValue: target ? RING_OPACITY : 1,
-        duration,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [weakened, screenReader, chrome, ringFade]);
+    Animated.timing(chrome, {
+      toValue: target ? CHROME_OPACITY : 1,
+      duration: target ? WEAKEN_MS : RESTORE_MS,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [weakened, screenReader, chrome]);
 
   // Android 返回不退出专注：仅唤醒界面
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       wake();
       return true;
     });
     return () => sub.remove();
   }, [wake]);
+
+  // ---- 静音开关 → 音乐控制器（挂载即同步一次，兜住会话恢复场景）----
+  useEffect(() => {
+    focus.actions.setMusicMuted(muted);
+  }, [muted, focus.actions]);
 
   // ---- 1s 计时驱动 ----
   const tick = focus.actions.tick;
@@ -145,86 +144,48 @@ export function FocusActiveScreen() {
 
   // ---- 完成：到点结算并原位替换为完成页 ----
   useEffect(() => {
-    if (!session || session.status !== 'active') return;
+    if (!session || session.status !== "active") return;
     if (focus.remainingSeconds > 0 || completedRef.current) return;
     completedRef.current = true;
     focus.actions.complete(Date.now());
-    replaceRoute('focus.complete');
+    replaceRoute("focus.complete");
   }, [session, focus.remainingSeconds, focus.actions]);
-
-  // ---- 喝水横幅进出 ----
-  const [displayBanner, setDisplayBanner] = useState(focus.banner);
-  const bannerTotalRef = useRef(0);
-  const prevBannerRef = useRef(focus.banner);
-  useEffect(() => {
-    const current = focus.banner;
-    if (current && !prevBannerRef.current) {
-      bannerTotalRef.current = Math.max(1, current.endsAt - Date.now());
-    }
-    prevBannerRef.current = current;
-    if (current) setDisplayBanner(current);
-    Animated.timing(bannerAnim, {
-      toValue: current ? 1 : 0,
-      duration: focus.reducedMotion
-        ? BANNER_REDUCED_MS
-        : current
-          ? BANNER_IN_MS
-          : BANNER_OUT_MS,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (!current && finished) setDisplayBanner(null);
-    });
-  }, [focus.banner, focus.reducedMotion, bannerAnim]);
-
-  // 横幅可见时 250ms 刷新局部时间，驱动进度线
-  useEffect(() => {
-    if (!displayBanner) return;
-    const id = setInterval(bumpNow, 250);
-    return () => clearInterval(id);
-  }, [displayBanner, bumpNow]);
 
   if (!session) {
     // complete/abandon 已提交、替换导航进行中的一帧空壳
     return <View style={styles.screen} />;
   }
 
-  const bannerRatio = displayBanner
-    ? Math.max(
-        0,
-        Math.min(1, (displayBanner.endsAt - nowMs) / bannerTotalRef.current),
-      )
-    : 0;
-
-  // 喝水不再提供手动按钮：由主题配置自动排程（skin.yaml wellness.autoDrink，
-  // 区间随机触发 wellness.drink 事件——陪伴动作与横幅照常出现）。
-  const items: FocusActionItem[] = [
+  const items: readonly {
+    key: "pause" | "end";
+    icon: IconName;
+    label: string;
+    onPress: () => void;
+    disabled?: boolean;
+  }[] = [
     paused
       ? {
-          key: 'resume',
-          icon: 'play',
+          key: "pause",
+          icon: "play",
           label: STR.resumeAction,
-          variant: 'neutral',
           onPress: () => {
             wake();
             focus.actions.resume(Date.now());
           },
         }
       : {
-          key: 'pause',
-          icon: 'pause',
+          key: "pause",
+          icon: "pause",
           label: STR.pauseAction,
-          variant: 'neutral',
           onPress: () => {
             wake();
             focus.actions.pause(Date.now());
           },
         },
     {
-      key: 'end',
-      icon: 'stop',
+      key: "end",
+      icon: "stop",
       label: STR.endAction,
-      variant: 'neutral',
       disabled: ending, // doc-08 §5 ending：结束禁用，确认 sheet 出现
       onPress: () => {
         wake();
@@ -234,121 +195,266 @@ export function FocusActiveScreen() {
   ];
 
   const confirmEnd = () => {
-    const keptMinutes = Math.round(
-      computeEffective(session, Date.now()) / 60,
-    );
+    const keptMinutes = Math.round(computeEffective(session, Date.now()) / 60);
     setEnding(false);
     focus.actions.abandon(Date.now());
-    showToast(keptMinutes > 0 ? STR.keptMinutes(keptMinutes) : STR.keptNothing, 'info');
-    replace('home');
+    showToast(
+      keptMinutes > 0 ? STR.keptMinutes(keptMinutes) : STR.keptNothing,
+      "info",
+    );
+    replace("home");
   };
 
+  // RN Modal 独立原生窗口层：内容天然从状态栏铺到 Home 指示条（100% 全屏），
+  // 不受 App.tsx 全局 SafeAreaView 垫充与祖先视图裁切影响；translucent 两项
+  // 让 Android 边到边覆盖系统栏区域。insets 仍来自外层 Provider，用于控件定位。
   return (
-    <TouchableWithoutFeedback onPress={wake}>
-      <View style={styles.screen}>
-        {/* 沉浸专注：隐藏系统状态栏，卸载时由 PreferencesProvider 恢复 light */}
-        <StatusBar hidden animated={false} />
-        <ImmersiveMediaSurface
-          manifest={focus.skin}
-          state={mediaState}
-          reducedMotion={focus.reducedMotion}
-          style={StyleSheet.absoluteFill}
-        />
-
-        {/* 计时环：中心 Y≈250；暂停时中心下方显示「已暂停」 */}
-        <Animated.View
-          style={[styles.ringWrap, { top: RING_CENTER_Y - insets.top - RING_SIZE / 2, opacity: ringFade }]}
-        >
-          <FocusTimerRing
-            remainingSeconds={focus.remainingSeconds}
-            totalSeconds={session.plannedSeconds}
-            durationLabel={paused ? STR.paused : undefined}
+    <Modal
+      presentationStyle="fullScreen"
+      animationType="none"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={wake}
+    >
+      <TouchableWithoutFeedback onPress={wake}>
+        <View style={styles.screen}>
+          {/* 沉浸专注：隐藏系统状态栏，卸载时由 PreferencesProvider 恢复 light */}
+          <StatusBar hidden animated={false} />
+          {/* 陪伴内容铺满整屏：Modal 内无垫充，直接绝对定位全填充 */}
+          <ImmersiveMediaSurface
+            manifest={focus.skin}
+            state={mediaState}
+            reducedMotion={focus.reducedMotion}
+            style={styles.mediaFill}
           />
-        </Animated.View>
 
-        {/* S05 事件横幅（左右 16、高 72、安全区下 12）——文案与图标随事件类型 */}
-        {displayBanner ? (
+          {/* 左上：主题名 + 陪伴状态（概念图） */}
           <Animated.View
-            accessibilityLiveRegion="polite"
             style={[
-              styles.banner,
+              styles.skinBadge,
+              { top: insets.top + 14, opacity: chrome },
+            ]}
+          >
+            <Text style={styles.skinName}>{focus.skin.name}</Text>
+            <View style={styles.statusRow}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>
+                {ACTIVITY_STATUS[session.activity]}
+              </Text>
+            </View>
+          </Animated.View>
+
+          {/* 右上入口：快捷设置（二级菜单：屏幕常亮 / 静音）+ 调节主题 */}
+          <Animated.View
+            style={[
+              styles.quickBarWrap,
+              { top: insets.top + 8, opacity: chrome },
+            ]}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={STR.quickMenuLabel}
+              onPress={() => {
+                wake();
+                setQuickMenu(true);
+              }}
+              style={({ pressed }) => [
+                styles.tuneButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <AppIcon name="sliders" color={semantic.textPrimary} size={20} />
+            </Pressable>
+          </Animated.View>
+
+          {/* 快捷设置二级菜单：常亮/静音开关行，点行切换（静音为预置，音频落地后生效）。
+              入口在右上，菜单下拉锚定顶部（不遮时钟） */}
+          {quickMenu ? (
+            <SheetOverlay
+              onClose={() => setQuickMenu(false)}
+              closeLabel={STR.quickMenuLabel}
+              reducedMotion={focus.reducedMotion}
+              anchor="top"
+              topInset={insets.top}
+            >
+              <Text style={styles.menuTitle}>{STR.quickMenuLabel}</Text>
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityLabel={STR.keepAwakeLabel}
+                accessibilityState={{ checked: keepAwake }}
+                onPress={() => setKeepAwake(!keepAwake)}
+                style={({ pressed }) => [
+                  styles.menuRow,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <AppIcon
+                  name={keepAwake ? "sun" : "moon"}
+                  color={
+                    keepAwake ? semantic.actionFocus : semantic.textSecondary
+                  }
+                  size={18}
+                />
+                <Text style={styles.menuRowLabel}>{STR.keepAwakeLabel}</Text>
+                <View
+                  style={[
+                    styles.menuStatePill,
+                    keepAwake && styles.menuStatePillOn,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.menuStateText,
+                      keepAwake && styles.menuStateTextOn,
+                    ]}
+                  >
+                    {keepAwake ? STR.onState : STR.offState}
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityLabel={STR.muteLabel}
+                accessibilityState={{ checked: muted }}
+                onPress={() => setMuted(!muted)}
+                style={({ pressed }) => [
+                  styles.menuRow,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <AppIcon
+                  name={muted ? "volume-off" : "volume-on"}
+                  color={muted ? semantic.actionFocus : semantic.textSecondary}
+                  size={18}
+                />
+                <Text style={styles.menuRowLabel}>{STR.muteLabel}</Text>
+                <View
+                  style={[
+                    styles.menuStatePill,
+                    muted && styles.menuStatePillOn,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.menuStateText,
+                      muted && styles.menuStateTextOn,
+                    ]}
+                  >
+                    {muted ? STR.onState : STR.offState}
+                  </Text>
+                </View>
+              </Pressable>
+            </SheetOverlay>
+          ) : null}
+
+          {/* 事件提醒由陪伴画面承担（播放器切入事件态海报/视频，播完自动回归），
+              不再叠加文字横幅——保持沉浸画面无打断（doc-08 §6） */}
+
+          {/* 中下：时钟大数字 → 暂停/结束胶囊（概念图布局） */}
+          <Animated.View
+            style={[
+              styles.bottomStack,
               {
-                top: insets.top + 12,
-                opacity: bannerAnim,
-                transform: [
-                  {
-                    translateY: bannerAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: focus.reducedMotion ? [0, 0] : [8, 0],
-                    }),
-                  },
-                ],
+                bottom: Math.max(insets.bottom + space.x5, FLOATING_TAB_FLOOR),
               },
             ]}
           >
-            <View style={styles.bannerIcon}>
-              <AppIcon
-                name={BANNER_COPY[displayBanner.eventType]?.icon ?? 'droplet'}
-                color={semantic.actionPrimary}
-                size={22}
-              />
-            </View>
-            <View style={styles.bannerText}>
-              <Text style={styles.bannerTitle}>
-                {BANNER_COPY[displayBanner.eventType]?.title ?? STR.drinkBannerTitle}
+            {/* 时钟常显：弱化态下唯一的保留元素（「已暂停」提示随时钟一并保留） */}
+            <View style={{ alignItems: "center" }}>
+              <Text
+                style={styles.timerText}
+                accessibilityRole="text"
+                accessibilityLabel={`剩余 ${formatTimerSeconds(focus.remainingSeconds)}`}
+              >
+                {formatTimerSeconds(focus.remainingSeconds)}
               </Text>
-              <Text style={styles.bannerSubtitle}>
-                {BANNER_COPY[displayBanner.eventType]?.subtitle ?? STR.drinkBannerSubtitle}
-              </Text>
+              {paused ? (
+                <Text style={styles.pausedHint}>{STR.paused}</Text>
+              ) : null}
             </View>
-            <View style={styles.bannerTrack} pointerEvents="none">
-              <View
-                style={[styles.bannerFill, { width: `${Math.round(bannerRatio * 100)}%` }]}
-              />
-            </View>
+
+            <Animated.View style={{ opacity: chrome, alignItems: "center" }}>
+              {/* 正在播字幕：静音时隐藏（弱化态随 chrome 一并隐去，只留时钟） */}
+              {!muted && music.selectedTrack ? (
+                <Text style={styles.nowPlayingText}>
+                  {STR.nowPlaying(music.selectedTrack.title)}
+                </Text>
+              ) : null}
+              <View style={styles.pillRow}>
+                {items.map((item) => (
+                  <Pressable
+                    key={item.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.label}
+                    disabled={item.disabled}
+                    onPress={item.onPress}
+                    style={({ pressed }) => [
+                      styles.pill,
+                      item.disabled && styles.pillDisabled,
+                      pressed && !item.disabled && styles.pressed,
+                    ]}
+                  >
+                    <AppIcon
+                      name={item.icon}
+                      color={semantic.textPrimary}
+                      size={18}
+                    />
+                    <Text style={styles.pillText}>{item.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </Animated.View>
           </Animated.View>
-        ) : null}
 
-        {/* 控制栏（底部安全区上 64） */}
-        <Animated.View style={[styles.controls, { opacity: chrome }]}>
-          <FocusActionBar items={items} />
-        </Animated.View>
-
-        {/* 结束二次确认 sheet */}
-        {ending ? (
-          <SheetOverlay
-            onClose={() => setEnding(false)}
-            closeLabel={STR.endConfirmStay}
-            reducedMotion={focus.reducedMotion}
-          >
-            <Text style={styles.confirmTitle}>{STR.endConfirmTitle}</Text>
-            <Text style={styles.confirmMessage}>
-              {Math.round(computeEffective(session, Date.now()) / 60) > 0
-                ? STR.endConfirmKept(Math.round(computeEffective(session, Date.now()) / 60))
-                : STR.endConfirmKeptZero}
-            </Text>
-            <View style={styles.confirmActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={STR.endConfirmStay}
-                onPress={() => setEnding(false)}
-                style={({ pressed }) => [styles.confirmSecondary, pressed && styles.pressed]}
-              >
-                <Text style={styles.confirmSecondaryText}>{STR.endConfirmStay}</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={STR.endConfirmLeave}
-                onPress={confirmEnd}
-                style={({ pressed }) => [styles.confirmDanger, pressed && styles.pressed]}
-              >
-                <Text style={styles.confirmDangerText}>{STR.endConfirmLeave}</Text>
-              </Pressable>
-            </View>
-          </SheetOverlay>
-        ) : null}
-      </View>
-    </TouchableWithoutFeedback>
+          {/* 结束二次确认 sheet（Modal 内无 SafeAreaView 垫充：补底部安全区） */}
+          {ending ? (
+            <SheetOverlay
+              onClose={() => setEnding(false)}
+              closeLabel={STR.endConfirmStay}
+              reducedMotion={focus.reducedMotion}
+              bottomInset={insets.bottom}
+            >
+              <Text style={styles.confirmTitle}>{STR.endConfirmTitle}</Text>
+              <Text style={styles.confirmMessage}>
+                {Math.round(computeEffective(session, Date.now()) / 60) > 0
+                  ? STR.endConfirmKept(
+                      Math.round(computeEffective(session, Date.now()) / 60),
+                    )
+                  : STR.endConfirmKeptZero}
+              </Text>
+              <View style={styles.confirmActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={STR.endConfirmStay}
+                  onPress={() => setEnding(false)}
+                  style={({ pressed }) => [
+                    styles.confirmSecondary,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.confirmSecondaryText}>
+                    {STR.endConfirmStay}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={STR.endConfirmLeave}
+                  onPress={confirmEnd}
+                  style={({ pressed }) => [
+                    styles.confirmDanger,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.confirmDangerText}>
+                    {STR.endConfirmLeave}
+                  </Text>
+                </Pressable>
+              </View>
+            </SheetOverlay>
+          ) : null}
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
   );
 }
 
@@ -357,81 +463,161 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: semantic.canvasDeep,
   },
-  ringWrap: {
-    position: 'absolute',
+  mediaFill: {
+    // Modal 内无 SafeAreaView 垫充：从状态栏顶到 Home 指示条底 100% 填充
+    position: "absolute",
     left: 0,
     right: 0,
-    alignItems: 'center',
+    top: 0,
+    bottom: 0,
   },
-  banner: {
-    // top 由渲染处注入（insets.top + 12，横幅始终在安全区之下）
-    position: 'absolute',
-    left: space.x4,
-    right: space.x4,
-    height: 72,
-    borderRadius: radii.control,
-    backgroundColor: semantic.surfaceRaised,
-    borderWidth: 1,
-    borderColor: semantic.borderStandard,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.x3,
-    paddingHorizontal: space.x3,
-    overflow: 'hidden',
-  },
-  bannerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.round,
-    backgroundColor: semantic.surfaceInset,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bannerText: {
-    flexShrink: 1,
+  skinBadge: {
+    position: "absolute",
+    left: 20,
+    alignItems: "flex-start",
     gap: 2,
   },
-  bannerTitle: {
-    ...type.bodyStrong,
+  skinName: {
+    ...type.title3,
     color: semantic.textPrimary,
   },
-  bannerSubtitle: {
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: radii.round,
+    backgroundColor: semantic.success,
+  },
+  statusText: {
     ...type.caption,
     color: semantic.textSecondary,
   },
-  bannerTrack: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 2,
+  quickBarWrap: {
+    position: "absolute",
+    right: 12,
+    flexDirection: "row",
+    gap: space.x2,
+  },
+  tuneButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(13,27,43,0.5)",
+    borderWidth: 1,
+    borderColor: semantic.borderSoft,
+  },
+  // 快捷设置二级菜单：行 = 图标 + 标签 + 状态胶囊（开启态 success 着色）
+  menuTitle: {
+    ...type.title3,
+    color: semantic.textPrimary,
+    textAlign: "center",
+  },
+  menuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.x3,
+    minHeight: 52,
+    marginTop: space.x2,
+    borderRadius: radii.control,
+    paddingHorizontal: space.x3,
+    backgroundColor: "rgba(13,27,43,0.5)",
+    borderWidth: 1,
+    borderColor: semantic.borderSoft,
+  },
+  menuRowLabel: {
+    ...type.bodyStrong,
+    color: semantic.textPrimary,
+    flex: 1,
+  },
+  menuStatePill: {
+    borderRadius: radii.round,
     backgroundColor: semantic.surfaceInset,
+    paddingHorizontal: space.x3,
+    paddingVertical: 4,
   },
-  bannerFill: {
-    height: '100%',
-    backgroundColor: semantic.actionPrimary,
+  menuStatePillOn: {
+    // success 柔和底（对齐 tokens warningSoft 的 0.16 透明度惯例）
+    backgroundColor: "rgba(99,191,148,0.16)",
   },
-  controls: {
-    position: 'absolute',
+  menuStateText: {
+    ...type.micro,
+    color: semantic.textSecondary,
+  },
+  menuStateTextOn: {
+    color: semantic.success,
+  },
+  bottomStack: {
+    position: "absolute",
     left: 0,
     right: 0,
-    bottom: 64,
-    alignItems: 'center',
+    alignItems: "center",
+    gap: space.x5,
+  },
+  timerText: {
+    fontFamily: fonts.serif,
+    fontSize: 76,
+    lineHeight: 88,
+    fontWeight: "600",
+    color: semantic.textPrimary,
+    fontVariant: ["tabular-nums"],
+    letterSpacing: 2,
+    textShadowColor: "rgba(6,16,28,0.45)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 12,
+  },
+  pausedHint: {
+    ...type.caption,
+    color: semantic.textSecondary,
+    marginTop: space.x1,
+  },
+  pillRow: {
+    flexDirection: "row",
+    gap: space.x3,
+  },
+  nowPlayingText: {
+    ...type.caption,
+    color: semantic.textSecondary,
+    marginBottom: space.x3,
+  },
+  pill: {
+    minHeight: 52,
+    borderRadius: radii.round,
+    paddingHorizontal: space.x6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: space.x2,
+    backgroundColor: "rgba(13,27,43,0.55)",
+    borderWidth: 1,
+    borderColor: semantic.borderSoft,
+  },
+  pillDisabled: {
+    opacity: 0.5,
+  },
+  pillText: {
+    ...type.bodyStrong,
+    color: semantic.textPrimary,
   },
   confirmTitle: {
     ...type.title3,
     color: semantic.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   confirmMessage: {
     ...type.body,
     color: semantic.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: space.x2,
   },
   confirmActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: space.x3,
     marginTop: space.x5,
     marginBottom: space.x2,
@@ -442,8 +628,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.control,
     borderWidth: 1,
     borderColor: semantic.borderStandard,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: space.x4,
   },
   confirmSecondaryText: {
@@ -455,8 +641,8 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderRadius: radii.control,
     backgroundColor: semantic.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: space.x5,
   },
   confirmDangerText: {

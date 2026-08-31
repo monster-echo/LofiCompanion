@@ -14,10 +14,13 @@ import type { StudySummary } from '../data/summarize';
 import type { createFocusRepository } from '../data/focusRepository';
 import type { createAchievementRepository } from '../../achievements/data/achievementRepository';
 import type { createSkinSelectionRepository } from '../../skins/data/skinSelectionRepository';
+import type { FocusMusicEffects } from '../../music/domain/musicController';
 import type {
   CompanionEventType,
+  CompanionState,
   SkinManifest,
 } from '../../skins/domain/types';
+import { DEFAULT_SKIN_MANIFEST } from '../../skins/domain/registry';
 import {
   advance,
   dispatch,
@@ -68,13 +71,18 @@ export interface FocusControllerDeps {
   repo: FocusRepository;
   achievementRepo: AchievementRepository;
   skinRepo: SkinSelectionRepository;
-  manifest: SkinManifest;
+  /** 内置皮肤注册表（[0] 为默认）；selectSkin/restore 只在其中解析 */
+  manifests: readonly SkinManifest[];
+  /** 动态清单源（P0-B：远端皮肤就位后的合并视图，含内置）；缺省用 manifests */
+  getManifests?: () => readonly SkinManifest[];
   /** 已授予成就（含授予时刻；与仓储解耦，测试可直接桩定） */
   loadGranted: () => Promise<readonly GrantRecord[]>;
   /** 已解锁房间收藏物；缺省视为空（兼容未接线的旧调用方） */
   loadRoomItems?: () => Promise<readonly RoomItemSnapshot[]>;
   /** 健康事件随机排程用；测试注入确定性序列（缺省 Math.random） */
   rng?: () => number;
+  /** 背景音乐效果（expo-audio 实现；缺省 no-op，测试可桩定录制调用） */
+  music?: FocusMusicEffects;
 }
 
 /** 完成页载荷：一次完成的会话 + 统计 + 本次新授予的成就 */
@@ -83,12 +91,6 @@ export interface CompletionView {
   todayMinutes: number;
   weekMinutes: number;
   grants: AchievementRuleKey[];
-}
-
-/** 单一活动横幅：eventType + 到期时刻（到期后由 tick/前台刷新清除） */
-export interface BannerView {
-  eventType: CompanionEventType;
-  endsAt: number;
 }
 
 /** 冷却提示：同类健康动作下次可用时刻 */
@@ -113,7 +115,6 @@ export interface FocusState {
   skin: SkinManifest;
   selectedSkinId: string;
   companion: CompanionRuntimeState;
-  banner: BannerView | null;
   cooldown: CooldownView | null;
   /** 下次自动喝水时刻（skin.yaml wellness.autoDrink 排程；无活动会话为 null） */
   nextAutoDrinkAt: number | null;
@@ -162,11 +163,28 @@ function noop(): void {
 }
 
 export function createFocusController(deps: FocusControllerDeps): FocusController {
-  const { repo, achievementRepo, skinRepo, manifest } = deps;
+  const { repo, achievementRepo, skinRepo, manifests } = deps;
 
-  /** 自动喝水排程：skin.yaml wellness.autoDrink 区间内随机取下个触发点。 */
-  function scheduleAutoDrink(now: number): number | null {
-    const auto = manifest.wellness?.autoDrink;
+  /** 生效清单：getManifests 注入时为内置+远端合并视图，否则仅静态内置 */
+  function registry(): readonly SkinManifest[] {
+    return deps.getManifests?.() ?? manifests;
+  }
+
+  /** 注册表内解析皮肤（先 id 后 slug）；未命中 undefined */
+  function resolveManifest(idOrSlug: string): SkinManifest | undefined {
+    const list = registry();
+    return (
+      list.find((skin) => skin.id === idOrSlug) ??
+      list.find((skin) => skin.slug === idOrSlug)
+    );
+  }
+
+  /** 当前生效清单：selectSkin/restore 切换后，所有域调用读这份可变引用 */
+  let currentManifest: SkinManifest = registry()[0] ?? DEFAULT_SKIN_MANIFEST;
+
+  /** 自动喝水排程：目标皮肤 wellness.autoDrink 区间内随机取下个触发点。 */
+  function scheduleAutoDrink(target: SkinManifest, now: number): number | null {
+    const auto = target.wellness?.autoDrink;
     if (!auto?.enabled) return null;
     const minMs = Math.max(0, auto.minIntervalMinutes) * 60_000;
     const maxMs = Math.max(minMs, auto.maxIntervalMinutes * 60_000);
@@ -175,8 +193,8 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
   }
 
   /** 自动喝水的最小间隔（resume 后钳制用）；未启用返回 null。 */
-  function minAutoDrinkDelayMs(): number | null {
-    const auto = manifest.wellness?.autoDrink;
+  function minAutoDrinkDelayMs(target: SkinManifest): number | null {
+    const auto = target.wellness?.autoDrink;
     if (!auto?.enabled) return null;
     return Math.max(0, auto.minIntervalMinutes) * 60_000;
   }
@@ -190,10 +208,9 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     history: [],
     granted: [],
     roomItems: [],
-    skin: manifest,
-    selectedSkinId: manifest.id,
-    companion: initialState(manifest.defaultState),
-    banner: null,
+    skin: currentManifest,
+    selectedSkinId: currentManifest.id,
+    companion: initialState(currentManifest.defaultState),
     cooldown: null,
     nextAutoDrinkAt: null,
     reducedMotion: false,
@@ -229,40 +246,29 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     return operation;
   }
 
-  /** 执行效果：横幅取同批 autoReturn 的时长；冷却提示转成 until 时刻。
-   *  swapPoster/autoReturn 无需存储——companion 状态本身已编码，UI 直接读。 */
+  /** 执行效果：冷却提示转成 until 时刻。swapPoster/autoReturn 无需存储——
+   *  companion 状态本身已编码，UI 直接读（画面即提醒，不再有文字横幅）。 */
   function transientsFrom(
     effects: readonly CompanionEffect[],
     now: number,
   ): Partial<FocusState> {
-    let banner = state.banner;
     let cooldown = state.cooldown;
     for (const effect of effects) {
-      if (effect.kind === 'showBanner') {
-        // 单一活动横幅：每次 showBanner 直接取代上一条（expiry 由 afterMs 决定）
-        const autoReturn = effects.find(
-          (item): item is Extract<CompanionEffect, { kind: 'autoReturn' }> =>
-            item.kind === 'autoReturn',
-        );
-        banner = {
-          eventType: effect.eventType,
-          endsAt: now + (autoReturn?.afterMs ?? 0),
-        };
-      } else if (effect.kind === 'cooldownNotice') {
+      if (effect.kind === 'cooldownNotice') {
         cooldown = {
           eventType: effect.eventType,
           until: now + effect.remainingSeconds * 1000,
         };
       }
     }
-    return { banner, cooldown };
+    return { cooldown };
   }
 
   /** 派发陪伴事件（reducedMotion 显式传入，绝不依赖默认值）。 */
   function dispatchCompanion(eventType: CompanionEventType, now: number): void {
     const { next, effects } = dispatch(state.companion, eventType, {
       now,
-      manifest,
+      manifest: currentManifest,
       reducedMotion: state.reducedMotion,
     });
     commit({ companion: next, ...transientsFrom(effects, now) });
@@ -270,7 +276,6 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
 
   function expireTransients(now: number): Partial<FocusState> {
     const patch: Partial<FocusState> = {};
-    if (state.banner && now >= state.banner.endsAt) patch.banner = null;
     if (state.cooldown && now >= state.cooldown.until) patch.cooldown = null;
     return patch;
   }
@@ -343,6 +348,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     if (derived && derived.status === 'completed') {
       // 强杀期间越过计划终点：完成时刻取推导值（误差 ≤1s），绝不写 now
       commit({ companion: initialState('completed') });
+      deps.music?.sessionEnded(); // 后台期间原生层还在播：返回前台即停
       settleCompletion(derived, now);
       return;
     }
@@ -361,7 +367,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       activeSession: null,
       remainingSeconds: 0,
       effectiveSeconds: 0,
-      ...(mount ? { companion: initialState(manifest.defaultState) } : {}),
+      ...(mount ? { companion: initialState(currentManifest.defaultState) } : {}),
     });
   }
 
@@ -377,10 +383,15 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     grantedKeys = new Set(grantedList.map((grant) => grant.ruleKey));
     grantedRecords = grantedList;
     roomItemSnapshots = storedRoomItems;
+    // 存量选择 → 注册表解析；未知 id（过期/损坏数据）落回默认皮肤
+    currentManifest =
+      (selected ? resolveManifest(selected.skinId) : undefined) ??
+      registry()[0] ??
+      DEFAULT_SKIN_MANIFEST;
     commit({
       hydrated: true,
-      skin: manifest,
-      selectedSkinId: selected?.skinId ?? manifest.id,
+      skin: currentManifest,
+      selectedSkinId: currentManifest.id,
       summary: summarize(history, now),
       history,
       granted: grantedRecords,
@@ -429,9 +440,10 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       activeSession: doc,
       remainingSeconds: input.plannedSeconds,
       effectiveSeconds: 0,
-      nextAutoDrinkAt: scheduleAutoDrink(now),
+      nextAutoDrinkAt: scheduleAutoDrink(currentManifest, now),
     });
     dispatchCompanion('focus.started', now);
+    deps.music?.sessionStarted();
     void track(repo.saveActive(doc)).catch(noop);
     return { ok: true };
   }
@@ -443,6 +455,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     if (paused === doc) return; // 幂等：已暂停/已结束
     commit({ activeSession: paused });
     dispatchCompanion('focus.paused', now);
+    deps.music?.paused();
     void track(repo.saveActive(paused)).catch(noop);
   }
 
@@ -452,13 +465,14 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     const resumed = resumeSession(doc, now);
     if (resumed === doc) return;
     // 暂停期间不消耗喝水排程：恢复后至少再等一个最小间隔
-    const minDelay = minAutoDrinkDelayMs();
+    const minDelay = minAutoDrinkDelayMs(currentManifest);
     const nextAutoDrinkAt =
       minDelay !== null && state.nextAutoDrinkAt !== null
         ? Math.max(state.nextAutoDrinkAt, now + minDelay)
         : state.nextAutoDrinkAt;
     commit({ activeSession: resumed, nextAutoDrinkAt });
     dispatchCompanion('focus.resumed', now);
+    deps.music?.resumed();
     void track(repo.saveActive(resumed)).catch(noop);
   }
 
@@ -468,6 +482,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     const completed = completeSession(doc, now);
     if (completed === doc) return;
     dispatchCompanion('focus.completed', now);
+    deps.music?.sessionEnded();
     settleCompletion(completed, now);
   }
 
@@ -485,19 +500,35 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       effectiveSeconds: effectiveSeconds(abandoned, now),
       summary: summarize(history, now),
       history,
-      banner: null,
       nextAutoDrinkAt: null,
-      companion: initialState(manifest.defaultState),
+      companion: initialState(currentManifest.defaultState),
     });
+    deps.music?.sessionEnded();
     void track(repo.appendHistory(abandoned)).catch(noop);
     void track(repo.clearActive()).catch(noop);
   }
 
   function selectSkin(skinId: string): void {
-    // P0-A 仅内置雨夜书房：未知 id 直接忽略（防止选中无清单的皮肤）
-    if (skinId !== manifest.id) return;
-    commit({ selectedSkinId: skinId, skin: manifest });
-    void track(skinRepo.select(skinId, Date.now())).catch(noop);
+    // 注册表未命中的 id 直接忽略（防止选中无清单的皮肤）
+    const target = resolveManifest(skinId);
+    if (!target) return;
+    // 同名状态原样带过（focusing 切肤仍是 focusing）；新清单缺该态则回其默认基态
+    const mappedState: CompanionState = target.states.some(
+      (asset) => asset.state === state.companion.state,
+    )
+      ? state.companion.state
+      : target.defaultState;
+    currentManifest = target;
+    commit({
+      selectedSkinId: target.id,
+      skin: target,
+      companion: initialState(mappedState),
+      // 计时中切肤：按新主题排程重排（autoDrink 关闭则为 null）
+      nextAutoDrinkAt: state.activeSession
+        ? scheduleAutoDrink(target, Date.now())
+        : null,
+    });
+    void track(skinRepo.select(target.id, Date.now())).catch(noop);
   }
 
   function tick(now: number): void {
@@ -514,17 +545,15 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       now >= state.nextAutoDrinkAt
     ) {
       dispatchCompanion('wellness.drink', now);
-      patch.nextAutoDrinkAt = scheduleAutoDrink(now);
+      patch.nextAutoDrinkAt = scheduleAutoDrink(currentManifest, now);
     }
     if (state.companion.playing) {
       // advance 未到点为空操作（同引用）；到点弹出队列/回归并产出效果
-      const { next, effects } = advance(state.companion, now, manifest, state.reducedMotion);
+      const { next, effects } = advance(state.companion, now, currentManifest, state.reducedMotion);
       patch = { ...patch, companion: next, ...transientsFrom(effects, now) };
     }
-    // 到期清理最后执行，以 patch 里的最新值为准（横幅可能刚被 showBanner 取代）
-    const banner = patch.banner !== undefined ? patch.banner : state.banner;
+    // 到期清理最后执行，以 patch 里的最新值为准
     const cooldown = patch.cooldown !== undefined ? patch.cooldown : state.cooldown;
-    if (banner && now >= banner.endsAt) patch.banner = null;
     if (cooldown && now >= cooldown.until) patch.cooldown = null;
     commit(patch);
   }
