@@ -21,13 +21,18 @@ export function getAppId(): string {
   return value;
 }
 
-/** auth 内部接口共享密钥（x-internal-key）：biz 查询用户资料用；两侧 env 对齐。
- *  运行时必填，缺失时在首次使用处抛出。 */
-export function getInternalApiKey(): string {
-  const value = process.env.INTERNAL_API_KEY?.trim();
-  if (!value) {
-    throw new Error('环境变量 INTERNAL_API_KEY 未配置：请设置为与 auth 侧对齐的内部共享密钥。');
-  }
+// 服务间 client credentials（RFC 6749 §4.4）：biz 以此换取短期服务 token
+// （POST {AUTH_BASE_URL}/api/v1/internal/token），不再上线长期共享密钥。
+// 运行时必填，缺失时在首次使用处抛出。
+export function getInternalClientId(): string {
+  const value = process.env.INTERNAL_CLIENT_ID?.trim();
+  if (!value) throw new Error('环境变量 INTERNAL_CLIENT_ID 未配置。');
+  return value;
+}
+
+export function getInternalClientSecret(): string {
+  const value = process.env.INTERNAL_CLIENT_SECRET?.trim();
+  if (!value) throw new Error('环境变量 INTERNAL_CLIENT_SECRET 未配置。');
   return value;
 }
 

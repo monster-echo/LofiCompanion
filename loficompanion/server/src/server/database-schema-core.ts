@@ -106,5 +106,17 @@ export async function initializeCoreSchema(database: PostgresDatabase) {
       ON refresh_tokens(session_id);
     CREATE INDEX IF NOT EXISTS idx_email_verify_lookup
       ON email_verifications(app_id, email, created_at);
+
+    -- 服务间 client credentials（RFC 6749 §4.4）：biz-server 等 app 业务服务
+    -- 以 client_id/client_secret 换短期服务 token（RS256，typ=service）。
+    -- secret 只存 sha256（高熵随机串，快哈希可接受）；scopes 空格分隔。
+    CREATE TABLE IF NOT EXISTS service_clients (
+      client_id TEXT PRIMARY KEY,
+      secret_hash TEXT NOT NULL,
+      scopes TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+      created_at TEXT NOT NULL,
+      last_used_at TEXT
+    );
   `);
 }

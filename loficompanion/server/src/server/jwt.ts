@@ -44,14 +44,14 @@ function loadPrivateKeyPem(): string {
   );
 }
 
-async function getPrivateKey(): Promise<CryptoKey> {
+export async function getPrivateKey(): Promise<CryptoKey> {
   if (privateKeyCache) return privateKeyCache;
   const keyObject = createPrivateKey(loadPrivateKeyPem());
   privateKeyCache = await importPKCS8(keyObject.export({ type: 'pkcs8', format: 'pem' }).toString(), JWT_ALG);
   return privateKeyCache;
 }
 
-async function getPublicKey(): Promise<CryptoKey> {
+export async function getPublicKey(): Promise<CryptoKey> {
   if (publicKeyCache) return publicKeyCache;
   const keyObject = createPrivateKey(loadPrivateKeyPem());
   const publicKeyObject = createPublicKey(keyObject);
