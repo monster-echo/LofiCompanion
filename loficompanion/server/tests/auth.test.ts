@@ -83,6 +83,15 @@ test('sign-up schema requires consent version and a minimum password length', ()
   }).success, false);
 });
 
+test('测试账号播种开关：生产永不播种，非生产默认开、MOBILEUI_SEED_TEST_ACCOUNT=0 显式关', async () => {
+  const { shouldSeedTestAccount } = await import('../src/server/database.ts');
+  assert.equal(shouldSeedTestAccount('production', undefined), false);
+  assert.equal(shouldSeedTestAccount('production', '1'), false);
+  assert.equal(shouldSeedTestAccount('development', undefined), true);
+  assert.equal(shouldSeedTestAccount(undefined, undefined), true);
+  assert.equal(shouldSeedTestAccount('development', '0'), false);
+});
+
 test('development test account signs in with email, username, or phone', async () => {
   for (const identifier of ['test@test.local', 'test', '+8613800000000']) {
     const result = await signIn({
