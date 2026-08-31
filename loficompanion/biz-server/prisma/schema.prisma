@@ -1,7 +1,8 @@
 // Lofi Companion 业务 schema（对齐 server/src/server/database-schema-lofi.ts 的迁移口径）。
 // 约定：userId 为对基础设施用户的逻辑外键（auth.zhongbei.tech JWT sub），不建关系；
-// 时间戳沿用 ISO 字符串（与服务端既有代码逐字段对齐，端点可近乎原样搬迁）；
-// JSON 沿用 TEXT 存储（pauses/rankings/manifest）。CHECK 约束由路由层 zod 承担。
+// 字段名直接用 snake_case——与服务端既有代码/客户端线格式逐字段一致，搬迁零映射层；
+// 时间戳沿用 ISO 字符串；JSON 沿用 TEXT 存储（pauses/rankings/manifest）；
+// CHECK 约束由路由层校验承担。
 
 generator client {
   provider = "prisma-client-js"
@@ -15,36 +16,36 @@ datasource db {
 // ── 专注会话云同步（docs/04 §1）──────────────────────────────────────────
 
 model FocusSession {
-  id               String  @id @map("id")
-  userId           String  @map("user_id")
-  installationId   String? @map("installation_id")
-  activity         String  @map("activity")
-  plannedSeconds   Int     @map("planned_seconds")
-  status           String  @map("status")
-  startedAt        String  @map("started_at")
-  endedAt          String? @map("ended_at")
-  effectiveSeconds Int     @default(0) @map("effective_seconds")
-  pauses           String  @default("[]") @map("pauses")
-  clientRequestId  String  @map("client_request_id")
-  ruleVersion      Int     @default(1) @map("rule_version")
-  createdAt        String  @map("created_at")
-  updatedAt        String  @map("updated_at")
+  id               String  @id
+  user_id          String  @map("user_id")
+  installation_id  String? @map("installation_id")
+  activity         String
+  planned_seconds  Int     @map("planned_seconds")
+  status           String
+  started_at       String  @map("started_at")
+  ended_at         String? @map("ended_at")
+  effective_seconds Int    @default(0) @map("effective_seconds")
+  pauses           String  @default("[]")
+  client_request_id String @map("client_request_id")
+  rule_version     Int     @default(1) @map("rule_version")
+  created_at       String  @map("created_at")
+  updated_at       String  @map("updated_at")
 
-  @@unique([userId, clientRequestId])
-  @@index([userId, startedAt])
+  @@unique([user_id, client_request_id])
+  @@index([user_id, started_at])
   @@map("focus_sessions")
 }
 
 // 通用变更幂等层：完成/迁移等 mutation 以 (key, user_id, endpoint) 去重
 model IdempotencyKey {
-  key          String @map("key")
-  userId       String @map("user_id")
-  endpoint     String @map("endpoint")
-  responseBody String @map("response_body")
-  statusCode   Int    @map("status_code")
-  createdAt    String @map("created_at")
+  key           String @map("key")
+  user_id       String @map("user_id")
+  endpoint      String @map("endpoint")
+  response_body String @map("response_body")
+  status_code   Int    @map("status_code")
+  created_at    String @map("created_at")
 
-  @@id([key, userId, endpoint])
+  @@id([key, user_id, endpoint])
   @@map("idempotency_keys")
 }
 
@@ -52,81 +53,81 @@ model IdempotencyKey {
 
 // 同一成就同一规则版本只发放一次
 model AchievementGrant {
-  id              String  @id @map("id")
-  userId          String  @map("user_id")
-  ruleKey         String  @map("rule_key")
-  ruleVersion     Int     @default(1) @map("rule_version")
-  sourceSessionId String? @map("source_session_id")
-  grantedAt       String  @map("granted_at")
+  id                String  @id
+  user_id           String  @map("user_id")
+  rule_key          String  @map("rule_key")
+  rule_version      Int     @default(1) @map("rule_version")
+  source_session_id String? @map("source_session_id")
+  granted_at        String  @map("granted_at")
 
-  @@unique([userId, ruleKey, ruleVersion])
+  @@unique([user_id, rule_key, rule_version])
   @@map("achievement_grants")
 }
 
 // 收藏物目录（种子：书签/台灯/绿植/合影/周目标合影）
 model RoomItem {
-  id            String @id @map("id")
-  itemId        String @unique @map("item_id")
-  name          String @map("name")
-  sourceRuleKey String @map("source_rule_key")
+  id            String @id
+  item_id       String @unique @map("item_id")
+  name          String
+  source_rule_key String @map("source_rule_key")
 
   @@map("room_items")
 }
 
 model UserRoomItem {
-  userId        String  @map("user_id")
-  roomItemId    String  @map("room_item_id")
-  sourceGrantId String? @map("source_grant_id")
-  unlockedAt    String  @map("unlocked_at")
+  user_id        String  @map("user_id")
+  room_item_id   String  @map("room_item_id")
+  source_grant_id String? @map("source_grant_id")
+  unlocked_at    String  @map("unlocked_at")
 
-  @@unique([userId, roomItemId])
+  @@unique([user_id, room_item_id])
   @@map("user_room_items")
 }
 
-// ── 好友与学习小组（docs/06 P0-C）────────────────────────────────────────
+// ── 好友与学习小组（docs/06 P0-C，端点 P3b 搬迁）──────────────────────────
 
 // 好友邀请码：每人一个有效码；8 位可读码全局唯一
 model FriendInvitation {
-  id        String @id @map("id")
-  userId    String @unique @map("user_id")
-  code      String @unique @map("code")
-  createdAt String @map("created_at")
+  id        String @id
+  user_id   String @unique @map("user_id")
+  code      String @unique
+  created_at String @map("created_at")
 
   @@map("friend_invitations")
 }
 
 // 好友关系双向两行（A→B 与 B→A 同事务写入）
 model Friendship {
-  id        String @id @map("id")
-  userId    String @map("user_id")
-  friendId  String @map("friend_id")
-  createdAt String @map("created_at")
+  id         String @id
+  user_id    String @map("user_id")
+  friend_id  String @map("friend_id")
+  created_at String @map("created_at")
 
-  @@unique([userId, friendId])
-  @@index([friendId])
+  @@unique([user_id, friend_id])
+  @@index([friend_id])
   @@map("friendships")
 }
 
 // 私密自习小组：加入码制，共同目标 = 周目标分钟
 model StudyGroup {
-  id                String @id @map("id")
-  name              String @map("name")
-  ownerUserId       String @map("owner_user_id")
-  joinCode          String @unique @map("join_code")
-  weeklyGoalMinutes Int    @default(600) @map("weekly_goal_minutes")
-  createdAt         String @map("created_at")
+  id                  String @id
+  name                String
+  owner_user_id       String @map("owner_user_id")
+  join_code           String @unique @map("join_code")
+  weekly_goal_minutes Int    @default(600) @map("weekly_goal_minutes")
+  created_at          String @map("created_at")
 
   @@map("study_groups")
 }
 
 model GroupMember {
-  groupId  String @map("group_id")
-  userId   String @map("user_id")
-  role     String @default("member") @map("role")
-  joinedAt String @map("joined_at")
+  group_id  String @map("group_id")
+  user_id   String @map("user_id")
+  role      String @default("member")
+  joined_at String @map("joined_at")
 
-  @@unique([groupId, userId])
-  @@index([userId])
+  @@unique([group_id, user_id])
+  @@index([user_id])
   @@map("group_members")
 }
 
@@ -134,39 +135,39 @@ model GroupMember {
 
 // 分账本：从 focus_sessions 派生（rule_version=2 含每日 180 分钟上限），原子 upsert
 model LeaderboardScore {
-  userId           String @map("user_id")
-  scopeType        String @map("scope_type")
-  scopeId          String @map("scope_id")
-  weekId           String @map("week_id")
-  effectiveSeconds Int    @default(0) @map("effective_seconds")
-  sessionCount     Int    @default(0) @map("session_count")
-  ruleVersion      Int    @default(2) @map("rule_version")
-  updatedAt        String @map("updated_at")
+  user_id           String @map("user_id")
+  scope_type        String @map("scope_type")
+  scope_id          String @map("scope_id")
+  week_id           String @map("week_id")
+  effective_seconds Int    @default(0) @map("effective_seconds")
+  session_count     Int    @default(0) @map("session_count")
+  rule_version      Int    @default(2) @map("rule_version")
+  updated_at        String @map("updated_at")
 
-  @@id([userId, scopeType, scopeId, weekId, ruleVersion])
+  @@id([user_id, scope_type, scope_id, week_id, rule_version])
   @@map("leaderboard_scores")
 }
 
 // 周快照不可变（周末后惰性结算写入；rankings JSON 只含昵称/头像/分钟/名次）
 model LeaderboardSnapshot {
-  id          String @id @map("id")
-  scopeType   String @map("scope_type")
-  scopeId     String @map("scope_id")
-  weekId      String @map("week_id")
-  rankings    String @map("rankings")
-  settledAt   String @map("settled_at")
-  ruleVersion Int    @default(2) @map("rule_version")
+  id           String @id
+  scope_type   String @map("scope_type")
+  scope_id     String @map("scope_id")
+  week_id      String @map("week_id")
+  rankings     String
+  settled_at   String @map("settled_at")
+  rule_version Int    @default(2) @map("rule_version")
 
-  @@unique([scopeType, scopeId, weekId, ruleVersion])
+  @@unique([scope_type, scope_id, week_id, rule_version])
   @@map("leaderboard_snapshots")
 }
 
 // 榜单隐私：public_display=0 隐藏昵称仍参与排名；opted_out=1 从榜单消失
 model LeaderboardSettings {
-  userId        String @id @map("user_id")
-  publicDisplay Int    @default(1) @map("public_display")
-  optedOut      Int    @default(0) @map("opted_out")
-  updatedAt     String @map("updated_at")
+  user_id        String @id @map("user_id")
+  public_display Int    @default(1) @map("public_display")
+  opted_out      Int    @default(0) @map("opted_out")
+  updated_at     String @map("updated_at")
 
   @@map("leaderboard_settings")
 }
@@ -174,14 +175,14 @@ model LeaderboardSettings {
 // ── 皮肤目录与版本化 manifest（发布通道数据；商品/订单留在 auth）──────────
 
 model Skin {
-  id               String  @id @map("id")
-  slug             String  @unique @map("slug")
-  name             String  @map("name")
-  accessType       String  @default("free") @map("access_type")
-  manifestVersion  Int     @default(1) @map("manifest_version")
-  moderationStatus String  @default("approved") @map("moderation_status")
-  publishedAt      String? @map("published_at")
-  createdAt        String  @map("created_at")
+  id               String  @id
+  slug             String  @unique
+  name             String
+  access_type      String  @default("free") @map("access_type")
+  manifest_version Int     @default(1) @map("manifest_version")
+  moderation_status String @default("approved") @map("moderation_status")
+  published_at     String? @map("published_at")
+  created_at       String  @map("created_at")
 
   manifests SkinManifest[]
 
@@ -190,14 +191,14 @@ model Skin {
 
 // manifest 版本只增不改：同一 (skin_id, version) 不可覆盖
 model SkinManifest {
-  id        String @id @map("id")
-  skinId    String @map("skin_id")
-  version   Int    @map("version")
-  manifest  String @map("manifest")
-  createdAt String @map("created_at")
+  id         String @id
+  skin_id    String @map("skin_id")
+  version    Int
+  manifest   String
+  created_at String @map("created_at")
 
-  skin Skin @relation(fields: [skinId], references: [id])
+  skin Skin @relation(fields: [skin_id], references: [id])
 
-  @@unique([skinId, version])
+  @@unique([skin_id, version])
   @@map("skin_manifests")
 }

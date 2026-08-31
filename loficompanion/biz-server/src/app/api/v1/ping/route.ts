@@ -17,12 +17,12 @@ export async function GET(request: NextRequest) {
       { status: 401 },
     );
   }
-  const notes = await getDb().note.count({ where: { userId: identity.userId } });
+  const sessions = await getDb().focusSession.count({ where: { user_id: identity.userId } });
   const response = NextResponse.json({
     pong: true,
     userId: identity.userId,
     appId: identity.appId,
-    notes,
+    sessions,
   });
   telemetry.log({
     route: '/api/v1/ping',

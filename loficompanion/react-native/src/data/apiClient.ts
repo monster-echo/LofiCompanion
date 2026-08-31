@@ -30,6 +30,11 @@ type ErrorPayload = Readonly<{
 }>;
 type ErrorEnvelope = Readonly<{ error: ErrorPayload }>;
 
+// 业务后端（biz-server）独立部署；未配置时回落 auth base（本地 dev 常用同机部署）
+function getBizApiBase() {
+  return process.env.EXPO_PUBLIC_BIZ_API_URL?.trim() || getApiBase();
+}
+
 function getApiBase() {
   return process.env.EXPO_PUBLIC_API_URL
     ?? (getPlatformHeader() === 'android' ? 'http://10.0.2.2:3210' : 'http://localhost:3210');
@@ -359,7 +364,7 @@ export const apiClient = {
     clientRequestId: string;
     startedAt: number;
     installationId?: string;
-  }) => request<FocusSessionRemote>('/api/v1/focus/sessions', {
+  }) => requestBiz<FocusSessionRemote>('/api/v1/focus/sessions', {
     ...jsonOptions('POST', input),
     headers: { ...clientHeaders(), 'Content-Type': 'application/json' },
   }),
@@ -371,7 +376,7 @@ export const apiClient = {
       outcome: 'completed' | 'abandoned';
     },
     idempotencyKey: string,
-  ) => request<FocusCompleteRemote>(
+  ) => requestBiz<FocusCompleteRemote>(
     `/api/v1/focus/sessions/${id}/complete`,
     {
       ...jsonOptions('POST', body),
@@ -383,7 +388,7 @@ export const apiClient = {
     },
   ),
   migrateGuestSessions: (sessions: ReadonlyArray<Record<string, unknown>>) =>
-    request<{ migrated: number; skipped: number; grants: readonly string[] }>(
+    requestBiz<{ migrated: number; skipped: number; grants: readonly string[] }>(
       '/api/v1/sync/migrate',
       jsonOptions('POST', { sessions }),
     ),
@@ -531,10 +536,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return sendRequest<T>(path, options, false);
 }
 
+// 业务域请求：走 biz-server（鉴权/信封/刷新流程与 auth 完全同构）
+async function requestBiz<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return sendRequest<T>(path, options, false, getBizApiBase());
+}
+
 async function sendRequest<T>(
   path: string,
   options: RequestInit,
   retried: boolean,
+  base: string = getApiBase(),
 ): Promise<T> {
   const [token, installationId] = await Promise.all([
     sessionTokenReader(),
@@ -542,7 +553,7 @@ async function sendRequest<T>(
   ]);
   let response: Response;
   try {
-    response = await fetch(`${getApiBase()}${path}`, {
+    response = await fetch(`${base}${path}`, {
       ...options,
       headers: {
         ...clientHeaders(),
