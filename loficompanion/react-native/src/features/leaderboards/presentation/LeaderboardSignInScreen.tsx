@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppIcon, IconName } from '../../../design-system/AppIcon';
-import { PrimaryTabs } from '../../../navigation/PrimaryTabs';
 import { useApp } from '../../../state/AppStore';
 import { colors, radii, semantic, space, type } from '../../../theme/tokens';
 import { LEADERBOARD_STRINGS as STR } from './strings';
@@ -52,7 +51,6 @@ export function LeaderboardSignInScreen() {
         <Text style={styles.upcoming}>{STR.p0bNote}</Text>
       </View>
 
-      <PrimaryTabs active="leaderboard" />
     </View>
   );
 }

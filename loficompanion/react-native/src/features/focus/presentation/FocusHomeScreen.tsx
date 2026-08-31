@@ -5,7 +5,6 @@ import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSu
 import { AppIcon } from '../../../design-system/AppIcon';
 import type { IconName } from '../../../design-system/AppIcon';
 import { formatTimerSeconds } from '../../../design-system/FocusTimerRing';
-import { PrimaryTabs } from '../../../navigation/PrimaryTabs';
 import { useApp } from '../../../state/AppStore';
 import { useFocus } from '../application/FocusStore';
 import { DEFAULT_ACTIVITY, DEFAULT_DURATION } from '../domain/validate';
@@ -109,7 +108,6 @@ export function FocusHomeScreen() {
           </View>
         </View>
       </View>
-      <PrimaryTabs active="home" />
     </View>
   );
 }

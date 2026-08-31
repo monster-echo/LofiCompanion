@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AchievementTile } from '../../../design-system/AchievementTile';
 import { AppIcon, IconName } from '../../../design-system/AppIcon';
-import { PrimaryTabs } from '../../../navigation/PrimaryTabs';
 import { useApp } from '../../../state/AppStore';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import type { SkinManifest } from '../../skins/domain/types';
@@ -111,7 +110,6 @@ export function AchievementsScreen() {
         )}
       </ScrollView>
 
-      <PrimaryTabs active="achievements" />
     </View>
   );
 }

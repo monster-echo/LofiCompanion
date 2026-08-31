@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon, IconName } from '../design-system/AppIcon';
-import { PrimaryTabs } from '../navigation/PrimaryTabs';
 import { AppCard, IconButton, OfflineBanner } from '../design-system/components';
 import { AppRoute } from '../navigation/routes';
 import { useApp } from '../state/AppStore';
@@ -75,7 +74,6 @@ export function HomeScreen() {
           </Pressable>
         </AppCard>
       </ScrollView>
-      <PrimaryTabs active="home" />
     </View>
   );
 }

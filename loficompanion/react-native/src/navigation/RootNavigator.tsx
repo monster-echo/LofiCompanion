@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRoute } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootParamList } from './navigationRef';
 
@@ -27,6 +28,9 @@ import { SupportHomeScreen, TicketDetailScreen } from '../screens/SupportScreens
 import { NewTicketScreen, ProductFeedbackScreen } from '../screens/SupportFormScreens';
 import { PermissionsScreen, StorageScreen, TextSizeScreen } from '../screens/SettingsUtilityScreens';
 import { useApp } from '../state/AppStore';
+import { usePreferences } from '../preferences/PreferencesProvider';
+import { AppIcon, IconName } from '../design-system/AppIcon';
+import { semantic } from '../theme/tokens';
 import { FocusHomeScreen } from '../features/focus/presentation/FocusHomeScreen';
 import { FocusSetupSheet } from '../features/focus/presentation/FocusSetupSheet';
 import { FocusActiveScreen } from '../features/focus/presentation/FocusActiveScreen';
@@ -44,6 +48,81 @@ import { LeaderboardRulesScreen } from '../features/leaderboards/presentation/Le
 import { WeeklySettlementScreen } from '../features/leaderboards/presentation/WeeklySettlementScreen';
 
 const Stack = createNativeStackNavigator<RootParamList>();
+
+// 四个主 Tab 的参数均为 undefined，直接复用根参数表子集。
+type RootTabList = Pick<
+  RootParamList,
+  'home' | 'achievements.home' | 'leaderboard.home' | 'profile.home'
+>;
+
+const Tab = createBottomTabNavigator<RootTabList>();
+
+type TabDef = Readonly<{
+  name: keyof RootTabList;
+  icon: IconName;
+  zh: string;
+  en: string;
+}>;
+
+// doc-08 §1：四个 Tab 根页——专注 / 成就 / 排行 / 我的
+const TABS: readonly TabDef[] = [
+  { name: 'home', icon: 'droplet', zh: '专注', en: 'Focus' },
+  { name: 'achievements.home', icon: 'bookmark', zh: '成就', en: 'Achievements' },
+  { name: 'leaderboard.home', icon: 'group', zh: '排行', en: 'Ranks' },
+  { name: 'profile.home', icon: 'user', zh: '我的', en: 'Me' },
+];
+
+/**
+ * 底部 Tab 容器（@react-navigation/bottom-tabs）。Tab 屏懒挂载、访问后保活，
+ * 切换不再整页重建（issue #1/#9）。样式按 doc-07 夜色：surface 底 +
+ * borderSoft 上边框，active actionPrimary / inactive textMuted；
+ * 底部安全区由 App 外层 SafeArea 承担，Tab bar 高 64（doc-07 §7.3）。
+ */
+function MainTabs() {
+  const { locale } = usePreferences();
+  return (
+    <Tab.Navigator
+      initialRouteName="home"
+      safeAreaInsets={{ bottom: 0 }}
+      screenOptions={{
+        headerShown: false,
+        lazy: true,
+        tabBarActiveTintColor: semantic.actionPrimary,
+        tabBarInactiveTintColor: semantic.textMuted,
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+        tabBarStyle: {
+          backgroundColor: semantic.surface,
+          borderTopColor: semantic.borderSoft,
+          borderTopWidth: 1,
+          height: 64,
+        },
+        sceneStyle: { backgroundColor: semantic.canvas },
+      }}
+    >
+      {TABS.map((tab) => (
+        <Tab.Screen
+          key={tab.name}
+          name={tab.name}
+          component={TAB_COMPONENTS[tab.name]}
+          options={{
+            tabBarLabel: locale === 'en-US' ? tab.en : tab.zh,
+            tabBarAccessibilityLabel: tab.zh,
+            tabBarIcon: ({ color }) => (
+              <AppIcon name={tab.icon} color={color} size={22} />
+            ),
+          }}
+        />
+      ))}
+    </Tab.Navigator>
+  );
+}
+
+const TAB_COMPONENTS: Readonly<Record<keyof RootTabList, React.ComponentType>> = {
+  home: FocusHomeScreen,
+  'achievements.home': AchievementsScreen,
+  'leaderboard.home': LeaderboardRoute,
+  'profile.home': ProfileScreen,
+};
 
 const AUTH_MODES: Record<string, AuthMode> = {
   'auth.signIn': 'signIn',
@@ -85,7 +164,8 @@ function LeaderboardRoute() {
 
 // The native stack keeps source screens mounted on push, so going back from a
 // detail page does not rebuild the list (issue #2). Header is hidden — each
-// screen renders its own AppHeader.
+// screen renders its own AppHeader. 四个主 Tab 挂在 main.tabs 屏内
+// （MainTabs / bottom-tabs），其余路由均为 push 页面。
 export function RootNavigator() {
   return (
     <Stack.Navigator
@@ -95,8 +175,10 @@ export function RootNavigator() {
       <Stack.Screen name="launch.splash" component={SplashScreen} />
       <Stack.Screen name="launch.onboarding" component={OnboardingScreen} />
 
-      {/* 专注 Tab 根页 + 核心闭环（doc-08 §1 路由表） */}
-      <Stack.Screen name="home" component={FocusHomeScreen} />
+      {/* 四个底部 Tab（doc-08 §1 路由表）：专注 / 成就 / 排行 / 我的 */}
+      <Stack.Screen name="main.tabs" component={MainTabs} />
+
+      {/* 专注闭环 push 页（doc-08 §1 路由表） */}
       <Stack.Screen name="skins.gallery" component={SkinGalleryScreen} />
       {/* 皮肤商店与详情购买（doc-08 §15/§16，P1-A）：未登录可浏览，
           购买时在详情页内引导登录，不走受保护路由 */}
@@ -126,12 +208,10 @@ export function RootNavigator() {
         options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
       />
 
-      {/* 成就 Tab 根页 + 记录/房间 push 页（doc-08 §8–§10）+ 排行 Tab 根页与
-          规则隐私/小组/周结算 push 页（doc-08 §11–§14，P0-C） */}
-      <Stack.Screen name="achievements.home" component={AchievementsScreen} />
+      {/* 记录/房间 push 页（doc-08 §8–§10）+ 规则隐私/小组/周结算 push 页
+          （doc-08 §11–§14，P0-C） */}
       <Stack.Screen name="history.week" component={HistoryScreen} />
       <Stack.Screen name="room.home" component={RoomScreen} />
-      <Stack.Screen name="leaderboard.home" component={LeaderboardRoute} />
       <Stack.Screen name="leaderboard.rules" component={LeaderboardRulesScreen} />
       <Stack.Screen name="groups.detail" component={GroupDetailScreen} />
       <Stack.Screen name="weekly.settlement" component={WeeklySettlementScreen} />
@@ -143,7 +223,6 @@ export function RootNavigator() {
       <Stack.Screen name="auth.verifyEmail" component={AuthRoute} />
       <Stack.Screen name="auth.resetPassword" component={AuthRoute} />
 
-      <Stack.Screen name="profile.home" component={ProfileScreen} />
       <Stack.Screen name="profile.edit" component={EditProfileScreen} />
       <Stack.Screen name="profile.statistics" component={StatisticsScreen} />
       <Stack.Screen name="profile.invite" component={InviteScreen} />

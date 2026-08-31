@@ -23,7 +23,9 @@ import {
   Credentials, SocialCredentials, useAccountActions,
 } from './useAccountActions';
 import { ConfirmState, ToastState, useFeedbackState } from './useAppShellState';
-import { navigationRef, navigateRoute, type RootParamList } from '../navigation/navigationRef';
+import {
+  navigationRef, navigateRoute, resetToRoutes, type RootParamList,
+} from '../navigation/navigationRef';
 type ToastTone = 'success' | 'info' | 'error';
 export type { ToastState } from './useAppShellState';
 
@@ -110,6 +112,13 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   // 最近一次请求失败的错误信息（认证失败内联显示在表单，见 issue #12）。
   const [lastAuthError, setLastAuthError] = useState<string | null>(null);
   const clearAuthError = useCallback(() => setLastAuthError(null), []);
+  // 导航状态版本号：route/canGoBack 直接读取 navigationRef（不自维护历史栈），
+  // 每次导航状态变化（push/pop/Tab 切换/reset）递增以触发上下文重算，
+  // PageHeader 的返回按钮因此能随真实栈状态出现/隐藏（issue #3/#5 根因）。
+  const [navVersion, setNavVersion] = useState(0);
+  useEffect(() => navigationRef.addListener('state', () => {
+    setNavVersion((version) => version + 1);
+  }), []);
 
   const refreshBootstrap = useCallback(async () => {
     const cached = await readCachedConfig();
@@ -171,7 +180,8 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   const replace = useCallback((route: AppRoute) => {
     const decision = guardRoute(route, { signedIn: user !== null, features: config.features });
     if (decision.pending) setPendingRoute(decision.pending);
-    if (navigationRef.isReady()) navigationRef.reset({ routes: [{ name: decision.route }] });
+    // 整栈重建：Tab 根路由落在对应 Tab，push 页面叠加在 home Tab 之上。
+    resetToRoutes([decision.route]);
   }, [config.features, user]);
   const back = useCallback(() => {
     if (navigationRef.isReady() && navigationRef.canGoBack()) navigationRef.goBack();
@@ -186,15 +196,11 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     if (!navigationRef.isReady()) return;
     if (decision.unavailable) {
       feedback.showToast('目标内容不可用，已返回首页', 'info');
-      navigationRef.reset({ routes: [{ name: 'home' }] });
+      resetToRoutes(['home']);
       return;
     }
     if (cold) {
-      navigationRef.reset({
-        routes: decision.route === 'home'
-          ? [{ name: 'home' }]
-          : [{ name: 'home' }, { name: decision.route }],
-      });
+      resetToRoutes(decision.route === 'home' ? ['home'] : ['home', decision.route]);
     } else {
       navigateRoute(decision.route);
     }
@@ -211,7 +217,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
       setPurchaseState({ kind: 'idle' });
       const target = pendingRoute ?? 'home';
       setPendingRoute(null);
-      if (navigationRef.isReady()) navigationRef.reset({ routes: [{ name: target }] });
+      resetToRoutes([target]);
     },
     onSignedOut: () => {
       setPurchaseState({ kind: 'idle' });
@@ -223,9 +229,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     registerSessionExpiredHandler(() => {
       setUser(null);
       void clearAuthStorage();
-      if (navigationRef.isReady()) {
-        navigationRef.reset({ routes: [{ name: 'auth.signIn' }] });
-      }
+      resetToRoutes(['auth.signIn']);
     });
     return () => registerSessionExpiredHandler(null);
   }, []);
@@ -277,6 +281,8 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     lastAuthError,
     clearAuthError,
     user,
+    // navVersion 仅驱动 route/canGoBack 随导航状态重算（见上方 listener）。
+    navVersion,
   ]);
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

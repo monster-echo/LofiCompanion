@@ -11,7 +11,6 @@ import { AppIcon } from '../../../design-system/AppIcon';
 import {
   achievementBorder, achievementSoft, rankAccentColors, rankAccentSoft,
 } from '../../../design-system/derivedTokens';
-import { PrimaryTabs } from '../../../navigation/PrimaryTabs';
 import { useApp } from '../../../state/AppStore';
 import { colors, radii, semantic, space, type } from '../../../theme/tokens';
 import { useAsyncRefresh } from '../application/useAsyncRefresh';
@@ -268,7 +267,6 @@ export function LeaderboardHomeScreen() {
         ) : null}
       </View>
 
-      <PrimaryTabs active="leaderboard" />
     </View>
   );
 }

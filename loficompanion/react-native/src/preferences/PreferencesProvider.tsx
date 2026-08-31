@@ -38,7 +38,9 @@ export function PreferencesProvider({ children }: Readonly<{ children: ReactNode
   };
   return (
     <PreferencesContext.Provider value={value}>
-      <StatusBar style={dark ? 'light' : 'dark'} />
+      {/* 产品强制夜色（tokens 仅暗色一套），状态栏恒为白字；
+          跟随系统切到浅色也不反转，避免暗背景上出现深色状态栏文字（issue #4）。 */}
+      <StatusBar style="light" />
       {children}
     </PreferencesContext.Provider>
   );

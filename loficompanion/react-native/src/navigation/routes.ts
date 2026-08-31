@@ -1,6 +1,9 @@
 export type AppRoute =
   | 'launch.splash'
   | 'launch.onboarding'
+  // 根栈中承载四个底部 Tab 的容器屏（RootNavigator: Stack > MainTabs），
+  // 仅用于导航结构，深链/页面不会指向它。
+  | 'main.tabs'
   | 'home'
   | 'skins.gallery'
   | 'store.home'
@@ -53,8 +56,3 @@ export type AppRoute =
   | 'settings.deleteAccount'
   | 'notifications.center'
   | 'states.gallery';
-
-export type RouteEntry = Readonly<{
-  key: string;
-  name: AppRoute;
-}>;
