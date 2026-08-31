@@ -102,6 +102,20 @@ test('development test account signs in with email, username, or phone', async (
   }
 });
 
+test('pseudo .local emails are not treated as real emails (hasEmail)', async () => {
+  // 播种测试账号的 test@test.local 是保留域伪邮箱——客户端不得在「我的」页展示
+  const seeded = await signIn({
+    appId: APP, identifier: 'test', password: 'Test1234', deviceName: 'test-runner',
+  });
+  assert.equal(seeded.user.hasEmail, false);
+  const email = `hasemail-${prefix}-${counter++}@example.com`;
+  const real = await signUp({
+    appId: APP, email, password: 'Test1234', username: `u-${prefix}-${counter}`,
+    consentVersion: '2026-07-29', deviceName: 'test-runner',
+  });
+  assert.equal(real.user.hasEmail, true);
+});
+
 test('sign-up enforces the runtime password policy', async () => {
   await assert.rejects(
     signUp({
@@ -296,6 +310,33 @@ test('runtime config schema accepts a huawei auth provider', () => {
   ));
   const result = runtimeConfigSchema.safeParse(config);
   assert.equal(result.success, true);
+});
+
+test('runtime config theme: 默认色板完整、存量补齐、逐键覆盖、非法色拒绝', async () => {
+  assert.equal(runtimeConfigSchema.safeParse(defaultConfig).success, true);
+
+  // 存量配置（无 theme 段，模拟旧版本）读取时自动补齐默认色板
+  const legacy = JSON.parse(JSON.stringify(defaultConfig));
+  delete legacy.theme;
+  const env = `theme-${process.pid}`;
+  await saveRuntimeConfig(legacy, APP, env);
+  const upgraded = await getRuntimeConfig(APP, env);
+  assert.equal(upgraded.theme.background, '#091522');
+  assert.equal(upgraded.theme.brand, '#4F8FE8');
+
+  // 逐键覆盖：只改 danger，其余键不被默认值冲掉
+  await saveRuntimeConfig(
+    { ...upgraded, theme: { ...upgraded.theme, error: '#E08792' } },
+    APP, env,
+  );
+  const merged = await getRuntimeConfig(APP, env);
+  assert.equal(merged.theme.error, '#E08792');
+  assert.equal(merged.theme.brand, '#4F8FE8');
+
+  // 非法颜色值被 schema 拒绝
+  const bad = JSON.parse(JSON.stringify(defaultConfig));
+  bad.theme.error = 'red';
+  assert.equal(runtimeConfigSchema.safeParse(bad).success, false);
 });
 
 test('huawei quick login exchanges auth code for phone and merges with phone account', async () => {

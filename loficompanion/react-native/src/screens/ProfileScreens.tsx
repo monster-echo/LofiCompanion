@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { invalidateAssetUrl, resolveAssetUrl } from '../data/apiClient';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -19,6 +20,7 @@ import { styles } from '../theme/styles';
 export function ProfileScreen() {
   const { user, config, navigate, signOut, showConfirm, replace } = useApp();
   const { palette } = usePreferences();
+  const insets = useSafeAreaInsets();
   // 访客直达登录页（产品决策 2026-08-31：中间「登录后同步」页增加操作步骤、
   // 造成流失）。replace 语义保证登录页无返回入口，登录成功后由
   // onAuthenticated 复位到首页。
@@ -36,8 +38,14 @@ export function ProfileScreen() {
   return (
     <View style={styles.page}>
       <OfflineBanner />
-      <PageHeader title="我的" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      {/* Tab 根页不设标题栏/返回键（悬浮 Tab 已表达语义）；设置入口在下方列表 */}
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          // 悬浮 Tab 覆盖场景底部：尾部留白保证「退出登录」可点
+          { paddingBottom: Math.max(insets.bottom + spacing.x6, 104) },
+        ]}
+      >
         <ProfileIdentityCard
           displayName={user.displayName}
           username={user.username}

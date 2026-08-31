@@ -34,7 +34,7 @@ describe('陪伴状态机', () => {
     });
   });
 
-  it('空闲时喝水：开始播放 drinking 动作，基态不变，产出横幅/换海报/自动回归三个效果', () => {
+  it('空闲时喝水：开始播放 drinking 动作，基态不变，产出换海报/自动回归两个效果', () => {
     const { next, effects } = dispatch(initialState('focusing'), 'wellness.drink', CTX);
     expect(next.state).toBe('focusing');
     expect(next.playing).toEqual({
@@ -46,7 +46,6 @@ describe('陪伴状态机', () => {
     });
     expect(next.lastFiredAt['wellness.drink']).toBe(T0);
     expect(effects).toEqual([
-      { kind: 'showBanner', eventType: 'wellness.drink' },
       { kind: 'swapPoster', state: 'drinking' },
       { kind: 'autoReturn', afterMs: 4000 },
     ]);
@@ -153,7 +152,6 @@ describe('陪伴状态机', () => {
     expect(after.next.state).toBe('paused');
     expect(after.next.lastFiredAt['focus.paused']).toBe(T0 + 5000);
     expect(after.effects).toEqual([
-      { kind: 'showBanner', eventType: 'focus.paused' },
       { kind: 'swapPoster', state: 'paused' },
       { kind: 'autoReturn', afterMs: 4000 },
     ]);

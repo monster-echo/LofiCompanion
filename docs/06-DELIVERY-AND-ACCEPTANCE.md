@@ -286,7 +286,8 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
   照亮书页，与皮肤视觉同源）；splash 背景白 → `#002357`（消除启动白屏闪跳）；
   移除模板遗留 `mobileui` scheme。
 - 事件横幅文案：会话开始/暂停/恢复/完成不再复用喝水文案，按事件类型区分
-  （doc-08 §22 语气规范）。
+  （doc-08 §22 语气规范）。〔已被 2026-08-31 决策取代：事件横幅整体移除，
+  沉浸优先，事件提醒由陪伴画面承担（doc-08 §6）〕
 - dev LogBox「navigation 尚未初始化」竞态（doc-06 §8 记录项）：入口意图解析
   加 `NavigationContainer onReady` 门控。
 - **iOS Release 构建硬门禁首次通过**：prebuild（新图标/启动屏生效）→

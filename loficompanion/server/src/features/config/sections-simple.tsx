@@ -80,6 +80,58 @@ export function BrandSection({
   );
 }
 
+/** 客户端语义色板键 → 中文标签（与服务端 ThemeColorKey / 客户端 ThemeColors 一致）。 */
+const THEME_COLOR_LABELS: Readonly<Record<string, string>> = {
+  background: '页面背景',
+  surface: '卡片表面',
+  surfaceRaised: '卡片浮起',
+  surfaceMuted: '凹陷表面',
+  text: '主文字',
+  textSecondary: '次级文字',
+  border: '边框',
+  brand: '主色',
+  brandPressed: '主色按压',
+  brandSoft: '主色弱化底',
+  success: '成功',
+  warning: '警示',
+  warningSoft: '警示弱化底',
+  error: '危险',
+  info: '信息',
+  membershipBronze: '会员·铜',
+  membershipSilver: '会员·银',
+  membershipGold: '会员·金',
+  scrim: '遮罩',
+};
+
+/** rgba 字段不适合取色器（type=color 只认 #RRGGBB），用文本框编辑。 */
+const THEME_RGBA_KEYS = new Set(['border', 'brandSoft', 'warningSoft', 'scrim']);
+
+export function ThemeSection({
+  theme,
+  onChange,
+}: Readonly<{ theme: Readonly<Record<string, string>>; onChange: (next: Record<string, string>) => void }>) {
+  return (
+    <SectionCard title="客户端颜色系统" description="整套语义色板随配置下发到客户端（按钮、错误、成功等全部跟随）；留空键由服务端默认值补齐。">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Object.entries(THEME_COLOR_LABELS).map(([key, label]) => (
+          <Field
+            key={key}
+            label={label}
+            htmlFor={`theme-${key}`}
+            description={THEME_RGBA_KEYS.has(key) ? 'rgba(r,g,b,a) 半透明色。' : undefined}
+          >
+            {THEME_RGBA_KEYS.has(key) ? (
+              <TextInput id={`theme-${key}`} value={theme[key] ?? ''} onChange={(v) => onChange({ ...theme, [key]: v })} />
+            ) : (
+              <ColorInput id={`theme-${key}`} value={theme[key] ?? '#000000'} onChange={(v) => onChange({ ...theme, [key]: v })} />
+            )}
+          </Field>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
+
 type SplashShape = Readonly<{
   id: string;
   title: string;

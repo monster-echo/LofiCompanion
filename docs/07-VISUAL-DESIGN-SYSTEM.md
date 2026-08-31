@@ -122,7 +122,7 @@
 |---|---|---|---|
 | 0 | 页面画布 | `canvas` | 无 |
 | 1 | 卡片、底栏 | `surface` | `borderSoft` 1px |
-| 2 | 弹层、事件横幅 | `surfaceRaised` | `borderStandard` 1px |
+| 2 | 弹层（确认 sheet 等） | `surfaceRaised` | `borderStandard` 1px |
 | inset | 输入、进度轨道 | `surfaceInset` | `borderSoft` 1px |
 
 媒体上的卡片使用 `rgba(9,21,34,0.88)`；支持的平台可加 16px 背景模糊，但模糊只是增强，
@@ -221,7 +221,7 @@
 - 皮肤 manifest 必须提供 `focalPointX/Y`，小屏裁切围绕焦点。
 - 每条循环视频提供同尺寸 poster；加载时不改变布局。
 - 专注循环建议 8–16 秒；事件动作建议 3–8 秒。
-- 入口和出口回到可衔接姿势；事件完成后 150ms 交叉淡化回基础循环。
+- 入口和出口回到可衔接姿势；视频事件完成后 150ms 交叉淡化回基础循环。
 - 环境音独立无缝循环；视频默认不携带必须听见的对白。
 
 ### 9.3 叠层
@@ -234,8 +234,8 @@
 
 - 页面 push：220ms，水平 16dp + opacity，ease-out。
 - 底部 sheet：260ms，垂直 24dp + opacity。
-- 事件横幅：180ms 淡入并下移 8dp；退出 140ms。
 - 按钮：120ms；进度更新 180ms。
+- 静态海报状态切换（暂停/恢复、事件切入等）：500ms 双缓冲叠化——前后海报常驻两层，待切入海报解码完成后两侧 opacity 同步交叉（和恒为 1，不露底色）；转场期间前后图层各自按焦点取景。
 - 成就解锁：收藏物 240ms opacity + `scale(0.96→1)`，不使用彩带和屏幕震动。
 - 减少动态模式：取消位移和缩放，只保留 100ms opacity；视频替换为状态海报。
 - 禁止 `transition: all` 思路；React Native 仅动画 transform 和 opacity。

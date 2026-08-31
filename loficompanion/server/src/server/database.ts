@@ -247,6 +247,8 @@ function mergeRuntimeConfig(parsed: Partial<RuntimeConfig>): RuntimeConfig {
     ...defaultConfig,
     ...parsed,
     brand: { ...defaultConfig.brand, ...parsed.brand },
+    // theme 逐键合并：存量配置（无 theme 段）自动补齐默认色板
+    theme: { ...defaultConfig.theme, ...parsed.theme },
     splash: parsed.splash === undefined ? defaultConfig.splash : parsed.splash,
     telemetry: { ...defaultConfig.telemetry, ...parsed.telemetry },
     support: parsed.support ?? defaultConfig.support,

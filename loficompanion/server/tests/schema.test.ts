@@ -21,7 +21,9 @@ test('lofi schema 初始化与种子幂等：连续两次执行不报错且不�
   await seedLofiDefaults(database);
   await initializeLofiSchema(database);
   await seedLofiDefaults(database);
-  const skins = await database.prepare('SELECT count(*) AS n FROM skins').get() as { n: number };
+  const skins = await database.prepare(
+    `SELECT count(*) AS n FROM skins WHERE slug IN ('rainy-study-room', 'sunny-classroom', 'midnight-workstation')`,
+  ).get() as { n: number };
   const items = await database.prepare('SELECT count(*) AS n FROM room_items').get() as { n: number };
   assert.equal(skins.n, 3);
   assert.equal(items.n, 5); // 含 P0-C weekly_group_photo
@@ -81,9 +83,11 @@ test('皮肤种子：雨夜书房已发布且 manifest v1 就位，占位皮肤�
   assert.equal(manifest.states.length, 6);
   assert.equal(manifest.eventMappings.length, 8);
 
-  const pending = await database.prepare(
-    `SELECT slug, published_at, moderation_status FROM skins WHERE slug = 'sunny-classroom'`,
-  ).get() as { slug: string; published_at: string | null; moderation_status: string };
-  assert.equal(pending.published_at, null);
-  assert.equal(pending.moderation_status, 'pending_assets');
+  // doc-01 PRD：种子皮肤全免费发布——阳光教室不再停留 pending_assets
+  const sunny = await database.prepare(
+    `SELECT slug, published_at, moderation_status, access_type FROM skins WHERE slug = 'sunny-classroom'`,
+  ).get() as { slug: string; published_at: string | null; moderation_status: string; access_type: string };
+  assert.ok(sunny.published_at);
+  assert.equal(sunny.moderation_status, 'approved');
+  assert.equal(sunny.access_type, 'free');
 });

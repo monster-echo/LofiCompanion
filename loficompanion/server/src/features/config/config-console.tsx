@@ -22,7 +22,7 @@ import { formatDateTime } from '@/lib/format';
 import { useTenant } from '@/features/tenant/tenant-context';
 import { PageHeader } from '@/features/console/page-header';
 import {
-  AuthSection, BasicSection, BrandSection, FeaturesSection, SplashSection, TelemetrySection,
+  AuthSection, BasicSection, BrandSection, FeaturesSection, SplashSection, ThemeSection, TelemetrySection,
 } from './sections-simple';
 import {
   EntitlementsSection, LegalSection, PlansSection, SettingsPolicySection, SupportSection, TiersSection,
@@ -181,6 +181,7 @@ export function ConfigConsole() {
                 <div className="flex flex-col gap-6">
                   <BasicSection schemaVersion={doc.schemaVersion} version={doc.version} cacheTtl={doc.cacheTtlSeconds} onCacheTtl={(v) => update({ cacheTtlSeconds: v })} />
                   <BrandSection brand={doc.brand} onChange={(brand) => update({ brand })} />
+                  <ThemeSection theme={doc.theme} onChange={(theme) => update({ theme: theme as RuntimeConfig['theme'] })} />
                   <SplashSection splash={doc.splash} onChange={(splash) => update({ splash })} />
                   <TelemetrySection telemetry={doc.telemetry} onChange={(telemetry) => update({ telemetry: telemetry as RuntimeConfig['telemetry'] })} />
                   <FeaturesSection features={doc.features} onChange={(features) => update({ features })} />

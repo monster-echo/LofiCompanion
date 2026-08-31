@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AchievementTile } from '../../../design-system/AchievementTile';
 import { AppIcon, IconName } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
@@ -17,13 +18,15 @@ import { ACHIEVEMENT_STRINGS as STR } from './strings';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 
 /**
- * S07 学习成就（doc-08 §8）。Tab 根页，本屏唯一焦点：指标区 + 我的成就网格。
+ * S07 学习成就（doc-08 §8）。Tab 根页：指标区 + 我的成就网格。
+ * 不设页内标题栏（Tab 标签已表达语义）；设置入口在「我的」页。
  * 指标全部由本地历史推导（completed 口径，abandoned 不入）；
  * 空状态不显示零值大卡——展示当前房间、第一项成就条件和「开始第一轮」。
  */
 export function AchievementsScreen() {
   const focus = useFocus();
   const { navigate, replace } = useApp();
+  const insets = useSafeAreaInsets();
 
   const entries = completedEntries(focus.history);
   const now = Date.now();
@@ -39,25 +42,13 @@ export function AchievementsScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* App bar 56：标题居中，右设置图标（doc-08 §8） */}
-      <View style={styles.header}>
-        <View style={styles.headerSide} />
-        <Text style={styles.headerTitle}>{STR.screenTitle}</Text>
-        <View style={[styles.headerSide, styles.headerRight]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="设置"
-            onPress={() => navigate('settings.home')}
-            style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-          >
-            <AppIcon name="settings" color={semantic.textSecondary} size={22} />
-          </Pressable>
-        </View>
-      </View>
-
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          // 悬浮 Tab 覆盖场景底部：滚动内容尾部留出 Tab 高度，末尾条目可点
+          { paddingBottom: Math.max(insets.bottom + space.x6, 104) },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {empty ? (
@@ -97,12 +88,13 @@ export function AchievementsScreen() {
               {ACHIEVEMENT_DEFS.map((def) => {
                 const unlockedAt = grantedAt.get(def.ruleKey);
                 return (
-                  <AchievementTile
-                    key={def.ruleKey}
-                    def={def}
-                    unlocked={unlockedAt !== undefined}
-                    unlockedAt={unlockedAt}
-                  />
+                  <View key={def.ruleKey} style={styles.gridCell}>
+                    <AchievementTile
+                      def={def}
+                      unlocked={unlockedAt !== undefined}
+                      unlockedAt={unlockedAt}
+                    />
+                  </View>
                 );
               })}
             </View>
@@ -173,31 +165,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: semantic.canvas,
-  },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerSide: {
-    width: 56,
-    flexDirection: 'row',
-  },
-  headerRight: {
-    justifyContent: 'flex-end',
-  },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.round,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    ...type.title2,
-    color: semantic.textPrimary,
-    flex: 1,
-    textAlign: 'center',
   },
   scroll: {
     flex: 1,
@@ -271,6 +238,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: space.x3,
+  },
+  gridCell: {
+    // 两列等宽撑满：与指标区同款 48% + flexGrow，间距 12 下两列恰好铺满
+    flexBasis: '48%',
+    flexGrow: 1,
   },
   empty: {
     gap: space.x4,

@@ -60,6 +60,8 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
       return;
     }
     if (mode === 'phone') {
+      // 首次登录/注册前必须完成协议授权（合规：任何账号创建路径都要拦截）
+      if (!ensureConsent()) return;
       if (!phoneCodeSent) {
         if (await requestPhoneCode(phone)) {
           setPhoneCodeSent(true);
@@ -193,7 +195,10 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
             />
           </>
         ) : null}
-        {mode === 'signIn' || mode === 'signUp' ? (
+      </ScrollView>
+      {/* 授权勾选固定在页面最底部（不随内容滚动/居中） */}
+      {mode === 'signIn' || mode === 'signUp' || mode === 'phone' ? (
+        <View style={authStyles.consentFooter}>
           <View style={authStyles.consentRow}>
             <Pressable
               accessibilityRole="checkbox"
@@ -218,17 +223,18 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
                 accessibilityRole="link"
                 onPress={() => navigate('settings.termsOfService')}
                 style={{ color: palette.brand }}
-              >用户协议</Text>
-              {' '}与{' '}
+              >《用户协议》</Text>
+              {' '}和{' '}
               <Text
                 accessibilityRole="link"
                 onPress={() => navigate('settings.privacyPolicy')}
                 style={{ color: palette.brand }}
-              >隐私政策</Text>
+              >《隐私政策》</Text>
+              ，并授权我们按上述文件处理我的相关信息，用于提供账号、专注同步、排行与客服服务。
             </Text>
           </View>
-        ) : null}
-      </ScrollView>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -260,15 +266,20 @@ function isValid(input: AuthInput) {
 const authStyles = StyleSheet.create({
   content: { flexGrow: 1, justifyContent: 'center', padding: spacing.x6, gap: spacing.x4 },
   copy: { gap: spacing.x2, marginBottom: spacing.x3 },
+  consentFooter: {
+    paddingHorizontal: spacing.x6,
+    paddingBottom: spacing.x5,
+  },
   consentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexWrap: 'wrap',
     gap: spacing.x1,
   },
   checkboxTarget: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  consentText: { flexShrink: 1 },
+  // flex:1：文本占据勾选框之外的剩余宽度、行内自然折行——
+  // 否则长文本在 flexWrap 下会整块折到下一行，勾选框落单
+  consentText: { flex: 1 },
   // 颜色随服务端色板（palette.brand / palette.error）在渲染处内联
   errorText: { fontSize: 13 },
 });

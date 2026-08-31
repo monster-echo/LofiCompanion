@@ -30,7 +30,6 @@ import { AboutScreen, NotificationsScreen, OrdersScreen } from '../screens/DataS
 import { SupportHomeScreen, TicketDetailScreen } from '../screens/SupportScreens';
 import { NewTicketScreen, ProductFeedbackScreen } from '../screens/SupportFormScreens';
 import { PermissionsScreen, StorageScreen, TextSizeScreen } from '../screens/SettingsUtilityScreens';
-import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import type { IconName } from '../design-system/AppIcon';
 import { semantic } from '../theme/tokens';
@@ -44,18 +43,18 @@ import { SkinDetailScreen } from '../features/store/presentation/SkinDetailScree
 import { AchievementsScreen } from '../features/achievements/presentation/AchievementsScreen';
 import { HistoryScreen } from '../features/achievements/presentation/HistoryScreen';
 import { RoomScreen } from '../features/achievements/presentation/RoomScreen';
-import { LeaderboardSignInScreen } from '../features/leaderboards/presentation/LeaderboardSignInScreen';
-import { LeaderboardHomeScreen } from '../features/leaderboards/presentation/LeaderboardHomeScreen';
 import { GroupDetailScreen } from '../features/leaderboards/presentation/GroupDetailScreen';
 import { LeaderboardRulesScreen } from '../features/leaderboards/presentation/LeaderboardRulesScreen';
 import { WeeklySettlementScreen } from '../features/leaderboards/presentation/WeeklySettlementScreen';
 
 const Stack = createNativeStackNavigator<RootParamList>();
 
-// 四个主 Tab 的参数均为 undefined，直接复用根参数表子集。
+// 三个主 Tab 的参数均为 undefined，直接复用根参数表子集。
+// （排行暂不提供入口——leaderboard 相关 push 页保留，恢复时把
+//   'leaderboard.home' 加回 RootTabList 与 TABS 即可。）
 type RootTabList = Pick<
   RootParamList,
-  'home' | 'achievements.home' | 'leaderboard.home' | 'profile.home'
+  'home' | 'achievements.home' | 'profile.home'
 >;
 
 const NativeTab = createNativeBottomTabNavigator<RootTabList>();
@@ -72,7 +71,7 @@ type TabDef = Readonly<{
   en: string;
 }>;
 
-// doc-08 §1：四个 Tab 根页——专注 / 成就 / 排行 / 我的
+// doc-08 §1：主 Tab 根页——专注 / 成就 / 我的（排行暂不提供）
 const TABS: readonly TabDef[] = [
   {
     name: 'home',
@@ -91,15 +90,6 @@ const TABS: readonly TabDef[] = [
     image: require('../../assets/icons/tabbar/bookmark.png'),
     zh: '成就',
     en: 'Achievements',
-  },
-  {
-    name: 'leaderboard.home',
-    icon: 'group',
-    sfFocused: 'person.2.fill',
-    sfIdle: 'person.2',
-    image: require('../../assets/icons/tabbar/group.png'),
-    zh: '排行',
-    en: 'Ranks',
   },
   {
     name: 'profile.home',
@@ -151,7 +141,6 @@ function MainTabs() {
 const TAB_COMPONENTS: Readonly<Record<keyof RootTabList, React.ComponentType>> = {
   home: FocusHomeScreen,
   'achievements.home': AchievementsScreen,
-  'leaderboard.home': LeaderboardRoute,
   'profile.home': ProfileScreen,
 };
 
@@ -187,15 +176,9 @@ function PreferenceRoute() {
   );
 }
 
-// 排行 Tab 根页：已登录 → 真实榜单（S10），未登录 → 保留登录引导壳。
-function LeaderboardRoute() {
-  const { signedIn } = useApp();
-  return signedIn ? <LeaderboardHomeScreen /> : <LeaderboardSignInScreen />;
-}
-
 // The native stack keeps source screens mounted on push, so going back from a
 // detail page does not rebuild the list (issue #2). Header is hidden — each
-// screen renders its own AppHeader. 四个主 Tab 挂在 main.tabs 屏内
+// screen renders its own AppHeader. 主 Tab 挂在 main.tabs 屏内
 // （MainTabs / bottom-tabs），其余路由均为 push 页面。
 export function RootNavigator() {
   return (

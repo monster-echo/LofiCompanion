@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { defaultConfig } from '@/domain/config';
 import { getConfigDraft, getRuntimeConfig, saveConfigDraft } from '@/server/database';
 import { adminContext } from '@/server/admin-auth';
 import { handleError, ok } from '@/server/http';
@@ -20,8 +21,10 @@ export async function PUT(request: NextRequest) {
   try {
     const { scope } = await adminContext(request);
     const candidate = runtimeConfigSchema.parse(await request.json());
-    await saveConfigDraft(candidate, scope.appId, scope.environment);
-    return ok({ draft: candidate });
+    // theme 逐键可选（schema .partial()）：落库前补齐默认色板，草稿文档始终完整
+    const draft = { ...candidate, theme: { ...defaultConfig.theme, ...candidate.theme } };
+    await saveConfigDraft(draft, scope.appId, scope.environment);
+    return ok({ draft });
   } catch (error) {
     return handleError(error);
   }

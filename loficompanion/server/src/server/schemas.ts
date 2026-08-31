@@ -207,6 +207,12 @@ export const skinOrderSchema = z.object({
   skinId: z.string().min(1).max(120),
 });
 
+// 主题色值：#RRGGBB 十六进制或 rgba() 字符串（客户端原样应用，不做二次解析）
+const cssColorSchema = z.string().regex(
+  /^(#[0-9A-Fa-f]{6}|rgba\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*(?:0|1|0?\.\d+)\s*\))$/,
+  '颜色必须是 #RRGGBB 或 rgba(r,g,b,a)',
+);
+
 export const runtimeConfigSchema = z.object({
   schemaVersion: z.number().int().positive(),
   version: z.number().int().positive(),
@@ -215,6 +221,28 @@ export const runtimeConfigSchema = z.object({
     tagline: z.string().max(100),
     primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   }),
+  // 客户端语义色板：逐键可选（缺省键由服务端默认色板补齐）
+  theme: z.object({
+    background: cssColorSchema,
+    surface: cssColorSchema,
+    surfaceRaised: cssColorSchema,
+    surfaceMuted: cssColorSchema,
+    text: cssColorSchema,
+    textSecondary: cssColorSchema,
+    border: cssColorSchema,
+    brand: cssColorSchema,
+    brandPressed: cssColorSchema,
+    brandSoft: cssColorSchema,
+    success: cssColorSchema,
+    warning: cssColorSchema,
+    warningSoft: cssColorSchema,
+    error: cssColorSchema,
+    info: cssColorSchema,
+    membershipBronze: cssColorSchema,
+    membershipSilver: cssColorSchema,
+    membershipGold: cssColorSchema,
+    scrim: cssColorSchema,
+  }).partial().optional(),
   splash: z.object({
     id: z.string().min(1),
     title: z.string().min(1).max(80),

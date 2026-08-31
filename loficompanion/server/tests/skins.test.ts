@@ -9,12 +9,18 @@ test('皮肤目录：只含已发布且审核通过的免费皮肤，含 ready p
   const skins = await listPublishedSkins();
   const slugs = skins.map((skin) => skin.slug);
   assert.ok(slugs.includes('rainy-study-room'));
-  assert.ok(!slugs.includes('sunny-classroom')); // pending_assets 未发布
+  // doc-01 PRD：阳光教室 / 深夜工作台随资产上线转为免费发布
+  assert.ok(slugs.includes('sunny-classroom'));
+  assert.ok(slugs.includes('midnight-workstation'));
   const rainy = skins.find((skin) => skin.slug === 'rainy-study-room')!;
   assert.equal(rainy.accessType, 'free');
   assert.equal(rainy.manifestVersion, 1);
   assert.ok(rainy.publishedAt);
   assert.equal(rainy.posterUrl, '/skins/rainy-study-room/ready.png');
+  const sunny = skins.find((skin) => skin.slug === 'sunny-classroom')!;
+  assert.equal(sunny.accessType, 'free');
+  assert.ok(sunny.publishedAt);
+  assert.equal(sunny.posterUrl, '/skins/sunny-classroom/ready.png');
 });
 
 test('manifest：slug 与 id 均可取当前版本；未知 id 抛 SKIN_NOT_ENTITLED', async () => {

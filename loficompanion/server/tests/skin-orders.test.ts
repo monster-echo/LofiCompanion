@@ -21,8 +21,29 @@ after(async () => database.close());
     "DELETE FROM webhook_events WHERE provider = 'mock' AND event_id LIKE 'sko-refund-%'",
   ).run();
   await database.prepare(
-    "UPDATE skin_products SET status = 'active' WHERE id = 'skin-product-sunny-classroom'",
+    "UPDATE skin_products SET status = 'active' WHERE id = 'skin-product-paid-fixture'",
   ).run();
+}
+
+// 合成付费皮肤夹具：种子皮肤已全免费（doc-01 PRD），订单/权益门禁管线
+// （docs/05，付费能力保留）的覆盖改走这套夹具，待未来真实收费皮肤接入。
+{
+  const ts = new Date().toISOString();
+  await database.prepare(
+    `INSERT INTO skins(id, slug, name, access_type, manifest_version, moderation_status, published_at, created_at)
+     VALUES ('skin-paid-fixture', 'paid-fixture', '付费测试皮肤', 'paid', 1, 'approved', ?, ?)
+     ON CONFLICT (id) DO NOTHING`,
+  ).run(ts, ts);
+  await database.prepare(
+    `INSERT INTO skin_manifests(id, skin_id, version, manifest, created_at)
+     VALUES ('skin-manifest-paid-fixture-1', 'skin-paid-fixture', 1, ?, ?)
+     ON CONFLICT (skin_id, version) DO NOTHING`,
+  ).run(JSON.stringify({ id: 'paid-fixture-v1', slug: 'paid-fixture', states: [], eventMappings: [] }), ts);
+  await database.prepare(
+    `INSERT INTO skin_products(id, skin_id, entitlement_key, store_product_ids, price_minor, currency, status, created_at, updated_at)
+     VALUES ('skin-product-paid-fixture', 'skin-paid-fixture', 'skin.official.paid-fixture', '{}', 1200, 'CNY', 'active', ?, ?)
+     ON CONFLICT (id) DO NOTHING`,
+  ).run(ts, ts);
 }
 
 const REFUND_EVENT_ID = `sko-refund-${process.pid}`;
@@ -57,14 +78,14 @@ async function verifyViaTemplate(
 
 test('下单幂等：同 Idempotency-Key 同单，pending + 目录价格/权益键', async () => {
   const userId = await makeUser('app1');
-  const a = await createSkinOrder({ userId, skinId: 'sunny-classroom', idempotencyKey: 'sko-key-1' });
-  const b = await createSkinOrder({ userId, skinId: 'skin-sunny-classroom', idempotencyKey: 'sko-key-1' });
+  const a = await createSkinOrder({ userId, skinId: 'paid-fixture', idempotencyKey: 'sko-key-1' });
+  const b = await createSkinOrder({ userId, skinId: 'skin-paid-fixture', idempotencyKey: 'sko-key-1' });
   assert.equal(a.status, 'pending');
   assert.equal(a.orderId, b.orderId);
-  assert.equal(a.slug, 'sunny-classroom');
+  assert.equal(a.slug, 'paid-fixture');
   assert.equal(a.priceMinor, 1200);
   assert.equal(a.currency, 'CNY');
-  assert.equal(a.entitlementKey, 'skin.official.sunny-classroom');
+  assert.equal(a.entitlementKey, 'skin.official.paid-fixture');
   assert.equal(a.entitled, false);
 });
 
@@ -78,49 +99,58 @@ test('不可下单：未知皮肤/免费皮肤 404，下架商品 422', async ()
     () => createSkinOrder({ userId, skinId: 'rainy-study-room', idempotencyKey: 'k-free' }),
     (err: ApiError) => err.status === 404 && err.code === 'SKIN_PRODUCT_NOT_FOUND',
   );
+  // 种子皮肤已全免费（doc-01 PRD）：无商品行，一律不可下单
+  await assert.rejects(
+    () => createSkinOrder({ userId, skinId: 'sunny-classroom', idempotencyKey: 'k-free-sunny' }),
+    (err: ApiError) => err.status === 404 && err.code === 'SKIN_PRODUCT_NOT_FOUND',
+  );
+  await assert.rejects(
+    () => createSkinOrder({ userId, skinId: 'midnight-workstation', idempotencyKey: 'k-free-midnight' }),
+    (err: ApiError) => err.status === 404 && err.code === 'SKIN_PRODUCT_NOT_FOUND',
+  );
   try {
     await database.prepare(
-      "UPDATE skin_products SET status = 'inactive' WHERE id = 'skin-product-sunny-classroom'",
+      "UPDATE skin_products SET status = 'inactive' WHERE id = 'skin-product-paid-fixture'",
     ).run();
     await assert.rejects(
-      () => createSkinOrder({ userId, skinId: 'sunny-classroom', idempotencyKey: 'k-off' }),
+      () => createSkinOrder({ userId, skinId: 'paid-fixture', idempotencyKey: 'k-off' }),
       (err: ApiError) => err.status === 422 && err.code === 'SKIN_PRODUCT_INACTIVE',
     );
   } finally {
     await database.prepare(
-      "UPDATE skin_products SET status = 'active' WHERE id = 'skin-product-sunny-classroom'",
+      "UPDATE skin_products SET status = 'active' WHERE id = 'skin-product-paid-fixture'",
     ).run();
   }
 });
 
 test('verify（模板 /purchases/verify 委托路径）→ success + 权益 + 付费 manifest 200', async () => {
   const userId = await makeUser('app1');
-  const order = await createSkinOrder({ userId, skinId: 'sunny-classroom', idempotencyKey: `sko-v-${userId}` });
+  const order = await createSkinOrder({ userId, skinId: 'paid-fixture', idempotencyKey: `sko-v-${userId}` });
   const done = await verifyViaTemplate(userId, order.orderId);
   assert.equal(done.status, 'success');
-  assert.equal(await activeEntitlementCount(userId, 'skin.official.sunny-classroom'), 1);
+  assert.equal(await activeEntitlementCount(userId, 'skin.official.paid-fixture'), 1);
 
-  const envelope = await getCurrentManifest('sunny-classroom', userId);
-  assert.equal(envelope.slug, 'sunny-classroom');
+  const envelope = await getCurrentManifest('paid-fixture', userId);
+  assert.equal(envelope.slug, 'paid-fixture');
 });
 
 test('同一订单 verify 重放 10 次 → 权益只发放一次', async () => {
   const userId = await makeUser('app1');
-  const order = await createSkinOrder({ userId, skinId: 'sunny-classroom', idempotencyKey: `sko-r-${userId}` });
+  const order = await createSkinOrder({ userId, skinId: 'paid-fixture', idempotencyKey: `sko-r-${userId}` });
   for (let i = 0; i < 10; i++) {
     const done = await verifySkinOrder({
       appId: 'app1', environment: 'development', userId, orderId: order.orderId, receipt: {},
     });
     assert.equal(done.status, 'success');
   }
-  assert.equal(await activeEntitlementCount(userId, 'skin.official.sunny-classroom'), 1);
+  assert.equal(await activeEntitlementCount(userId, 'skin.official.paid-fixture'), 1);
 });
 
 test('退款 webhook 重放 10 次 → 撤销一次，manifest 翻回 403', async () => {
   const userId = await makeUser('app1');
-  const order = await createSkinOrder({ userId, skinId: 'sunny-classroom', idempotencyKey: `sko-f-${userId}` });
+  const order = await createSkinOrder({ userId, skinId: 'paid-fixture', idempotencyKey: `sko-f-${userId}` });
   await verifyViaTemplate(userId, order.orderId);
-  assert.ok(await getCurrentManifest('sunny-classroom', userId));
+  assert.ok(await getCurrentManifest('paid-fixture', userId));
 
   const body = Buffer.from(JSON.stringify({
     eventId: REFUND_EVENT_ID, kind: 'refund', orderId: order.orderId,
@@ -133,24 +163,24 @@ test('退款 webhook 重放 10 次 → 撤销一次，manifest 翻回 403', asyn
   assert.equal(deduped, 9, '首次 applied，其余 9 次去重');
   const stored = await findOrderById(order.orderId);
   assert.equal(stored!.status, 'refunded');
-  assert.equal(await activeEntitlementCount(userId, 'skin.official.sunny-classroom'), 0);
+  assert.equal(await activeEntitlementCount(userId, 'skin.official.paid-fixture'), 0);
   await assert.rejects(
-    () => getCurrentManifest('sunny-classroom', userId),
+    () => getCurrentManifest('paid-fixture', userId),
     (err: ApiError) => err.status === 403 && err.code === 'SKIN_NOT_ENTITLED',
   );
 });
 
 test('恢复购买：皮肤权益键出现在 active entitlements（restore 端点数据源）', async () => {
   const userId = await makeUser('app1');
-  const order = await createSkinOrder({ userId, skinId: 'sunny-classroom', idempotencyKey: `sko-restore-${userId}` });
+  const order = await createSkinOrder({ userId, skinId: 'paid-fixture', idempotencyKey: `sko-restore-${userId}` });
   await verifyViaTemplate(userId, order.orderId);
   const keys = (await listActiveEntitlements(userId, 'app1')).map((e) => e.entitlement_key);
-  assert.ok(keys.includes('skin.official.sunny-classroom'));
+  assert.ok(keys.includes('skin.official.paid-fixture'));
 });
 
 test('中断恢复：pending 查单 → verify → success + entitled=true', async () => {
   const userId = await makeUser('app1');
-  const created = await createSkinOrder({ userId, skinId: 'sunny-classroom', idempotencyKey: `sko-i-${userId}` });
+  const created = await createSkinOrder({ userId, skinId: 'paid-fixture', idempotencyKey: `sko-i-${userId}` });
   const pending = await getSkinOrder({ userId, orderId: created.orderId });
   assert.equal(pending.status, 'pending');
   assert.equal(pending.entitled, false);
@@ -165,7 +195,7 @@ test('中断恢复：pending 查单 → verify → success + entitled=true', asy
 test('跨用户查单/验证一律 404 ORDER_NOT_FOUND', async () => {
   const owner = await makeUser('app1');
   const attacker = await makeUser('app1');
-  const order = await createSkinOrder({ userId: owner, skinId: 'sunny-classroom', idempotencyKey: `sko-x-${owner}` });
+  const order = await createSkinOrder({ userId: owner, skinId: 'paid-fixture', idempotencyKey: `sko-x-${owner}` });
   await assert.rejects(
     () => getSkinOrder({ userId: attacker, orderId: order.orderId }),
     (err: ApiError) => err.status === 404 && err.code === 'ORDER_NOT_FOUND',
@@ -177,20 +207,20 @@ test('跨用户查单/验证一律 404 ORDER_NOT_FOUND', async () => {
     }),
     (err: ApiError) => err.status === 404 && err.code === 'ORDER_NOT_FOUND',
   );
-  assert.equal(await activeEntitlementCount(attacker, 'skin.official.sunny-classroom'), 0);
+  assert.equal(await activeEntitlementCount(attacker, 'skin.official.paid-fixture'), 0);
 });
 
 test('verify 失败：订单 failed、不发权益、manifest 仍 403', async () => {
   const userId = await makeUser('app1');
-  const order = await createSkinOrder({ userId, skinId: 'sunny-classroom', idempotencyKey: `sko-bad-${userId}` });
+  const order = await createSkinOrder({ userId, skinId: 'paid-fixture', idempotencyKey: `sko-bad-${userId}` });
   const done = await verifySkinOrder({
     appId: 'app1', environment: 'development', userId, orderId: order.orderId,
     receipt: { fail: true },
   });
   assert.equal(done.status, 'failed');
-  assert.equal(await activeEntitlementCount(userId, 'skin.official.sunny-classroom'), 0);
+  assert.equal(await activeEntitlementCount(userId, 'skin.official.paid-fixture'), 0);
   await assert.rejects(
-    () => getCurrentManifest('sunny-classroom', userId),
+    () => getCurrentManifest('paid-fixture', userId),
     (err: ApiError) => err.status === 403,
   );
 });

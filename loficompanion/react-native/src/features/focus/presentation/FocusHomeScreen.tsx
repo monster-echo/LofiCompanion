@@ -1,45 +1,72 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { CompanionState } from '../../skins/domain/types';
-import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
-import { AppIcon } from '../../../design-system/AppIcon';
-import type { IconName } from '../../../design-system/AppIcon';
-import { formatTimerSeconds } from '../../../design-system/FocusTimerRing';
-import { useApp } from '../../../state/AppStore';
-import { useFocus } from '../application/FocusStore';
-import { DEFAULT_ACTIVITY, DEFAULT_DURATION } from '../domain/validate';
-import { mediaControl, mediaSurface } from '../../../design-system/derivedTokens';
-import { radii, semantic, space, type } from '../../../theme/tokens';
-import { ACTIVITY_LABELS, FOCUS_STRINGS as STR } from './strings';
-import { SKIN_STRINGS as SKIN } from '../../skins/presentation/strings';
+import React from "react";
+import {
+  AccessibilityInfo,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { CompanionState } from "../../skins/domain/types";
+import { BUILT_IN_SKINS } from "../../skins/domain/registry";
+import { ImmersiveMediaSurface } from "../../skins/presentation/ImmersiveMediaSurface";
+import { AppIcon } from "../../../design-system/AppIcon";
+import { formatTimerSeconds } from "../../../design-system/FocusTimerRing";
+import { useApp } from "../../../state/AppStore";
+import { useFocus } from "../application/FocusStore";
+import { DEFAULT_ACTIVITY, DEFAULT_DURATION } from "../domain/validate";
+import { mediaControl, mediaSurface } from "../../../design-system/derivedTokens";
+import { radii, semantic, space, type } from "../../../theme/tokens";
+import { ACTIVITY_LABELS, FOCUS_STRINGS as STR } from "./strings";
+import { SKIN_STRINGS as SKIN } from "../../skins/presentation/strings";
 
 /**
  * S02 今日陪伴首页（doc-08 §3）。本屏唯一焦点：角色媒体 +「开始专注」。
- * 媒体背景自屏幕顶部延伸到 Tab bar 上方；底部结果板承载今日战绩与主 CTA。
+ * 媒体铺满 Tab 场景并延伸到悬浮 Tab 玻璃之下；点击媒体进入主题选择，
+ * 右上角 ‹ › 半透明快切在已上线皮肤间环绕切换（设置在「我的」页有入口）。
+ * 底部结果板承载今日战绩与主 CTA，锚定在悬浮 Tab 之上。
  */
 export function FocusHomeScreen() {
   const focus = useFocus();
   const { navigate, showToast } = useApp();
+  const insets = useSafeAreaInsets();
   const active = focus.activeSession;
   const firstRun = focus.today.minutes === 0 && focus.today.sessions === 0;
 
+  // 快切环绕：按注册表顺序 ±1，未选中过/数据异常从首位起算
+  const cycleSkin = (step: 1 | -1) => {
+    const total = BUILT_IN_SKINS.length;
+    if (total < 2) return;
+    const at = Math.max(
+      0,
+      BUILT_IN_SKINS.findIndex((skin) => skin.id === focus.selectedSkinId),
+    );
+    const next = BUILT_IN_SKINS[(at + step + total) % total];
+    focus.actions.selectSkin(next.id);
+    AccessibilityInfo.announceForAccessibility(next.name);
+  };
+
   // 有会话时媒体跟随陪伴状态（暂停/喝水动作可见）；无会话回 ready 基态
   const mediaState: CompanionState = active
-    ? focus.companion.playing?.state ?? focus.companion.state
-    : 'ready';
+    ? (focus.companion.playing?.state ?? focus.companion.state)
+    : "ready";
 
   const startFocus = () => {
-    const result = focus.actions.startSession(DEFAULT_ACTIVITY, DEFAULT_DURATION, Date.now());
+    const result = focus.actions.startSession(
+      DEFAULT_ACTIVITY,
+      DEFAULT_DURATION,
+      Date.now(),
+    );
     if (result.ok) {
-      navigate('focus.active');
+      navigate("focus.active");
       return;
     }
-    if (result.reason === 'alreadyActive') {
-      showToast(STR.sessionRunning, 'info');
-      navigate('focus.active');
+    if (result.reason === "alreadyActive") {
+      showToast(STR.sessionRunning, "info");
+      navigate("focus.active");
       return;
     }
-    showToast(STR.invalidSession, 'error');
+    showToast(STR.invalidSession, "error");
   };
 
   const primaryLabel = active
@@ -51,81 +78,115 @@ export function FocusHomeScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.mediaArea}>
-        <ImmersiveMediaSurface
-          manifest={focus.skin}
-          state={mediaState}
-          reducedMotion={focus.reducedMotion}
+        {/* 点击画面进入主题选择（doc-08 §3 顶部入口随原生 Tab 收敛后移除） */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={SKIN.skinEntry}
+          onPress={() => navigate("skins.gallery")}
           style={StyleSheet.absoluteFill}
-        />
-
-        {/* 左上皮肤入口 / 右上设置（doc-08 §3：44×44，距安全边 8） */}
-        <View style={styles.topBar}>
-          <CircleEntry
-            label={SKIN.skinEntry}
-            icon="book"
-            onPress={() => navigate('skins.gallery')}
+        >
+          <ImmersiveMediaSurface
+            manifest={focus.skin}
+            state={mediaState}
+            reducedMotion={focus.reducedMotion}
+            style={StyleSheet.absoluteFill}
           />
-          <CircleEntry label="设置" icon="settings" onPress={() => navigate('settings.home')} />
-        </View>
+        </Pressable>
 
-        {/* 问候（安全区下 72、左 20）+ 在线状态 */}
+        {/* 右上皮肤快切（doc-08 §3）：≥2 套内置皮肤才显示，浮于媒体入口之上 */}
+        {BUILT_IN_SKINS.length > 1 && (
+          <View style={styles.skinSwitcher} pointerEvents="box-none">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={SKIN.prevSkin}
+              onPress={() => cycleSkin(-1)}
+              style={({ pressed }) => [
+                styles.skinSwitchButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <AppIcon
+                name="chevron-left"
+                color={semantic.textPrimary}
+                size={20}
+              />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={SKIN.nextSkin}
+              onPress={() => cycleSkin(1)}
+              style={({ pressed }) => [
+                styles.skinSwitchButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <AppIcon
+                name="chevron-right"
+                color={semantic.textPrimary}
+                size={20}
+              />
+            </Pressable>
+          </View>
+        )}
+
+        {/* 问候（安全区下 72、左 20） */}
         <View style={styles.greeting} pointerEvents="none">
           <Text style={styles.greetingText}>{STR.greeting}</Text>
-          <View style={styles.onlineRow}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>{STR.online}</Text>
-          </View>
         </View>
 
-        {/* 底部结果板（高约 196、左右 16、Tab bar 上 12） */}
-        <View style={styles.board}>
+        {/* 底部结果板（高约 196、左右 16、悬浮 Tab 之上）：
+            iOS 26 悬浮 Tab 约 80pt 高且场景延伸其下，insets.bottom 应含之；
+            下限 92 兜底 insets 未透传的平台，避免板子沉入玻璃之下 */}
+        <View
+          style={[
+            styles.board,
+            { bottom: Math.max(insets.bottom + space.x2, 92) },
+          ]}
+        >
           {firstRun ? (
             <Text style={styles.boardEmpty}>{STR.boardEmpty}</Text>
           ) : (
             <View style={styles.statsRow}>
-              <Text style={styles.statMain}>{STR.todayMinutes(focus.today.minutes)}</Text>
-              <Text style={styles.statSub}>{STR.doneSessions(focus.today.sessions)}</Text>
+              <Text style={styles.statMain}>
+                {STR.todayMinutes(focus.today.minutes)}
+              </Text>
+              <Text style={styles.statSub}>
+                {STR.doneSessions(focus.today.sessions)}
+              </Text>
             </View>
           )}
           <View style={styles.boardActions}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={active ? STR.backToFocus : STR.startFocus}
-              onPress={active ? () => navigate('focus.active') : startFocus}
-              style={({ pressed }) => [styles.primaryCta, pressed && styles.pressed]}
+              onPress={active ? () => navigate("focus.active") : startFocus}
+              style={({ pressed }) => [
+                styles.primaryCta,
+                pressed && styles.pressed,
+              ]}
             >
               <Text style={styles.primaryCtaText}>{primaryLabel}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={STR.chooseActivity}
-              onPress={() => navigate('focus.setup')}
-              style={({ pressed }) => [styles.selector, pressed && styles.pressed]}
+              onPress={() => navigate("focus.setup")}
+              style={({ pressed }) => [
+                styles.selector,
+                pressed && styles.pressed,
+              ]}
             >
               <Text style={styles.selectorText}>{selectorLabel}</Text>
-              <AppIcon name="chevron-down" color={semantic.textMuted} size={18} />
+              <AppIcon
+                name="chevron-down"
+                color={semantic.textMuted}
+                size={18}
+              />
             </Pressable>
           </View>
         </View>
       </View>
     </View>
-  );
-}
-
-function CircleEntry({ label, icon, onPress }: Readonly<{
-  label: string;
-  icon: IconName;
-  onPress: () => void;
-}>) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [styles.entry, pressed && styles.pressed]}
-    >
-      <AppIcon name={icon} color={semantic.textPrimary} size={22} />
-    </Pressable>
   );
 }
 
@@ -136,29 +197,11 @@ const styles = StyleSheet.create({
   },
   mediaArea: {
     flex: 1,
-    overflow: 'hidden',
-  },
-  topBar: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    right: 8,
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  entry: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.round,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: mediaControl,
+    overflow: "hidden",
   },
   greeting: {
-    position: 'absolute',
-    top: 72,
+    position: "absolute",
+    top: 24,
     left: 20,
     gap: space.x2,
   },
@@ -166,26 +209,26 @@ const styles = StyleSheet.create({
     ...type.title2,
     color: semantic.textPrimary,
   },
-  onlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.x2,
+  // 与问候语（top 24 / left 20）镜像；box-none 只让圆钮接点击，媒体入口不受遮挡
+  skinSwitcher: {
+    position: "absolute",
+    top: 24,
+    right: 20,
+    flexDirection: "row",
+    gap: space.x1,
   },
-  onlineDot: {
-    width: 8,
-    height: 8,
+  skinSwitchButton: {
+    width: 44,
+    height: 44,
     borderRadius: radii.round,
-    backgroundColor: semantic.success,
-  },
-  onlineText: {
-    ...type.caption,
-    color: semantic.textSecondary,
+    backgroundColor: mediaControl,
+    alignItems: "center",
+    justifyContent: "center",
   },
   board: {
-    position: 'absolute',
+    position: "absolute",
     left: space.x4,
     right: space.x4,
-    bottom: space.x3,
     height: 196,
     borderRadius: radii.card,
     backgroundColor: mediaSurface,
@@ -193,26 +236,26 @@ const styles = StyleSheet.create({
     borderColor: semantic.borderSoft,
     paddingHorizontal: space.x5,
     paddingVertical: space.x4,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   boardEmpty: {
     ...type.body,
     color: semantic.textSecondary,
   },
   statsRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
   },
   statMain: {
     ...type.title1,
     color: semantic.textPrimary,
-    fontVariant: ['tabular-nums'],
+    fontVariant: ["tabular-nums"],
   },
   statSub: {
     ...type.body,
     color: semantic.textSecondary,
-    fontVariant: ['tabular-nums'],
+    fontVariant: ["tabular-nums"],
   },
   boardActions: {
     gap: space.x3,
@@ -222,8 +265,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.control,
     backgroundColor: semantic.actionPrimary,
     paddingHorizontal: space.x5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   primaryCtaText: {
     ...type.bodyStrong,
@@ -235,9 +278,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: semantic.borderStandard,
     paddingHorizontal: space.x4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   selectorText: {
     ...type.bodyStrong,

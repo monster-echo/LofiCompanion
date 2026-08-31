@@ -8,7 +8,7 @@ import { mappingFor } from '../../skins/domain/resolve';
 /**
  * 陪伴状态机（doc-01 §5.4 事件驱动陪伴）。纯函数、`now` 一律入参——
  * 应用层持有 CompanionRuntimeState，把事件逐个 dispatch 进来，按 effects
- * 渲染横幅/换海报/设定回归定时器。绝不 import 任何平台模块。
+ * 换海报/设定回归定时器。绝不 import 任何平台模块。
  *
  * 术语：`state` 永远指基态（ready/focusing/paused/resting/completed）；
  * `playing` 是正在展示的事件动作（如 drinking），播完（advance）后回到基态。
@@ -79,7 +79,6 @@ export interface CompanionRuntimeState {
 }
 
 export type CompanionEffect =
-  | { kind: 'showBanner'; eventType: CompanionEventType }
   | { kind: 'swapPoster'; state: CompanionState } // 派生：playing ? 事件态 : 基态
   | { kind: 'autoReturn'; afterMs: number }
   | { kind: 'cooldownNotice'; eventType: CompanionEventType; remainingSeconds: number };
@@ -115,7 +114,8 @@ function durationMsOf(
   return asset?.durationMs ?? DEFAULT_DURATION_MS;
 }
 
-/** 开始播放某事件动作：产出动作与配套效果（横幅 / 换海报 / 自动回归）。 */
+/** 开始播放某事件动作：产出动作与配套效果（换海报 / 自动回归）。
+ *  事件提醒由陪伴画面本身承担（海报/视频状态切换），不再产出文字横幅。 */
 function startPlaying(
   manifest: SkinManifest,
   eventType: CompanionEventType,
@@ -128,7 +128,6 @@ function startPlaying(
   return {
     action: { eventType, state, baseAtStart: base, startedAt: now, durationMs },
     effects: [
-      { kind: 'showBanner', eventType },
       { kind: 'swapPoster', state },
       { kind: 'autoReturn', afterMs: durationMs },
     ],

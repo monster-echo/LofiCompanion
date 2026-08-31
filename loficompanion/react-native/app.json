@@ -16,10 +16,14 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#002357",
+          "backgroundColor": "#FFFFFF",
           "image": "./assets/splash-icon.png",
           "imageWidth": 88,
-          "resizeMode": "contain"
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#002357",
+            "image": "./assets/splash-icon-dark.png"
+          }
         }
       ],
       "expo-web-browser",
@@ -47,8 +51,8 @@
     "android": {
       "package": "tech.zhongbei.loficompanion",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/splash-icon.png",
-        "backgroundColor": "#A84444"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
       },
       "googleServicesFile": "./google-services.json",
       "intentFilters": [
