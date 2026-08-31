@@ -9,11 +9,11 @@ Flutter/ArkTS 在契约、状态和核心规则稳定后跟进。
 
 ### 1.1 使用 MobileUI CLI 创建 React Native 客户端
 
-当前机器没有全局 `mobileui` 命令，从 `mobiestarter` 根目录使用仓库内 Dart 入口。
+当前机器没有全局 `mobileui` 命令，从 `MobileStarter` 根目录使用仓库内 Dart 入口。
 本项目使用本地模板，因为本地分支包含尚未进入远程 `origin/main` 的会话/JWT 修复：
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter
+cd /Volumes/MacMiniDisk/workspace/MobileStarter
 
 dart run tool/mobileui/bin/mobileui.dart create loficompanion \
   --output /Volumes/MacMiniDisk/workspace/LofiCompanion \
@@ -41,7 +41,7 @@ dart run tool/mobileui/bin/mobileui.dart create loficompanion \
 生成后必须使用同一个仓库入口检查：
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter
+cd /Volumes/MacMiniDisk/workspace/MobileStarter
 
 dart run tool/mobileui/bin/mobileui.dart doctor \
   --project /Volumes/MacMiniDisk/workspace/LofiCompanion/loficompanion
@@ -81,7 +81,7 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
   `npm test` **58/58 全绿**（连跑两次验证幂等）。原 2 个失败套件的根因是测试
   夹具依赖「每次全新库」：dev 测试账号无人播种、固定订单/事件 id 二跑冲突、
   `u-<counter>` 用户名跨运行撞名、`profileSchema` 已支持改名的旧断言未跟进——
-  已修复并镜像回模板（mobiestarter `1050469`）。
+  已修复并镜像回模板（MobileStarter `1050469`）。
 - 已清偿（2026-08-31）：server `.gitignore` 已补齐（.env/构建产物）；模板
   嵌套重复资产目录（`icons/icons/*`、`illustrations/illustrations/*`，内容与
   外层完全相同且代码零引用）已从模板与本项目移除（模板 `b0e4057`）。
@@ -92,7 +92,7 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
 
 ### P0-A：本地可验证闭环
 
-- 从 `mobiestarter` 创建产品派生项目并替换品牌包。
+- 从 `MobileStarter` 创建产品派生项目并替换品牌包。
 - 实现皮肤 manifest、视频缓存和播放器状态机。
 - 实现创建、开始、暂停、喝水、继续、完成和强杀恢复。
 - 使用一套“雨夜书房”完整资产和静态降级图。
@@ -208,7 +208,7 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
 ## 9. P0-B 验收记录（2026-08-30）
 
 - 服务端基线：本地 PostgreSQL 16 + 独立库 `zhongbei_lofi`；`npm test` **78/78
-  双跑全绿**；typecheck 0 错误。基线测试修复已镜像回模板（mobiestarter `1050469`）。
+  双跑全绿**；typecheck 0 错误。基线测试修复已镜像回模板（MobileStarter `1050469`）。
 - 核心验收（真实 HTTP 全链路，`next dev` :3210）：
   - 注册 → RS256 JWT → 创建会话（active）；
   - **同一完成请求重放十次：effective_seconds 全部一致、唯一结算行数 1、
@@ -302,7 +302,7 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
   App Store 商品配置（P1-A 真实购买）。
 - `LofiCompanion` 无 git 远端——已生成本地 bundle 备份
   （`/tmp/loficompanion-backup-20260830.bundle`），建议尽快配置远端并推送；
-  mobiestarter 本地 13 个提交未推送。
+  MobileStarter 本地 13 个提交未推送。
 - 视觉基线自动化（doc 09 §8 SSIM 门禁）与真机（非模拟器）检查仍为发布前
   待办；Tracked #12（RN 发布 workflow 身份改写）为 CLI 层改进，不影响本项目
   （已就地修复）。

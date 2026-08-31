@@ -31,7 +31,7 @@
 
 - [ ] Step 1: 全新空库复跑（`createdb zhongbei_lofi_p0b` + 指向它）区分「脏状态」vs「代码/前置问题」
 - [ ] Step 2: 逐个失败诊断：读测试断言 → 读实现（`src/server/auth.ts`、entitlements/webhook 数据层）→ 定位（疑似方向：JWT 环境变量未设；测试账号回填与既有 users 表冲突；webhook/entitlement 幂等用例依赖某迁移或配置种子未在fresh库执行）
-- [ ] Step 3: 修复（实现或测试前置），`npm test` 58/58 全绿；若是模板级缺陷，同步修 mobiestarter 源并提交那边
+- [ ] Step 3: 修复（实现或测试前置），`npm test` 58/58 全绿；若是模板级缺陷，同步修 MobileStarter 源并提交那边
 - [ ] Step 4: `.env` 落地 `AUTH_DATABASE_URL=postgresql://zhongbei_auth:change-me@localhost:5432/zhongbei_lofi`（`.env` 已 gitignore）+ 把「本地数据库前置」事实更新进 `docs/06` §1.2；Commit
 
 ### Task 1: 数据库 schema——focus/skins/achievements 域

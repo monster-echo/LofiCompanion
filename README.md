@@ -32,7 +32,7 @@ AI 视频生成是皮肤生产能力；番茄钟是行为底座；角色与房�
 
 ## 技术基线
 
-新产品从 `/Volumes/MacMiniDisk/workspace/mobiestarter` 派生。该基线包含 React
+新产品从 `/Volumes/MacMiniDisk/workspace/MobileStarter` 派生。该基线包含 React
 Native、Flutter、ArkTS 和 Next.js/PostgreSQL 控制面，且比同工作区的
 `MobileStarter` 多五个会话/JWT 修复提交。首个可验证客户端以 React Native 为
 金标准，服务端继续使用 Next.js；Flutter 与 ArkTS 按统一契约跟进，不在 P0 同时

@@ -14,7 +14,7 @@
 
 ### Task 0: server 身份改写（ tracked 任务 #6 清偿）
 
-- [ ] `tool/mobileui/lib/identity_rewriter.dart`：server Profile 增加替换表——`.well-known/apple-app-site-association` 与 `assetlinks.json` 的 `com.mobileui.mobilestarter`/`com.mobileui.mobileui_flutter` → `${appId}`（manifest.org+appId）；`server-publish.yml` 镜像名 `zhongbei-auth` → `${packageName}`。`doctor_command.dart` markers 表加 server 条目（模板残留即 FAIL）。smoke test 扩展断言。mobiestarter 同步提交。Commit×2。
+- [ ] `tool/mobileui/lib/identity_rewriter.dart`：server Profile 增加替换表——`.well-known/apple-app-site-association` 与 `assetlinks.json` 的 `com.mobileui.mobilestarter`/`com.mobileui.mobileui_flutter` → `${appId}`（manifest.org+appId）；`server-publish.yml` 镜像名 `zhongbei-auth` → `${packageName}`。`doctor_command.dart` markers 表加 server 条目（模板残留即 FAIL）。smoke test 扩展断言。MobileStarter 同步提交。Commit×2。
 
 ### Task 1: 皮肤商品目录 + 权益门禁
 

@@ -4,7 +4,7 @@
 
 **Goal:** 扩展 MobileUI CLI 支持 `server` Profile，使 `create --profile react-native,server` 一次性生成带可追踪来源 manifest 的双端项目；随后完成 LofiCompanion 的 git 初始化、脚手架生成、doctor 验证、5 个业务域边界和双端测试基线。
 
-**Architecture:** 在 `mobiestarter` 的 mobileui CLI 中新增 `profiles/server/profile.json`（复用既有 Profile 机制，`--profile` 本就支持逗号分隔多 Profile），补齐 `feature add` 与 `doctor` 的 server 分支。LofiCompanion 仓库根存放产品文档，生成的 `loficompanion/` 子目录持有 `react-native/` + `server/` + `.mobileui/template.json` 来源 manifest（记录模板 commit，满足 doc 06「不得手工复制 server/」红线）。
+**Architecture:** 在 `MobileStarter` 的 mobileui CLI 中新增 `profiles/server/profile.json`（复用既有 Profile 机制，`--profile` 本就支持逗号分隔多 Profile），补齐 `feature add` 与 `doctor` 的 server 分支。LofiCompanion 仓库根存放产品文档，生成的 `loficompanion/` 子目录持有 `react-native/` + `server/` + `.mobileui/template.json` 来源 manifest（记录模板 commit，满足 doc 06「不得手工复制 server/」红线）。
 
 **Tech Stack:** Dart (mobileui CLI)、Expo React Native (vitest/tsc)、Next.js + PostgreSQL (node:test/eslint/tsc)。
 
@@ -13,7 +13,7 @@
 2. P0-A 资产：纯静态图先跑通（poster 降级路径验证全部逻辑），视频资产后置。
 
 **关键事实（已侦察核实）：**
-- 模板根：`/Volumes/MacMiniDisk/workspace/mobiestarter`（main @ `5617bd2`，含 5 个未推送的会话/JWT 修复）。
+- 模板根：`/Volumes/MacMiniDisk/workspace/MobileStarter`（main @ `5617bd2`，含 5 个未推送的会话/JWT 修复）。
 - CLI 入口：`tool/mobileui/bin/mobileui.dart`；Profile 机制：`profiles/{id}/profile.json` 声明 `source` 目录，create 复制 `templateRoot/{source}` → `target/{source}`，按目录名排除（任意深度）。
 - `feature add` 边界四层（domain/application/data/presentation）按 profile 映射路径；`doctor` 按 profile 检查必需文件与 stale markers。
 - **预存缺陷**：基线 smoke test 在 flutter profile 即失败——`flutter/lib/app/app_controller_navigation.dart` 已不存在（模板已重构为 go_router），Task 0 先修复。
@@ -22,17 +22,17 @@
 
 ---
 
-### Task 0: 修复 mobiestarter 基线 smoke test 的过时 flutter 断言
+### Task 0: 修复 MobileStarter 基线 smoke test 的过时 flutter 断言
 
 基线必须先绿，否则后续所有「测试通过」的判断失去意义。此修复是独立提交，与 server profile 无关。
 
 **Files:**
-- Modify: `/Volumes/MacMiniDisk/workspace/mobiestarter/tool/mobileui/test/smoke_test.dart:67-72`
+- Modify: `/Volumes/MacMiniDisk/workspace/MobileStarter/tool/mobileui/test/smoke_test.dart:67-72`
 
 - [ ] **Step 1: 确认当前失败**
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter/tool/mobileui && dart test/smoke_test.dart
+cd /Volumes/MacMiniDisk/workspace/MobileStarter/tool/mobileui && dart test/smoke_test.dart
 ```
 
 Expected: `PathNotFoundException: Cannot open file ... app-flutter/flutter/lib/app/app_controller_navigation.dart`
@@ -68,15 +68,15 @@ Expected: `PathNotFoundException: Cannot open file ... app-flutter/flutter/lib/a
 - [ ] **Step 3: 验证基线全绿**
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter/tool/mobileui && dart test/smoke_test.dart
+cd /Volumes/MacMiniDisk/workspace/MobileStarter/tool/mobileui && dart test/smoke_test.dart
 ```
 
 Expected: 末行输出 `MobileUI CLI smoke test passed.`，退出码 0。
 
-- [ ] **Step 4: 提交（mobiestarter 仓库）**
+- [ ] **Step 4: 提交（MobileStarter 仓库）**
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter
+cd /Volumes/MacMiniDisk/workspace/MobileStarter
 git add tool/mobileui/test/smoke_test.dart
 git commit -m "test(mobileui): 修复 flutter 行为基线断言——模板已重构为 go_router 路由守卫
 
@@ -88,7 +88,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 1: TDD——先扩展 smoke test 覆盖 server 与组合 Profile（预期失败）
 
 **Files:**
-- Modify: `/Volumes/MacMiniDisk/workspace/mobiestarter/tool/mobileui/test/smoke_test.dart`
+- Modify: `/Volumes/MacMiniDisk/workspace/MobileStarter/tool/mobileui/test/smoke_test.dart`
 
 - [ ] **Step 1: 在 main() 的 profile 循环中加入 server，并追加组合 Profile 验证**
 
@@ -203,7 +203,7 @@ void _expect(bool condition, String message) {
 - [ ] **Step 3: 运行验证失败**
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter/tool/mobileui && dart test/smoke_test.dart
+cd /Volumes/MacMiniDisk/workspace/MobileStarter/tool/mobileui && dart test/smoke_test.dart
 ```
 
 Expected: FAIL，报 `profile "server" is not available`（来自 `ProfileConfig.read` 的 MobileUiUsageException）。
@@ -213,9 +213,9 @@ Expected: FAIL，报 `profile "server" is not available`（来自 `ProfileConfig
 ### Task 2: 实现 server Profile（profile.json + feature add + doctor）
 
 **Files:**
-- Create: `/Volumes/MacMiniDisk/workspace/mobiestarter/profiles/server/profile.json`
-- Modify: `/Volumes/MacMiniDisk/workspace/mobiestarter/tool/mobileui/lib/feature_command.dart`（`_featurePath` switch）
-- Modify: `/Volumes/MacMiniDisk/workspace/mobiestarter/tool/mobileui/lib/doctor_command.dart`（`_checkProfile` 的 required switch）
+- Create: `/Volumes/MacMiniDisk/workspace/MobileStarter/profiles/server/profile.json`
+- Modify: `/Volumes/MacMiniDisk/workspace/MobileStarter/tool/mobileui/lib/feature_command.dart`（`_featurePath` switch）
+- Modify: `/Volumes/MacMiniDisk/workspace/MobileStarter/tool/mobileui/lib/doctor_command.dart`（`_checkProfile` 的 required switch）
 
 - [ ] **Step 1: 创建 `profiles/server/profile.json`**
 
@@ -272,7 +272,7 @@ Expected: FAIL，报 `profile "server" is not available`（来自 `ProfileConfig
 - [ ] **Step 4: 运行 smoke test 验证通过**
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter/tool/mobileui && dart test/smoke_test.dart
+cd /Volumes/MacMiniDisk/workspace/MobileStarter/tool/mobileui && dart test/smoke_test.dart
 ```
 
 Expected: `MobileUI CLI smoke test passed.`（flutter/react-native/arkts/server/all/组合 全部通过）。
@@ -280,19 +280,19 @@ Expected: `MobileUI CLI smoke test passed.`（flutter/react-native/arkts/server/
 - [ ] **Step 5: 手工验证 template list 显示 server**
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter && dart run tool/mobileui/bin/mobileui.dart template list
+cd /Volumes/MacMiniDisk/workspace/MobileStarter && dart run tool/mobileui/bin/mobileui.dart template list
 ```
 
 Expected: 表格含 `server	0.2.0	web` 行。
 
 ---
 
-### Task 3: 提交 mobiestarter 的 CLI 扩展
+### Task 3: 提交 MobileStarter 的 CLI 扩展
 
 - [ ] **Step 1: 提交**
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter
+cd /Volumes/MacMiniDisk/workspace/MobileStarter
 git add profiles/server/profile.json tool/mobileui/lib/feature_command.dart tool/mobileui/lib/doctor_command.dart tool/mobileui/test/smoke_test.dart
 git commit -m "feat(mobileui): server Profile——create 复制 server/ 与 server CI，feature add/doctor 支持 server
 
@@ -337,7 +337,7 @@ Expected: 首次提交包含 9 份文档、4 张原型图、system.md、本计�
 - [ ] **Step 1: 运行 create（doc 06 §1.1 命令，profile 扩展为 react-native,server）**
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter
+cd /Volumes/MacMiniDisk/workspace/MobileStarter
 dart run tool/mobileui/bin/mobileui.dart create loficompanion \
   --output /Volumes/MacMiniDisk/workspace/LofiCompanion \
   --profile react-native,server \
@@ -362,7 +362,7 @@ Expected:
 - 根目录含 `react-native/`、`server/`、`.mobileui/`、`.github/`、`README.md`、`.gitignore`
 - workflows 含 `react-native-ci.yml`、`react-native-publish.yml`、`server-ci.yml`、`server-publish.yml`
 - `grep -c node_modules` 输出 `0`（未复制）
-- manifest 中 `profiles` 为 `["react-native", "server"]`，`templateSource.commit` 等于 mobiestarter 当前 HEAD
+- manifest 中 `profiles` 为 `["react-native", "server"]`，`templateSource.commit` 等于 MobileStarter 当前 HEAD
 
 - [ ] **Step 3: 验证 RN 身份改写生效**
 
@@ -380,7 +380,7 @@ Expected: `name` 为 `"Lofi Companion"`；无 `com.mobileui.mobilestarter` 残�
 - [ ] **Step 1: doctor**
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter
+cd /Volumes/MacMiniDisk/workspace/MobileStarter
 dart run tool/mobileui/bin/mobileui.dart doctor \
   --project /Volumes/MacMiniDisk/workspace/LofiCompanion/loficompanion
 ```
@@ -390,7 +390,7 @@ Expected: 退出码 0，输出含 `[OK] Profile structures: react-native, server
 - [ ] **Step 2: 添加 5 个业务域边界（doc 06 §1.1）**
 
 ```bash
-cd /Volumes/MacMiniDisk/workspace/mobiestarter
+cd /Volumes/MacMiniDisk/workspace/MobileStarter
 for f in focus skins achievements leaderboards generation; do
   dart run tool/mobileui/bin/mobileui.dart feature add "$f" \
     --project /Volumes/MacMiniDisk/workspace/LofiCompanion/loficompanion
