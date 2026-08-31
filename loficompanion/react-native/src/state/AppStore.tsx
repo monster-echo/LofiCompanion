@@ -235,7 +235,11 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, []);
   const dataActions = useDataActions(run, setUser, user, setPurchaseState);
   const value = useMemo<AppContextValue>(() => ({
-    route: (navigationRef.getCurrentRoute()?.name ?? 'launch.splash') as AppRoute,
+    // getCurrentRoute 在容器挂载前会 throw（LogBox 'navigation' 未初始化横幅的根因），
+    // 必须以 isReady 守卫。
+    route: (navigationRef.isReady()
+      ? navigationRef.getCurrentRoute()?.name ?? 'launch.splash'
+      : 'launch.splash') as AppRoute,
     canGoBack: navigationRef.isReady() && navigationRef.canGoBack(),
     navigate,
     replace,

@@ -5,6 +5,7 @@ export type IconName =
   | 'alert'
   | 'arrow-left'
   | 'bell'
+  | 'book'
   | 'bookmark'
   | 'check'
   | 'check-circle'
@@ -51,7 +52,11 @@ const paths: Record<Exclude<IconName, 'user'>, string[]> = {
   ],
   'arrow-left': ['m15 18-6-6 6-6'],
   bell: ['M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9', 'M10 21h4'],
-  bookmark: ['m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16Z'],
+  book: [
+    'M4 5.5A2.5 2.5 0 0 1 6.5 3H11v15H6a2 2 0 0 0-2 2V5.5Z',
+    'M20 5.5A2.5 2.5 0 0 0 17.5 3H13v15h4.5a2 2 0 0 1 2 2V5.5Z',
+  ],
+    bookmark: ['m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16Z'],
   check: ['m20 6-11 11-5-5'],
   'check-circle': ['m8.5 12.2 2.4 2.4 4.8-4.8'],
   'chevron-down': ['m6 9 6 6 6-6'],

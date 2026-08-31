@@ -62,7 +62,7 @@ export function FocusHomeScreen() {
         <View style={styles.topBar}>
           <CircleEntry
             label={SKIN.skinEntry}
-            icon="lamp"
+            icon="book"
             onPress={() => navigate('skins.gallery')}
           />
           <CircleEntry label="设置" icon="settings" onPress={() => navigate('settings.home')} />
