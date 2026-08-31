@@ -16,6 +16,7 @@ npm install            # 含 prisma generate（postinstall）
 cp .env.example .env   # 填 DATABASE_URL
 npx prisma migrate dev # 建表
 npm run dev            # http://localhost:3320/api/health
+npm run dev:ws         # 自习室 WebSocket：ws://localhost:3321/studyroom
 ```
 
 `GET /api/v1/ping` 是垂直切片样板（JWT 验签 → Prisma → 遥测），
@@ -53,6 +54,20 @@ docker exec <container> npx prisma migrate deploy   # 首次/升级时
 走 [OpenNext](https://opennext.js.org/cloudflare) 适配器包装本目录；
 Prisma 需换 [driver adapter](https://www.prisma.io/docs/orm/overview/databases/database-drivers)
 （Neon serverless / Hyperdrive）。没有 Vercel 那么顺滑，除非有明确 CF 需求否则优先 B。
+
+### 自习室 WebSocket（须常驻进程，与上面 REST 部署相互独立）
+
+`src/ws/server.ts` 是独立 Node 进程（同镜像第二入口，`--target wsrunner`），
+承载自习室弹幕/presence 长连接——Serverless（Vercel）跑不了它，需在 VPS 上常驻：
+
+```bash
+docker build --target wsrunner -t <image>:ws .   # 或 CI 镜像 + docker run --target
+docker compose -f compose.ws.yml up -d           # 单容器，端口 3321
+```
+
+`wss://` 终止交给反代：`wss://lofi-biz.zhongbei.tech/studyroom` → `127.0.0.1:3321`
+（upgrade 头透传即可）。presence 是单实例内存态——**勿起多个副本**；
+扩容路径为 Redis pub/sub（尚未实现）。
 
 ## 遥测
 

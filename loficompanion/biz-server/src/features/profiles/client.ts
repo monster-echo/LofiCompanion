@@ -1,4 +1,4 @@
-import { ApiError } from '../../lib/http';
+import { ApiError } from '../../lib/apiError';
 import { getServiceToken } from '../../lib/service-token';
 import { getAuthInternalBaseUrl } from '../../env';
 

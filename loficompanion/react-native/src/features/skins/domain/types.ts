@@ -35,8 +35,18 @@ export interface SkinStateAsset {
   /** 焦点归一化坐标（0..1），镜头取景用 */
   focalPointX: number;
   focalPointY: number;
-  /** 循环视频地址；P0-A 静态优先，暂缺省 */
-  loopUrl?: string;
+  /**
+   * 循环/动作视频（doc-07 §9.2）。二选一：
+   *  - number：require() 模块引用（内置皮肤，Metro 静态收集）
+   *  - { uri }：本地缓存文件地址（远端皮肤，remoteSkinsRepository 落盘后构造）
+   * 缺省 = 纯海报状态。视频一律无音轨（环境音由 lofi 系统独立连续播放）。
+   */
+  loopVideo?: number | { readonly uri: string };
+  /**
+   * 视频循环语义：true=背景循环（循环态硬切无缝，播放器原生循环、不叠化）；
+   * false=单次动作，播完定格，由控制器按 returnState 回归基态。
+   */
+  videoLoop?: boolean;
   /** 静态模式下的展示时长 */
   durationMs: number;
 }

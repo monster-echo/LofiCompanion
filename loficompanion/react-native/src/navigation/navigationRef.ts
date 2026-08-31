@@ -28,6 +28,7 @@ export const MAIN_TABS_ROUTE = 'main.tabs';
 
 const TAB_ROOT_ROUTES: ReadonlySet<AppRoute> = new Set([
   'home',
+  'studyroom.home',
   'achievements.home',
   'leaderboard.home',
   'profile.home',

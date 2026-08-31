@@ -42,6 +42,8 @@ export function createExpoAudioMusicController(
   let player: AudioPlayer | null = null;
   let audioModeReady = false;
   let sessionActive = false;
+  /** 画面门控：仅专注画面/自习室聚焦时出声（首页/成就/我的恒静默） */
+  let screenActive = false;
   let muted = false;
   /** 当前曲目（null = 尚未确定，apply 时落首个内置） */
   let current: MusicTrack | null = null;
@@ -124,7 +126,7 @@ export function createExpoAudioMusicController(
   }
 
   function sync(): void {
-    void apply(sessionActive && !muted);
+    void apply(sessionActive && screenActive && !muted);
   }
 
   return {
@@ -142,6 +144,10 @@ export function createExpoAudioMusicController(
     },
     sessionEnded() {
       sessionActive = false;
+      sync();
+    },
+    setScreenActive(active: boolean) {
+      screenActive = active;
       sync();
     },
     setMuted(next: boolean) {

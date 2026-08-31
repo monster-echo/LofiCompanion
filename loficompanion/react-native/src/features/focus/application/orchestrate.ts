@@ -361,6 +361,12 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
           ? { companion: initialState(derived.status === 'paused' ? 'paused' : 'focusing') }
           : {}),
       });
+      if (derived.status === 'active') {
+        // 冷启动恢复/前台回归：原生音频层可能已随上次进程消亡，活跃会话
+        // 恢复即对齐 lofi 播放（幂等——已在播则无损重对齐）。paused 会话
+        // 保持无声，与 pause 语义一致，由 resume() 恢复。
+        deps.music?.sessionStarted();
+      }
       return;
     }
     commit({

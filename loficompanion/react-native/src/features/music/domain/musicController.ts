@@ -20,6 +20,12 @@ export interface FocusMusicEffects {
 export interface MusicController extends FocusMusicEffects {
   /** 专注页静音开关（focusQuickPrefs.muted）：静音=暂停但记住意图，取消静音即恢复 */
   setMuted(muted: boolean): void;
+  /**
+   * 画面门控：lofi 只在专注画面与自习室播放（首页/成就/我的恒静默）。
+   * 这两个 Screen 聚焦时置 true、失焦/卸载置 false；与会话状态相与生效
+   * （会话活跃 ∧ 画面在场 才出声）。锁屏/切后台不改变导航聚焦，后台续播不受影响。
+   */
+  setScreenActive(active: boolean): void;
   /** 选曲：会话中调用立即切换，空闲时仅记录（下轮生效） */
   selectTrack(track: MusicTrack): void;
   /** 测试/开发释放底层播放器 */

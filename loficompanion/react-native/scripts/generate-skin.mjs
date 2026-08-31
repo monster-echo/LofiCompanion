@@ -76,6 +76,15 @@ function runSkin(slug, checkMode) {
     seenStates.add(entry.state);
     const posterPath = join(skinDir, entry.poster ?? '');
     if (!entry.poster || !existsSync(posterPath)) fail(`状态 ${entry.state} 的海报不存在：${posterPath}`);
+    if (entry.video) {
+      const videoPath = join(skinDir, entry.video);
+      if (!existsSync(videoPath)) fail(`状态 ${entry.state} 的视频不存在：${videoPath}`);
+      if (typeof entry.videoLoop !== 'boolean') {
+        fail(`状态 ${entry.state} 声明了 video 但缺少 videoLoop（true=背景循环 / false=单次动作）`);
+      }
+    } else if (entry.videoLoop !== undefined) {
+      fail(`状态 ${entry.state} 声明了 videoLoop 但缺少 video`);
+    }
   }
   for (const state of COMPANION_STATES) {
     if (!seenStates.has(state)) fail(`skin.yaml 缺少状态：${state}（types.ts CompanionState 要求全覆盖）`);
@@ -110,6 +119,38 @@ ${stateEntries.map((entry) => `      ${entry.state}: 0,`).join('\n')}
   }
 })();`;
 
+  // 循环视频表：仅当 skin.yaml 声明了 video 时才生成（保持无视频皮肤的
+  // 生成物与历史版本逐字节一致，--check 不受影响）。
+  const hasVideos = stateEntries.some((entry) => entry.video);
+  const videoTable = hasVideos
+    ? `const VIDEOS: Readonly<Record<CompanionState, number | null>> = (() => {
+  try {
+    return {
+${stateEntries
+  .map((entry) =>
+    entry.video
+      ? `      ${entry.state}: require('${relAssetPrefix}/${slug}/${entry.video}'),`
+      : `      ${entry.state}: null,`,
+  )
+  .join('\n')}
+    };
+  } catch {
+    // 非 Metro 环境：视频引用不可用，回退纯海报
+    return {
+${stateEntries.map((entry) => `      ${entry.state}: null,`).join('\n')}
+    };
+  }
+})();`
+    : '';
+
+  const videoLoopTable = hasVideos
+    ? `const VIDEO_LOOP: Record<CompanionState, boolean> = {
+${stateEntries
+  .map((entry) => `  ${entry.state}: ${entry.video ? entry.videoLoop : false},`)
+  .join('\n')}
+};`
+    : '';
+
   const focalTables = `const FOCAL_X: Record<CompanionState, number> = {
 ${stateEntries.map((entry) => `  ${entry.state}: ${focalOf(entry).x},`).join('\n')}
 };
@@ -131,6 +172,25 @@ ${stateEntries.map((entry) => `  ${entry.state}: ${durationOf(entry)},`).join('\
       returnState: ${literal(event.returnState)},
     },`)
     .join('\n');
+
+  const statesMapping = hasVideos
+    ? `  states: ALL_STATES.map((state) => ({
+    state,
+    poster: POSTERS[state],
+    focalPointX: FOCAL_X[state],
+    focalPointY: FOCAL_Y[state],
+    durationMs: DURATION_MS[state],
+    ...(VIDEOS[state] !== null
+      ? { loopVideo: VIDEOS[state], videoLoop: VIDEO_LOOP[state] }
+      : {}),
+  })),`
+    : `  states: ALL_STATES.map((state) => ({
+    state,
+    poster: POSTERS[state],
+    focalPointX: FOCAL_X[state],
+    focalPointY: FOCAL_Y[state],
+    durationMs: DURATION_MS[state],
+  })),`;
 
   const animation = doc.animation
     ? `  animation: { crossfadeMs: ${doc.animation.crossfadeMs}, focalZoom: ${doc.animation.focalZoom} },`
@@ -160,7 +220,7 @@ import type {
 declare const require: (id: string) => number;
 
 ${posterTable}
-
+${hasVideos ? `\n${videoTable}\n\n${videoLoopTable}\n` : ''}
 ${focalTables}
 
 const ALL_STATES: readonly CompanionState[] = [
@@ -175,13 +235,7 @@ export const ${manifestName}: SkinManifest = {
   accessType: ${literal(doc.accessType)},
   manifestVersion: ${doc.manifestVersion},
   defaultState: ${literal(doc.defaultState)},
-  states: ALL_STATES.map((state) => ({
-    state,
-    poster: POSTERS[state],
-    focalPointX: FOCAL_X[state],
-    focalPointY: FOCAL_Y[state],
-    durationMs: DURATION_MS[state],
-  })),
+${statesMapping}
   eventMappings: [
 ${eventList}
   ],

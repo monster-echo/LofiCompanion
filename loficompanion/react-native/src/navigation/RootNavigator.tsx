@@ -34,6 +34,7 @@ import { usePreferences } from '../preferences/PreferencesProvider';
 import type { IconName } from '../design-system/AppIcon';
 import { semantic } from '../theme/tokens';
 import { FocusHomeScreen } from '../features/focus/presentation/FocusHomeScreen';
+import { StudyRoomScreen } from '../features/studyroom/presentation/StudyRoomScreen';
 import { FocusSetupSheet } from '../features/focus/presentation/FocusSetupSheet';
 import { FocusActiveScreen } from '../features/focus/presentation/FocusActiveScreen';
 import { FocusCompleteScreen } from '../features/focus/presentation/FocusCompleteScreen';
@@ -49,12 +50,12 @@ import { WeeklySettlementScreen } from '../features/leaderboards/presentation/We
 
 const Stack = createNativeStackNavigator<RootParamList>();
 
-// 三个主 Tab 的参数均为 undefined，直接复用根参数表子集。
+// 四个主 Tab 的参数均为 undefined，直接复用根参数表子集。
 // （排行暂不提供入口——leaderboard 相关 push 页保留，恢复时把
 //   'leaderboard.home' 加回 RootTabList 与 TABS 即可。）
 type RootTabList = Pick<
   RootParamList,
-  'home' | 'achievements.home' | 'profile.home'
+  'home' | 'studyroom.home' | 'achievements.home' | 'profile.home'
 >;
 
 const NativeTab = createNativeBottomTabNavigator<RootTabList>();
@@ -71,7 +72,7 @@ type TabDef = Readonly<{
   en: string;
 }>;
 
-// doc-08 §1：主 Tab 根页——专注 / 成就 / 我的（排行暂不提供）
+// doc-08 §1：主 Tab 根页——专注 / 自习室 / 成就 / 我的（排行暂不提供）
 const TABS: readonly TabDef[] = [
   {
     name: 'home',
@@ -81,6 +82,17 @@ const TABS: readonly TabDef[] = [
     image: require('../../assets/icons/tabbar/droplet.png'),
     zh: '专注',
     en: 'Focus',
+  },
+  {
+    name: 'studyroom.home',
+    // 排行榜遗留的 group 三倍图暂复用（iOS 走 SF Symbols 不受影响）；
+    // 专属台灯/书桌图标为后续打磨项
+    icon: 'group',
+    sfFocused: 'person.3.fill',
+    sfIdle: 'person.3',
+    image: require('../../assets/icons/tabbar/group.png'),
+    zh: '自习室',
+    en: 'Study Room',
   },
   {
     name: 'achievements.home',
@@ -140,6 +152,7 @@ function MainTabs() {
 
 const TAB_COMPONENTS: Readonly<Record<keyof RootTabList, React.ComponentType>> = {
   home: FocusHomeScreen,
+  'studyroom.home': StudyRoomScreen,
   'achievements.home': AchievementsScreen,
   'profile.home': ProfileScreen,
 };
@@ -189,7 +202,7 @@ export function RootNavigator() {
       <Stack.Screen name="launch.splash" component={SplashScreen} />
       <Stack.Screen name="launch.onboarding" component={OnboardingScreen} />
 
-      {/* 四个底部 Tab（doc-08 §1 路由表）：专注 / 成就 / 排行 / 我的 */}
+      {/* 四个底部 Tab（doc-08 §1 路由表）：专注 / 自习室 / 成就 / 我的（排行暂不挂载） */}
       <Stack.Screen name="main.tabs" component={MainTabs} />
 
       {/* 专注闭环 push 页（doc-08 §1 路由表） */}

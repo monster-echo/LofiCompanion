@@ -9,6 +9,7 @@ import {
   StyleProp,
   ViewStyle,
 } from "react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { stateAsset } from "../domain/resolve";
 import type {
@@ -43,6 +44,65 @@ let gradientSeq = 0;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * 槽位视频层（doc-07 §9.2）：海报上方叠 expo-video。规范要点：
+ *  - 一律 muted——环境音由 lofi 系统独立连续播放，视频不携带必须听见的声轨；
+ *  - videoLoop=true 背景循环：视频本身按首尾帧锁定生成，播放器原生循环
+ *    即无缝硬切，不叠化衔接；
+ *  - videoLoop=false 单次动作：播完定格最后一帧，控制器按 returnState 回归；
+ *  - 就绪前透明，海报（=首帧）兜底，加载不改变布局；
+ *  - active=false（退役槽）暂停省电，切回时循环态续播、动作态重播。
+ */
+function SlotVideo({
+  asset,
+  active,
+}: Readonly<{ asset: SkinStateAsset; active: boolean }>) {
+  // 挂载方已保证 loopVideo 存在；此处保持宽松以维持 hook 顺序稳定
+  const loopVideo = asset.loopVideo;
+  const source: string | number | null =
+    loopVideo === undefined
+      ? null
+      : typeof loopVideo === "number"
+        ? loopVideo
+        : loopVideo.uri;
+  const player = useVideoPlayer(source, (p) => {
+    p.muted = true;
+    p.loop = asset.videoLoop !== false;
+  });
+  const [ready, setReady] = useState(false);
+
+  // 源加载状态 → 淡入时机。换源（槽位退役后承接新状态）时重置就绪标记。
+  useEffect(() => {
+    setReady(false);
+    const subscription = player.addListener("statusChange", (event) => {
+      setReady(event.status === "readyToPlay");
+    });
+    return () => subscription.remove();
+  }, [player]);
+
+  useEffect(() => {
+    if (!active) {
+      player.pause();
+      return;
+    }
+    if (asset.videoLoop === false) {
+      player.currentTime = 0; // 单次动作从可见/切入起完整重播
+    }
+    player.play();
+  }, [active, player, asset.videoLoop]);
+
+  return (
+    <View style={absoluteFill} pointerEvents="none">
+      <VideoView
+        player={player}
+        style={[imageFill, { opacity: ready ? 1 : 0 }]}
+        contentFit="cover"
+        nativeControls={false}
+      />
+    </View>
+  );
 }
 
 // RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充。
@@ -276,6 +336,17 @@ export function ImmersiveMediaSurface({
     };
   };
 
+  // 槽位是否持有「当前或切入中」的状态资产：可见槽恒活跃；切入中的目标槽
+  // 提前起播（跨叠化就绪），退役槽暂停省电。
+  const slotActive = (key: SlotKey): boolean => {
+    if (buf.visible === key) return true;
+    return (
+      buf.incoming !== null &&
+      buf.slots[key] !== null &&
+      buf.slots[key].poster === buf.incoming.poster
+    );
+  };
+
   return (
     <View
       style={[styles.container, style]}
@@ -290,6 +361,9 @@ export function ImmersiveMediaSurface({
           resizeMode={resizeMode}
           onLoadEnd={() => markDecoded("x")}
         />
+        {!reducedMotion && buf.slots.x.loopVideo ? (
+          <SlotVideo asset={buf.slots.x} active={slotActive("x")} />
+        ) : null}
       </Animated.View>
       {buf.slots.y ? (
         <Animated.View style={[absoluteFill, { opacity: yFade }]}>
@@ -299,6 +373,9 @@ export function ImmersiveMediaSurface({
             resizeMode={resizeMode}
             onLoadEnd={() => markDecoded("y")}
           />
+          {!reducedMotion && buf.slots.y.loopVideo ? (
+            <SlotVideo asset={buf.slots.y} active={slotActive("y")} />
+          ) : null}
         </Animated.View>
       ) : null}
 

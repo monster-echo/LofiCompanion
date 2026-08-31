@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
 import { mediaControl } from '../../../design-system/derivedTokens';
@@ -8,6 +9,7 @@ import { useFocus } from '../../focus/application/FocusStore';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { ACHIEVEMENT_DEFS, type RoomItemId } from '../domain/rules';
 import { ACHIEVEMENT_STRINGS as STR, ROOM_ITEM_NAMES } from './strings';
+import { getMusicController } from '../../music/data/expoAudioMusicController';
 
 /**
  * S09 我的陪伴房间（doc-08 §10）。媒体/房间占顶部至约 66%；已解锁收藏物
@@ -46,6 +48,14 @@ export function RoomScreen() {
   const { width: windowWidth } = useWindowDimensions();
   // 同一时间只开一个 callout；再次点击同一热点收起
   const [openItemId, setOpenItemId] = useState<RoomItemId | null>(null);
+
+  // 音乐门控：自习室与专注画面共用「画面在场」白名单（首页/成就/我的恒静默）
+  useFocusEffect(
+    useCallback(() => {
+      getMusicController().setScreenActive(true);
+      return () => getMusicController().setScreenActive(false);
+    }, []),
+  );
 
   const unlockedItems = focus.roomItems.filter(
     (item, index, all) => all.findIndex((other) => other.itemId === item.itemId) === index,

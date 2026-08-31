@@ -28,20 +28,35 @@ wellness:
     minIntervalMinutes: 20
     maxIntervalMinutes: 32
 
-# 六种陪伴状态的海报与取景（poster 相对本目录；focal 归一化 0..1）
+# 六种陪伴状态的海报与取景（poster 相对本目录；focal 归一化 0..1）。
+# video 相对本目录（MiniMax H3 图生视频，无音轨竖版，循环态首尾帧锁定）：
+#   videoLoop=true  背景循环；videoLoop=false 单次动作，播完定格回归。
+# focusing 为叙事循环：代码写满 → 编译清屏 → 再写满，硬切读作"新起一屏"。
 states:
   - state: ready
     poster: ready.jpg
+    video: videos/ready.mp4
+    videoLoop: true
   - state: focusing
     poster: focusing.jpg
+    video: videos/focusing.mp4
+    videoLoop: true
   - state: paused
     poster: paused.jpg
+    video: videos/paused.mp4
+    videoLoop: true
   - state: drinking
     poster: drinking.jpg
+    video: videos/drinking.mp4
+    videoLoop: false
   - state: resting
     poster: resting.jpg
+    video: videos/resting.mp4
+    videoLoop: true
   - state: completed
     poster: completed.jpg
+    video: videos/completed.mp4
+    videoLoop: false
 # 全局缺省取景/时长（单状态可用 focal/durationMs 覆盖）
 defaults:
   focal: { x: 0.5, y: 0.38 }

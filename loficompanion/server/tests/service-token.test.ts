@@ -38,7 +38,8 @@ test('env 引导注册 → 换发 token → 验签含 scope；越权 scope 拒�
   const grant = await grantClientCredentials({ grantType: 'client_credentials', clientId: CID, clientSecret: SECRET, scope: null, ...HEAD });
   assert.equal(grant.ok, true);
   if (!grant.ok) return;
-  assert.equal(grant.scope, 'profiles:read');
+  // 缺省 scope = 注册全集（profiles:read store:write）
+  assert.ok(grant.scope.includes('profiles:read') && grant.scope.includes('store:write'));
   assert.equal(grant.expiresIn, 3600);
 
   // 服务 token 可验签且 scope 正确

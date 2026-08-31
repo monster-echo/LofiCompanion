@@ -202,3 +202,18 @@ model SkinManifest {
   @@unique([skin_id, version])
   @@map("skin_manifests")
 }
+
+// ── 自习室弹幕（WS 服务 src/ws/server.ts 写入；id 为单调游标）──────────────
+
+// 仅登录用户可发送；访客只读。id 用 Int 自增而非 BigInt：
+// JSON.stringify(BigInt) 会抛，WS 线格式全程 JSON 文本帧。
+model StudyRoomMessage {
+  id         Int    @id @default(autoincrement())
+  room_id    String @map("room_id")
+  user_id    String @map("user_id")
+  content    String
+  created_at String @map("created_at")
+
+  @@index([room_id, id])
+  @@map("study_room_messages")
+}

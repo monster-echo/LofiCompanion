@@ -244,6 +244,30 @@ describe('FocusStore 编排：强杀恢复', () => {
     expect(s.completions?.grants).toEqual(['first_focus']);
   });
 
+  it('冷启动恢复：活跃会话重启 lofi（sessionStarted）；暂停会话恢复保持无声', async () => {
+    const driver = memoryDriver();
+    const first = makeController({ driver });
+    await first.restore(T0);
+    first.startSession('homework', 25, T0);
+    await first.flush();
+
+    // 活跃会话 relaunch：原生音频层已随上次进程消亡，恢复即对齐 lofi 播放
+    const activeMusic = recordingMusic();
+    const mid = makeController({ driver, music: activeMusic.fake });
+    await mid.restore(T0 + 10 * MIN);
+    expect(mid.getState().activeSession?.status).toBe('active');
+    expect(activeMusic.calls).toEqual(['started']);
+
+    // 暂停态 relaunch：恢复不播（paused 语义），由 resume() 恢复
+    mid.pause(T0 + 11 * MIN);
+    await mid.flush();
+    const pausedMusic = recordingMusic();
+    const paused = makeController({ driver, music: pausedMusic.fake });
+    await paused.restore(T0 + 12 * MIN);
+    expect(paused.getState().activeSession?.status).toBe('paused');
+    expect(pausedMusic.calls).toEqual([]);
+  });
+
   it('暂停中文档恢复：保持暂停、专注时钟冻结（暂停区间按 now 展开）', async () => {
     const driver = memoryDriver();
     const first = makeController({ driver });

@@ -14,7 +14,15 @@ export type BizIdentity = Readonly<{
 
 const jwks = createRemoteJWKSet(new URL(`${AUTH_BASE_URL}/api/v1/auth/jwks`));
 
-export async function verifyAccessToken(token: string | null): Promise<BizIdentity | null> {
+export type VerifiedAccessToken = Readonly<{
+  identity: BizIdentity;
+  /** token 过期时刻（毫秒）；长连接（自习室 WS）据此在过期后主动断开。 */
+  expiresAtMs: number;
+}>;
+
+export async function verifyAccessTokenWithClaims(
+  token: string | null,
+): Promise<VerifiedAccessToken | null> {
   if (token === null) return null;
   try {
     const { payload } = await jwtVerify(token, jwks, {
@@ -25,17 +33,24 @@ export async function verifyAccessToken(token: string | null): Promise<BizIdenti
     const userId = payload.sub;
     const appId = payload.app_id;
     const sessionId = payload.sid;
+    const exp = payload.exp;
     if (
       typeof userId !== 'string' ||
       typeof appId !== 'string' ||
-      typeof sessionId !== 'string'
+      typeof sessionId !== 'string' ||
+      typeof exp !== 'number'
     ) {
       return null;
     }
-    return { userId, appId, sessionId };
+    return { identity: { userId, appId, sessionId }, expiresAtMs: exp * 1000 };
   } catch {
     return null;
   }
+}
+
+export async function verifyAccessToken(token: string | null): Promise<BizIdentity | null> {
+  const verified = await verifyAccessTokenWithClaims(token);
+  return verified?.identity ?? null;
 }
 
 /** 从 Authorization 头提取 Bearer token（供路由与测试使用）。 */

@@ -5,6 +5,7 @@ export type AppRoute =
   // 仅用于导航结构，深链/页面不会指向它。
   | 'main.tabs'
   | 'home'
+  | 'studyroom.home'
   | 'skins.gallery'
   | 'store.home'
   | 'store.skinDetail'

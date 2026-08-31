@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { defaultConfig, type RuntimeConfig } from '@/domain/config';
 import { initializeCoreSchema } from './database-schema-core';
 import { initializeProductSchema } from './database-schema-product';
+import { initializeLofiSchema } from './database-schema-lofi';
 import { hashPassword } from './passwords';
 import { PostgresDatabase } from './postgres-database';
 import { DEFAULT_APP_ID } from './service-identity';
@@ -33,6 +34,7 @@ async function runBootstrap() {
     );
     await initializeCoreSchema(database);
     await initializeProductSchema(database);
+    await initializeLofiSchema(database);
     await applyIdempotentMigrations();
     await seedDefaultConfig();
     // 存量 app 补种标准测试账户（幂等；新 app 在 seedConfigScope 内即时种）。

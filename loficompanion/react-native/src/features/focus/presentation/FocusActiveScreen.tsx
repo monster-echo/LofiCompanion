@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { useFocusEffect } from "@react-navigation/native";
 import { AppIcon } from "../../../design-system/AppIcon";
 import { replaceRoute } from "../../../navigation/navigationRef";
 import { useApp } from "../../../state/AppStore";
@@ -27,6 +28,7 @@ import { SheetOverlay } from "./SheetOverlay";
 import { ACTIVITY_STATUS, FOCUS_STRINGS as STR } from "./strings";
 import { useFocusQuickPrefs } from "./focusQuickPrefs";
 import { useMusicLibrary } from "../../music/application/useMusicLibrary";
+import { getMusicController } from "../../music/data/expoAudioMusicController";
 import type { IconName } from "../../../design-system/AppIcon";
 
 /**
@@ -63,6 +65,15 @@ export function FocusActiveScreen() {
   const chrome = useRef(new Animated.Value(1)).current;
   const weakenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef(false);
+
+  // 音乐门控：lofi 仅在专注画面与自习室在场时出声（首页/成就/我的恒静默）；
+  // 失焦/卸载即暂停，回焦续播。会话状态由 orchestrate 侧驱动，此处只报画面在场。
+  useFocusEffect(
+    useCallback(() => {
+      getMusicController().setScreenActive(true);
+      return () => getMusicController().setScreenActive(false);
+    }, []),
+  );
 
   const session = focus.activeSession;
   const paused = session?.status === "paused";

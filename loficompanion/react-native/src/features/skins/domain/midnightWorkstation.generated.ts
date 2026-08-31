@@ -35,6 +35,38 @@ const POSTERS: Readonly<Record<CompanionState, number>> = (() => {
   }
 })();
 
+const VIDEOS: Readonly<Record<CompanionState, number | null>> = (() => {
+  try {
+    return {
+      ready: require('../../../../assets/skins/midnight-workstation/videos/ready.mp4'),
+      focusing: require('../../../../assets/skins/midnight-workstation/videos/focusing.mp4'),
+      paused: require('../../../../assets/skins/midnight-workstation/videos/paused.mp4'),
+      drinking: require('../../../../assets/skins/midnight-workstation/videos/drinking.mp4'),
+      resting: require('../../../../assets/skins/midnight-workstation/videos/resting.mp4'),
+      completed: require('../../../../assets/skins/midnight-workstation/videos/completed.mp4'),
+    };
+  } catch {
+    // 非 Metro 环境：视频引用不可用，回退纯海报
+    return {
+      ready: null,
+      focusing: null,
+      paused: null,
+      drinking: null,
+      resting: null,
+      completed: null,
+    };
+  }
+})();
+
+const VIDEO_LOOP: Record<CompanionState, boolean> = {
+  ready: true,
+  focusing: true,
+  paused: true,
+  drinking: false,
+  resting: true,
+  completed: false,
+};
+
 const FOCAL_X: Record<CompanionState, number> = {
   ready: 0.5,
   focusing: 0.5,
@@ -85,6 +117,9 @@ export const midnightWorkstationManifest: SkinManifest = {
     focalPointX: FOCAL_X[state],
     focalPointY: FOCAL_Y[state],
     durationMs: DURATION_MS[state],
+    ...(VIDEOS[state] !== null
+      ? { loopVideo: VIDEOS[state], videoLoop: VIDEO_LOOP[state] }
+      : {}),
   })),
   eventMappings: [
     {

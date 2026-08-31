@@ -1,4 +1,4 @@
-import { ApiError } from './http';
+import { ApiError } from './apiError';
 import { getAuthInternalBaseUrl, getInternalClientId, getInternalClientSecret } from '../env';
 
 // 服务间 client credentials 换 token（RFC 6749 §4.4）：POST
