@@ -418,42 +418,42 @@ export const apiClient = {
   ),
   getSkinOrder: (orderId: string) =>
     request<SkinOrderRemote>(`/api/v1/store/skin-orders/${orderId}`),
-  // —— LofiCompanion P0-C：好友邀请码/小组/榜单/隐私（docs/04 §3）——
+  // —— LofiCompanion P0-C：好友邀请码/小组/榜单/隐私（docs/04 §3，走 biz-server）——
   // 我的邀请码（幂等，无则生成——服务端为 POST）。
-  myInviteCode: () => request<{ code: string }>('/api/v1/friends/invitations', { method: 'POST' }),
-  acceptInvite: (code: string) => request<AcceptInviteRemote>(
+  myInviteCode: () => requestBiz<{ code: string }>('/api/v1/friends/invitations', { method: 'POST' }),
+  acceptInvite: (code: string) => requestBiz<AcceptInviteRemote>(
     '/api/v1/friends/invitations/accept',
     jsonOptions('POST', { code }),
   ),
-  listFriends: () => request<{ friends: readonly FriendSummaryRemote[] }>('/api/v1/friends'),
-  createGroup: (name: string, weeklyGoalMinutes?: number) => request<{ group: GroupSummaryRemote }>(
+  listFriends: () => requestBiz<{ friends: readonly FriendSummaryRemote[] }>('/api/v1/friends'),
+  createGroup: (name: string, weeklyGoalMinutes?: number) => requestBiz<{ group: GroupSummaryRemote }>(
     '/api/v1/study-groups',
     jsonOptions('POST', {
       name,
       ...(weeklyGoalMinutes !== undefined ? { weeklyGoalMinutes } : {}),
     }),
   ),
-  joinGroup: (code: string) => request<{ group: GroupSummaryRemote; alreadyMember: boolean }>(
+  joinGroup: (code: string) => requestBiz<{ group: GroupSummaryRemote; alreadyMember: boolean }>(
     '/api/v1/study-groups/join',
     jsonOptions('POST', { code }),
   ),
-  getGroupDetail: (id: string) => request<GroupDetailRemote>(`/api/v1/study-groups/${id}`),
-  friendsLeaderboard: (week?: string) => request<LeaderboardViewRemote>(
+  getGroupDetail: (id: string) => requestBiz<GroupDetailRemote>(`/api/v1/study-groups/${id}`),
+  friendsLeaderboard: (week?: string) => requestBiz<LeaderboardViewRemote>(
     `/api/v1/leaderboards/friends${week ? `?week=${encodeURIComponent(week)}` : ''}`,
   ),
-  groupLeaderboard: (id: string, week?: string) => request<GroupLeaderboardViewRemote>(
+  groupLeaderboard: (id: string, week?: string) => requestBiz<GroupLeaderboardViewRemote>(
     `/api/v1/leaderboards/groups/${id}${week ? `?week=${encodeURIComponent(week)}` : ''}`,
   ),
   getLeaderboardPrivacy: () =>
-    request<LeaderboardPrivacyRemote>('/api/v1/me/leaderboard-privacy'),
+    requestBiz<LeaderboardPrivacyRemote>('/api/v1/me/leaderboard-privacy'),
   updateLeaderboardPrivacy: (patch: { publicDisplay?: boolean; optedOut?: boolean }) =>
-    request<LeaderboardPrivacyRemote>(
+    requestBiz<LeaderboardPrivacyRemote>(
       '/api/v1/me/leaderboard-privacy',
       jsonOptions('PATCH', patch),
     ),
   serverAchievements: () =>
-    request<{ achievements: readonly unknown[] }>('/api/v1/me/achievements'),
-  serverRoom: () => request<{ items: readonly unknown[] }>('/api/v1/me/room'),
+    requestBiz<{ achievements: readonly unknown[] }>('/api/v1/me/achievements'),
+  serverRoom: () => requestBiz<{ items: readonly unknown[] }>('/api/v1/me/room'),
   telemetry: (batch: {
     anonymousId: string;
     sessionId: string;
