@@ -83,13 +83,11 @@ test('sign-up schema requires consent version and a minimum password length', ()
   }).success, false);
 });
 
-test('测试账号播种开关：生产永不播种，非生产默认开、MOBILEUI_SEED_TEST_ACCOUNT=0 显式关', async () => {
+test('测试账号播种开关：所有环境默认播种（审核人员需要生产测试账号）、MOBILEUI_SEED_TEST_ACCOUNT=0 显式关', async () => {
   const { shouldSeedTestAccount } = await import('../src/server/database.ts');
-  assert.equal(shouldSeedTestAccount('production', undefined), false);
-  assert.equal(shouldSeedTestAccount('production', '1'), false);
-  assert.equal(shouldSeedTestAccount('development', undefined), true);
-  assert.equal(shouldSeedTestAccount(undefined, undefined), true);
-  assert.equal(shouldSeedTestAccount('development', '0'), false);
+  assert.equal(shouldSeedTestAccount(undefined), true);
+  assert.equal(shouldSeedTestAccount('1'), true);
+  assert.equal(shouldSeedTestAccount('0'), false);
 });
 
 test('development test account signs in with email, username, or phone', async () => {
