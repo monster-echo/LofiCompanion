@@ -70,7 +70,7 @@ describe('buildStoreSections', () => {
   it('三分区：本地免费皮肤排首位，付费/Plus 按服务端目录', () => {
     const sections = buildStoreSections({
       products: [SUNNY, MIDNIGHT],
-      localSkin: LOCAL,
+      localSkins: [LOCAL],
       ownedKeys: [],
       selectedSkinSlug: 'rainy-study-room',
     });
@@ -79,10 +79,31 @@ describe('buildStoreSections', () => {
     expect(sections.premium.map((c) => c.slug)).toEqual(['midnight-workstation']);
   });
 
+  it('多套本地内置皮肤按序排在免费区头部（doc-01 PRD：三套全免费）', () => {
+    const sections = buildStoreSections({
+      products: [],
+      localSkins: [
+        LOCAL,
+        { id: 'sunny-classroom-v1', slug: 'sunny-classroom', name: '阳光教室', stateCount: 6 },
+        { id: 'midnight-workstation-v1', slug: 'midnight-workstation', name: '深夜工作台', stateCount: 6 },
+      ],
+      ownedKeys: [],
+      selectedSkinSlug: 'sunny-classroom',
+    });
+    expect(sections.free.map((c) => c.slug)).toEqual([
+      'rainy-study-room',
+      'sunny-classroom',
+      'midnight-workstation',
+    ]);
+    expect(sections.free[1]).toMatchObject({ owned: true, inUse: true, priceLabel: null });
+    expect(sections.paid).toEqual([]);
+    expect(sections.premium).toEqual([]);
+  });
+
   it('免费皮肤始终已拥有且无价格标签；付费卡价格来自服务端（¥12）', () => {
     const sections = buildStoreSections({
       products: [SUNNY],
-      localSkin: LOCAL,
+      localSkins: [LOCAL],
       ownedKeys: [],
       selectedSkinSlug: 'rainy-study-room',
     });
@@ -93,7 +114,7 @@ describe('buildStoreSections', () => {
   it('Plus 目录卡不带价格标签（Plus 徽标由 UI 渲染，避免误导性标价）', () => {
     const sections = buildStoreSections({
       products: [MIDNIGHT],
-      localSkin: LOCAL,
+      localSkins: [LOCAL],
       ownedKeys: [],
       selectedSkinSlug: '',
     });
@@ -104,7 +125,7 @@ describe('buildStoreSections', () => {
   it('未登录（ownedKeys 空）仅本地免费皮肤已拥有；权益键命中即已拥有', () => {
     const guest = buildStoreSections({
       products: [SUNNY, MIDNIGHT],
-      localSkin: LOCAL,
+      localSkins: [LOCAL],
       ownedKeys: [],
       selectedSkinSlug: '',
     });
@@ -113,7 +134,7 @@ describe('buildStoreSections', () => {
 
     const owner = buildStoreSections({
       products: [SUNNY, MIDNIGHT],
-      localSkin: LOCAL,
+      localSkins: [LOCAL],
       ownedKeys: ['skin.official.sunny-classroom'],
       selectedSkinSlug: '',
     });
@@ -124,7 +145,7 @@ describe('buildStoreSections', () => {
   it('使用中标记跟随本地选择；已拥有计数含免费卡', () => {
     const sections = buildStoreSections({
       products: [SUNNY],
-      localSkin: LOCAL,
+      localSkins: [LOCAL],
       ownedKeys: ['skin.official.sunny-classroom'],
       selectedSkinSlug: 'rainy-study-room',
     });

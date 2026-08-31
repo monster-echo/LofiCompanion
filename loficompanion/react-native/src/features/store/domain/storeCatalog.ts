@@ -40,7 +40,8 @@ export interface LocalSkinInfo {
 
 export type BuildCardsInput = Readonly<{
   products: readonly SkinProductRemote[];
-  localSkin: LocalSkinInfo;
+  /** 本地内置皮肤（全免费、已拥有；免费区头部按此顺序展示） */
+  localSkins: readonly LocalSkinInfo[];
   /** 已登录用户的服务端权益键（未登录为空数组——未登录可浏览，仅本地免费皮肤视为已拥有） */
   ownedKeys: readonly string[];
   /** 当前使用中的皮肤 slug（本地选择仓储） */
@@ -80,20 +81,20 @@ export function buildStoreSections(input: BuildCardsInput): StoreSections {
     };
   });
 
-  // 本地内置免费皮肤始终排免费区首位（已拥有；使用中标记跟随本地选择）
-  const local: StoreSkinCard = {
-    skinId: input.localSkin.id,
-    slug: input.localSkin.slug,
-    name: input.localSkin.name,
+  // 本地内置免费皮肤排在免费区头部（已拥有；使用中标记跟随本地选择）
+  const localCards = input.localSkins.map<StoreSkinCard>((skin) => ({
+    skinId: skin.id,
+    slug: skin.slug,
+    name: skin.name,
     accessType: 'free',
-    stateCount: input.localSkin.stateCount,
+    stateCount: skin.stateCount,
     priceLabel: null,
     owned: true,
-    inUse: input.localSkin.slug === input.selectedSkinSlug,
-  };
+    inUse: skin.slug === input.selectedSkinSlug,
+  }));
 
   return {
-    free: [local, ...cards.filter((c) => c.accessType === 'free')],
+    free: [...localCards, ...cards.filter((c) => c.accessType === 'free')],
     paid: cards.filter((c) => c.accessType === 'paid'),
     premium: cards.filter((c) => c.accessType === 'premium'),
   };

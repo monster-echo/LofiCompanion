@@ -1,47 +1,47 @@
-# 皮肤唯一配置源（雨夜书房）。
+# 皮肤唯一配置源（深夜工作台）。
 # 修改后运行 `npm run skins:generate` 重新生成
-# src/features/skins/domain/rainyStudyRoom.generated.ts（CI 用 --check 校验同步）。
+# src/features/skins/domain/midnightWorkstation.generated.ts（CI 用 --check 校验同步）。
 # 海报为 1290×2796 全屏图，放在本 YAML 同目录。
 
-id: rainy-study-room-v1
-slug: rainy-study-room
-name: 雨夜书房
+id: midnight-workstation-v1
+slug: midnight-workstation
+name: 深夜工作台
+# 免费皮肤（doc-01 PRD：三套内置皮肤全免费）；服务端 skins.access_type = free
 accessType: free
 manifestVersion: 1
 defaultState: ready
 
-# doc-01 §5.2：rain.500 / night.850
+# doc-01 §5.2：屏幕紫罗兰点缀、深夜蓝黑表面
 themeTokens:
-  accent: '#4F8FE8'
-  surface: '#0D1B2B'
+  accent: '#8B7FE8'
+  surface: '#12141F'
 
-# 动画参数：crossfadeMs=状态切换交叉淡化（全屏静态海报构图差异大，500ms 才
-# 不读作硬切；视频循环间衔接仍按 doc-07 §9.2 用 150ms）；focalZoom=取景放大倍率（1=不裁切）
+# 动画参数：与雨夜书房同策略——全屏静态海报构图差异大，500ms 交叉淡化才不读作硬切
 animation:
   crossfadeMs: 500
   focalZoom: 1.0
 
-# 健康事件自动排程：专注进行中按区间随机触发喝水事件（分钟）
+# 健康事件自动排程：深夜场景节奏略缓，专注进行中按区间随机触发喝水事件（分钟）
 wellness:
   autoDrink:
     enabled: true
-    minIntervalMinutes: 18
-    maxIntervalMinutes: 30
+    minIntervalMinutes: 20
+    maxIntervalMinutes: 32
 
 # 六种陪伴状态的海报与取景（poster 相对本目录；focal 归一化 0..1）
 states:
   - state: ready
-    poster: ready.png
+    poster: ready.jpg
   - state: focusing
-    poster: focusing.png
+    poster: focusing.jpg
   - state: paused
-    poster: paused.png
+    poster: paused.jpg
   - state: drinking
-    poster: drinking.png
+    poster: drinking.jpg
   - state: resting
-    poster: resting.png
+    poster: resting.jpg
   - state: completed
-    poster: completed.png
+    poster: completed.jpg
 # 全局缺省取景/时长（单状态可用 focal/durationMs 覆盖）
 defaults:
   focal: { x: 0.5, y: 0.38 }

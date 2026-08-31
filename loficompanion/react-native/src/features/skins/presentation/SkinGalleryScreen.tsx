@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -7,6 +7,8 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { apiClient } from '../../../data/apiClient';
+import type { SkinProductRemote } from '../../../data/apiClient';
 import { AppIcon } from '../../../design-system/AppIcon';
 import {
   SKIN_PREVIEW_CARD_HEIGHT,
@@ -16,13 +18,18 @@ import {
 import { useApp } from '../../../state/AppStore';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
+import { formatPrice } from '../../store/domain/storeCatalog';
 import { STORE_STRINGS as STORE } from '../../store/presentation/strings';
-import { SKIN_STRINGS as STR, UPCOMING_SKINS } from './strings';
+import { findSkinManifestByIdOrSlug } from '../domain/registry';
+import type { SkinManifest } from '../domain/types';
+import { SKIN_STRINGS as STR } from './strings';
 
 /**
  * S01 陪伴皮肤选择（doc-08 §2）。本屏唯一焦点：被选中的大幅皮肤预览。
- * P0-A 仅「雨夜书房」可选；两张占位卡展示「即将推出」，不参与选择。
- * P1-A：页底新增「更多皮肤商店」入口行 → store.home（S14）。
+ * 三套内置皮肤全部随包分发，真实海报卡片直出；付费卡按 doc-08 §2 显示
+ * 右下角价格/Plus 胶囊（价格来自公开目录，拉取失败不显示、不虚构）。
+ * 选中已拥有皮肤 → 主按钮「使用这套皮肤」写入选择；选中未拥有皮肤 →
+ * 主按钮「去解锁」进入商店详情（S15），不在本屏插入付费弹层。
  */
 export function SkinGalleryScreen() {
   const focus = useFocus();
@@ -31,12 +38,54 @@ export function SkinGalleryScreen() {
   // 358 基准宽；窄屏由调用方收窄，几何比例不变（doc-07 §3）
   const cardWidth = Math.min(SKIN_PREVIEW_CARD_WIDTH, windowWidth - space.x4 * 2);
   const [selectedId, setSelectedId] = useState(focus.selectedSkinId);
-  const canApply = selectedId === focus.skin.id;
 
+  // 价格目录公开、权益仅登录后拉取；失败降级为无胶囊/按未拥有（不阻塞浏览）
+  const [entitlementKeys, setEntitlementKeys] = useState<readonly string[]>([]);
+  const [productsBySlug, setProductsBySlug] = useState<
+    Readonly<Record<string, SkinProductRemote>>
+  >({});
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      try {
+        const { products } = await apiClient.skinProducts();
+        if (!mounted) return;
+        const bySlug: Record<string, SkinProductRemote> = {};
+        for (const product of products) bySlug[product.slug] = product;
+        setProductsBySlug(bySlug);
+      } catch { /* 离线浏览：无价格胶囊 */ }
+      try {
+        const { keys } = await apiClient.entitlements();
+        if (mounted) setEntitlementKeys(keys);
+      } catch { /* 未登录/离线：按未拥有处理 */ }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  /** 已拥有判定：免费恒真；付费/Plus 看服务端权益键（目录外按未拥有降级） */
+  const isOwned = (manifest: SkinManifest): boolean => {
+    if (manifest.accessType === 'free') return true;
+    const product = productsBySlug[manifest.slug];
+    return product !== undefined && entitlementKeys.includes(product.entitlementKey);
+  };
+
+  const selectedManifest = findSkinManifestByIdOrSlug(focus.skins, selectedId);
+  const selectedOwned = selectedManifest !== undefined && isOwned(selectedManifest);
+  // CTA：选中已拥有 → 应用并返回；选中未拥有 → 去商店详情解锁
   const applySkin = () => {
-    if (!canApply) return;
-    focus.actions.selectSkin(selectedId);
+    if (!selectedManifest || !selectedOwned) return;
+    focus.actions.selectSkin(selectedManifest.id);
     back();
+  };
+  const ctaLabel =
+    selectedManifest && !selectedOwned ? STR.unlockCta : STR.applySkin;
+
+  const trailingLabelOf = (manifest: SkinManifest): string | undefined => {
+    if (isOwned(manifest)) return undefined;
+    if (manifest.accessType === 'premium') return STR.plusBadge;
+    const product = productsBySlug[manifest.slug];
+    if (!product) return undefined; // 目录不可达：不显示胶囊，更不虚构价格
+    return formatPrice(product.priceMinor, product.currency);
   };
 
   return (
@@ -58,16 +107,21 @@ export function SkinGalleryScreen() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       >
-        <SkinPreviewCard
-          manifest={focus.skin}
-          selected={selectedId === focus.skin.id}
-          onPress={() => setSelectedId(focus.skin.id)}
-          width={cardWidth}
-        />
-        {UPCOMING_SKINS.map((skin) => (
-          <UpcomingSkinCard key={skin.id} name={skin.name} width={cardWidth} />
+        {focus.skins.map((manifest) => (
+          <SkinPreviewCard
+            key={manifest.id}
+            manifest={manifest}
+            selected={selectedId === manifest.id}
+            onPress={() => setSelectedId(manifest.id)}
+            trailingLabel={trailingLabelOf(manifest)}
+            width={cardWidth}
+          />
         ))}
-        <Text style={styles.countCaption}>{STR.freeCount(1)}</Text>
+        <Text style={styles.countCaption}>
+          {STR.freeCount(
+            focus.skins.filter((manifest) => manifest.accessType === 'free').length,
+          )}
+        </Text>
 
         {/* 更多皮肤商店入口（P1-A S14）：轻量插入行，不改既有选择流程 */}
         <Pressable
@@ -89,38 +143,24 @@ export function SkinGalleryScreen() {
       <View style={styles.ctaArea}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.applySkin}
-          accessibilityState={{ disabled: !canApply }}
-          disabled={!canApply}
-          onPress={applySkin}
+          accessibilityLabel={ctaLabel}
+          accessibilityState={{ disabled: !selectedManifest }}
+          disabled={!selectedManifest}
+          onPress={() => {
+            if (selectedManifest && !selectedOwned) {
+              navigate('store.skinDetail', { skinSlug: selectedManifest.slug });
+              return;
+            }
+            applySkin();
+          }}
           style={({ pressed }) => [
             styles.cta,
-            !canApply && styles.ctaDisabled,
+            !selectedManifest && styles.ctaDisabled,
             pressed && styles.pressed,
           ]}
         >
-          <Text style={styles.ctaText}>{STR.applySkin}</Text>
+          <Text style={styles.ctaText}>{ctaLabel}</Text>
         </Pressable>
-      </View>
-    </View>
-  );
-}
-
-/** 「即将推出」占位卡：与 SkinPreviewCard 同几何（358×128、圆角 16），不可选 */
-function UpcomingSkinCard({ name, width }: Readonly<{ name: string; width: number }>) {
-  return (
-    <View
-      style={[styles.upcomingCard, { width }]}
-      accessibilityLabel={`皮肤 ${name}，${STR.comingSoon}`}
-      accessibilityRole="text"
-    >
-      <View style={styles.upcomingNameRow}>
-        <Text style={styles.upcomingName} numberOfLines={1}>
-          {name}
-        </Text>
-        <View style={styles.upcomingBadge}>
-          <Text style={styles.upcomingBadgeText}>{STR.comingSoon}</Text>
-        </View>
       </View>
     </View>
   );
@@ -185,38 +225,6 @@ const styles = StyleSheet.create({
     color: semantic.textPrimary,
   },
   storeEntryHint: {
-    ...type.caption,
-    color: semantic.textMuted,
-  },
-  upcomingCard: {
-    height: SKIN_PREVIEW_CARD_HEIGHT,
-    borderRadius: radii.card,
-    backgroundColor: semantic.surfaceRaised,
-    borderWidth: 1,
-    borderColor: semantic.borderSoft,
-    justifyContent: 'flex-end',
-  },
-  upcomingNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.x3,
-    paddingBottom: space.x2,
-  },
-  upcomingName: {
-    ...type.bodyStrong,
-    color: semantic.textMuted,
-    flexShrink: 1,
-  },
-  upcomingBadge: {
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: semantic.borderStandard,
-    paddingHorizontal: space.x2,
-    paddingVertical: space.x1,
-    marginLeft: space.x2,
-  },
-  upcomingBadgeText: {
     ...type.caption,
     color: semantic.textMuted,
   },

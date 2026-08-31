@@ -14,6 +14,7 @@ import { useApp } from '../../../state/AppStore';
 import { colors, radii, semantic, space, type } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
+import { BUILT_IN_SKINS, findSkinManifest } from '../../skins/domain/registry';
 import {
   buildStoreSections,
   type StoreSkinCard,
@@ -31,6 +32,10 @@ import { storePoster } from './storePosters';
 
 const CARD_WIDTH = 176;
 const POSTER_HEIGHT = 104;
+
+// 暂时隐藏「永久购买」分区：付费主题尚未设计（2026-08）。主题就绪后改回
+// false 即可恢复，目录/详情/下单链路均保留未动。
+const PAID_SECTION_HIDDEN = true;
 
 // RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充。
 // Fabric 下 Image 不吃「仅四边 inset」的 absolute 定位，须显式给宽高（见 ImmersiveMediaSurface）
@@ -72,12 +77,13 @@ export function SkinStoreScreen() {
     if (state.status !== 'ready') return null;
     return buildStoreSections({
       products: state.data.products,
-      localSkin: {
-        id: focus.skin.id,
-        slug: focus.skin.slug,
-        name: focus.skin.name,
-        stateCount: focus.skin.states.length,
-      },
+      // 三套内置皮肤全免费、随包分发，列免费区头部（doc-01 PRD）
+      localSkins: BUILT_IN_SKINS.map((skin) => ({
+        id: skin.id,
+        slug: skin.slug,
+        name: skin.name,
+        stateCount: skin.states.length,
+      })),
       ownedKeys,
       selectedSkinSlug: focus.skin.slug,
     });
@@ -95,13 +101,10 @@ export function SkinStoreScreen() {
 
   const onPressCard = (card: StoreSkinCard) => {
     if (card.accessType === 'free') {
-      // 免费卡：本地内置皮肤直接使用并回首页；远端免费皮肤进详情（清单未随包）
-      if (card.slug === focus.skin.slug) {
-        back();
-        return;
-      }
-      if (card.skinId === focus.skin.id) {
-        focus.actions.selectSkin(card.skinId);
+      // 本地内置皮肤：直接应用并回首页（已在用则仅返回）；远端免费皮肤进详情（清单未随包）
+      const local = findSkinManifest(card.slug);
+      if (local) {
+        if (local.id !== focus.skin.id) focus.actions.selectSkin(local.id);
         back();
         return;
       }
@@ -169,12 +172,14 @@ export function SkinStoreScreen() {
                 windowWidth={windowWidth}
                 onPressCard={onPressCard}
               />
-              <Section
-                title={STR.sectionPaid}
-                cards={visibleSections.paid}
-                windowWidth={windowWidth}
-                onPressCard={onPressCard}
-              />
+              {!PAID_SECTION_HIDDEN && (
+                <Section
+                  title={STR.sectionPaid}
+                  cards={visibleSections.paid}
+                  windowWidth={windowWidth}
+                  onPressCard={onPressCard}
+                />
+              )}
               <Section
                 title={STR.sectionPremium}
                 cards={visibleSections.premium}
@@ -324,7 +329,8 @@ function SectionsSkeleton({ windowWidth }: Readonly<{ windowWidth: number }>) {
   const cardWidth = Math.min(CARD_WIDTH, (windowWidth - space.x4 * 2 - space.x3) / 2);
   return (
     <>
-      {['免费', '永久购买', 'Plus 精选'].map((title) => (
+      {/* 骨架分区与实际分区保持一致（永久购买隐藏期间不出现） */}
+      {(['免费', ...(PAID_SECTION_HIDDEN ? [] : ['永久购买']), 'Plus 精选'] as const).map((title) => (
         <View key={title} style={styles.section}>
           <Text style={styles.sectionTitle}>{title}</Text>
           <View style={styles.skeletonRow}>

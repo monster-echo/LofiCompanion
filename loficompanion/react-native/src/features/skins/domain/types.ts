@@ -23,10 +23,15 @@ export type CompanionEventType =
   | 'focus.resumed'
   | 'focus.completed';
 
-/** 单个状态的视觉资产。poster 为 require() 模块引用（Metro 静态收集）。 */
+/**
+ * 单个状态的视觉资产。poster 二选一：
+ *  - number：require() 模块引用（内置皮肤，Metro 静态收集）
+ *  - { uri }：本地缓存文件地址（远端皮肤，remoteSkinsRepository 落盘后构造；
+ *    引用必须稳定——ImmersiveMediaSurface 的双缓冲按 === 去重，渲染期不可内联新建）
+ */
 export interface SkinStateAsset {
   state: CompanionState;
-  poster: number;
+  poster: number | { readonly uri: string };
   /** 焦点归一化坐标（0..1），镜头取景用 */
   focalPointX: number;
   focalPointY: number;
@@ -65,12 +70,19 @@ export interface SkinWellnessConfig {
   };
 }
 
+/**
+ * 皮肤访问语义（与服务端 skins.access_type 对齐）：free 免费、paid 单买、
+ * premium Plus 目录。内置清单声明包内分发皮肤的语义；解锁判定仍以服务端
+ * 权益键为准（store/domain/storeCatalog.ts）。
+ */
+export type SkinAccessType = 'free' | 'paid' | 'premium';
+
 /** 皮肤清单（内置或远端下发） */
 export interface SkinManifest {
   id: string;
   slug: string;
   name: string;
-  accessType: 'free';
+  accessType: SkinAccessType;
   manifestVersion: number;
   defaultState: CompanionState;
   states: SkinStateAsset[];

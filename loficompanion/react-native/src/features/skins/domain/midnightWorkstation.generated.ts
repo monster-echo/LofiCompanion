@@ -1,5 +1,5 @@
 /**
- * 本文件由 scripts/generate-skin.mjs 从 assets/skins/rainy-study-room/skin.yaml 生成。
+ * 本文件由 scripts/generate-skin.mjs 从 assets/skins/midnight-workstation/skin.yaml 生成。
  * 请勿手改——编辑 YAML 后运行 `npm run skins:generate` 重新生成；
  * CI/测试用 `npm run skins:generate -- --check` 校验同步。
  */
@@ -15,12 +15,12 @@ const POSTERS: Readonly<Record<CompanionState, number>> = (() => {
   try {
     // Metro 静态收集 require('<literal>')——路径必须是字面量
     return {
-      ready: require('../../../../assets/skins/rainy-study-room/ready.png'),
-      focusing: require('../../../../assets/skins/rainy-study-room/focusing.png'),
-      paused: require('../../../../assets/skins/rainy-study-room/paused.png'),
-      drinking: require('../../../../assets/skins/rainy-study-room/drinking.png'),
-      resting: require('../../../../assets/skins/rainy-study-room/resting.png'),
-      completed: require('../../../../assets/skins/rainy-study-room/completed.png'),
+      ready: require('../../../../assets/skins/midnight-workstation/ready.jpg'),
+      focusing: require('../../../../assets/skins/midnight-workstation/focusing.jpg'),
+      paused: require('../../../../assets/skins/midnight-workstation/paused.jpg'),
+      drinking: require('../../../../assets/skins/midnight-workstation/drinking.jpg'),
+      resting: require('../../../../assets/skins/midnight-workstation/resting.jpg'),
+      completed: require('../../../../assets/skins/midnight-workstation/completed.jpg'),
     };
   } catch {
     // 非 Metro 环境（node/vitest）：资源 require 不可用，域逻辑只透传引用
@@ -71,11 +71,11 @@ const ALL_STATES: readonly CompanionState[] = [
   "completed",
 ];
 
-/** 内置皮肤「雨夜书房」（清单源：assets/skins/rainy-study-room/skin.yaml） */
-export const rainyStudyRoomManifest: SkinManifest = {
-  id: "rainy-study-room-v1",
-  slug: "rainy-study-room",
-  name: "雨夜书房",
+/** 内置皮肤「深夜工作台」（清单源：assets/skins/midnight-workstation/skin.yaml） */
+export const midnightWorkstationManifest: SkinManifest = {
+  id: "midnight-workstation-v1",
+  slug: "midnight-workstation",
+  name: "深夜工作台",
   accessType: "free",
   manifestVersion: 1,
   defaultState: "ready",
@@ -144,13 +144,13 @@ export const rainyStudyRoomManifest: SkinManifest = {
       returnState: "ready",
     },
   ],
-  themeTokens: { accent: "#4F8FE8", surface: "#0D1B2B" },
+  themeTokens: { accent: "#8B7FE8", surface: "#12141F" },
   animation: { crossfadeMs: 500, focalZoom: 1 },
   wellness: {
     autoDrink: {
       enabled: true,
-      minIntervalMinutes: 18,
-      maxIntervalMinutes: 30,
+      minIntervalMinutes: 20,
+      maxIntervalMinutes: 32,
     },
   },
 };

@@ -22,6 +22,7 @@ import { useFocus } from '../../focus/application/FocusStore';
 import { SheetOverlay } from '../../focus/presentation/SheetOverlay';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
 import type { CompanionState } from '../../skins/domain/types';
+import { findSkinManifestByIdOrSlug } from '../../skins/domain/registry';
 import { createPendingOrderRepository } from '../data/pendingOrderRepository';
 import {
   formatPrice,
@@ -201,16 +202,24 @@ export function SkinDetailScreen() {
     }
   }, [navigate, product, showToast, signedIn]);
 
-  // 已拥有：本地清单内置的皮肤直接应用并回首页；其余皮肤资源包未随包分发
-  //（P1-A 无远端清单下载），诚实反馈而非静默失败。
+  // 已拥有：注册表（内置+已下载远端）内的皮肤直接应用并回首页；仍缺失时
+  // 先触发一轮远端拉取再重试一次（购买后清单尚未就位的场景），还不行才
+  // 诚实反馈而非静默失败。
   const useOwnedSkin = useCallback(() => {
-    if (skinSlug === focus.skin.slug) {
-      focus.actions.selectSkin(focus.skin.id);
+    const apply = (): boolean => {
+      const manifest = findSkinManifestByIdOrSlug(focus.skins, skinSlug);
+      if (!manifest) return false;
+      focus.actions.selectSkin(manifest.id);
       back();
-      return;
-    }
-    showToast(STR.manifestPending, 'info');
-  }, [back, focus.actions, focus.skin.id, focus.skin.slug, showToast, skinSlug]);
+      return true;
+    };
+    if (apply()) return;
+    focus.actions.refreshSkins(signedIn);
+    // 拉取是异步的：给一轮事件循环后重试（P0 简化，不引入 loading 态）
+    setTimeout(() => {
+      if (!apply()) showToast(STR.manifestPending, 'info');
+    }, 1500);
+  }, [back, focus.actions, showToast, skinSlug, signedIn]);
 
   const previewPoster = storePoster(skinSlug, previewState);
   const previewWidth = windowWidth;
@@ -256,7 +265,13 @@ export function SkinDetailScreen() {
             {previewPoster ? (
               <Image
                 source={previewPoster}
-                style={StyleSheet.absoluteFill}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  width: previewWidth,
+                  height: PREVIEW_HEIGHT,
+                }}
                 resizeMode="cover"
               />
             ) : (
@@ -300,7 +315,7 @@ export function SkinDetailScreen() {
           <View style={styles.infoCard}>
             <View style={styles.nameRow}>
               <Text style={styles.skinName}>
-                {product?.skinName ?? focus.skin.name}
+                {product?.skinName ?? findSkinManifestByIdOrSlug(focus.skins, skinSlug)?.name ?? focus.skin.name}
               </Text>
             </View>
             <View style={styles.creatorRow}>
@@ -409,7 +424,9 @@ function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
   );
 }
 
-// RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充
+// RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充。
+// Fabric 下 Image 不吃「仅四边 inset」的 absolute 定位（会回退固有尺寸糊图），
+// 须显式给宽高（见 ImmersiveMediaSurface）
 const absoluteFill = {
   position: 'absolute' as const,
   left: 0,

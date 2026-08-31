@@ -210,6 +210,26 @@ export interface SkinProductRemote {
   status: string;
 }
 
+// —— P0-B：服务器分发皮肤（GET /v1/skins 目录与 /v1/skins/{id}/manifest 门禁形态）——
+export interface SkinSummaryRemote {
+  id: string;
+  slug: string;
+  name: string;
+  accessType: string;
+  manifestVersion: number;
+  moderationStatus: string;
+  publishedAt: string | null;
+  /** 裸 objectKey（loficompanion/... 前缀），客户端经 resolveAssetUrl 换签 */
+  posterUrl: string | null;
+}
+
+export interface SkinManifestRemote {
+  skinId: string;
+  slug: string;
+  manifestVersion: number;
+  manifest: Record<string, unknown>;
+}
+
 export interface SkinOrderRemote {
   orderId: string;
   skinId: string;
@@ -373,6 +393,13 @@ export const apiClient = {
   skinProducts: () => request<{ products: readonly SkinProductRemote[] }>(
     '/api/v1/store/skin-products',
   ),
+  // —— P0-B：服务器分发皮肤。目录公开可浏览；manifest 免费公开、付费按权益
+  // 门禁（401 匿名 / 403 SKIN_NOT_ENTITLED），由 remoteSkinsRepository 消费。
+  skins: () => request<{ skins: readonly SkinSummaryRemote[] }>('/api/v1/skins'),
+  skinManifest: (skinIdOrSlug: string) =>
+    request<SkinManifestRemote>(
+      `/api/v1/skins/${encodeURIComponent(skinIdOrSlug)}/manifest`,
+    ),
   createSkinOrder: (skinId: string, idempotencyKey: string) => request<SkinOrderRemote>(
     '/api/v1/store/skin-orders',
     {
