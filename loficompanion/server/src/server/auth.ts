@@ -8,7 +8,7 @@ import { issueSessionPair, revokeAllRefreshForUser, revokeRefreshForSession } fr
 import { assertSignInNotLocked, recordSignInFailure, recordSignInSuccess } from './sign-in-attempts';
 import { createEmailVerification } from './email-verification';
 import { verifyAccessToken } from './jwt';
-import { DEFAULT_APP_ID, SERVICE_NAME } from './service-identity';
+import { DEFAULT_APP_ID } from './service-identity';
 
 type UserRow = {
   id: string;
@@ -79,7 +79,7 @@ export async function signUp(input: {
       created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(id, input.appId, email, passwordHash, username, input.consentVersion, createdAt, createdAt, createdAt);
-  await createWelcomeNotifications(id);
+  await createWelcomeNotifications(id, input.appId);
   await createEmailVerification(input.appId, id, email);
   return await createUserSession(id, input.appId, input.deviceName);
 }
@@ -179,9 +179,11 @@ export function toPublicUser(row: UserRow): PublicUser {
     emailVerified: row.email_verified === 1,
     consentVersion: row.consent_version,
     createdAt: row.created_at,
-    // 华为/手机号登录生成伪邮箱（xxx@phone.invalid / xxx@invalid.local），不算真实邮箱
+    // 伪邮箱不算真实邮箱：华为/手机号登录生成的 xxx@phone.invalid /
+    // xxx@invalid.local，以及播种/管理侧的保留域 .local（如测试账号
+    // test@test.local）——客户端 hasEmail=false 时不得在「我的」页展示。
     hasEmail: row.email !== null && !row.email.endsWith('@phone.invalid') &&
-      !row.email.endsWith('@invalid.local'),
+      !row.email.endsWith('.local'),
   };
 }
 
@@ -202,17 +204,19 @@ export async function createUserSession(userId: string, appId: string, deviceNam
   };
 }
 
-async function createWelcomeNotifications(userId: string) {
+async function createWelcomeNotifications(userId: string, appId: string) {
   const insert = database.prepare(`
     INSERT INTO notifications(id, user_id, type, title, body, route, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   const createdAt = nowIso();
+  // 多租户：欢迎语用该 app 自己下发的品牌名，而非认证平台全局名称
+  const { brand } = await getRuntimeConfig(appId);
   await insert.run(
     createId(),
     userId,
     'system',
-    `欢迎使用${SERVICE_NAME}`,
+    `欢迎使用 ${brand.appName}`,
     '你的账号已创建，所有设置会安全同步。',
     'profile.home',
     createdAt,
@@ -221,8 +225,8 @@ async function createWelcomeNotifications(userId: string) {
     createId(),
     userId,
     'membership',
-    '探索 Pro 创作能力',
-    '查看动态会员等级与当前可用方案。',
+    '探索会员权益',
+    '查看会员等级与当前可用方案。',
     'membership.home',
     createdAt,
   );

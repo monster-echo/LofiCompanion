@@ -68,6 +68,18 @@ export type SupportConfig = Readonly<{
   }>>;
 }>;
 
+/**
+ * 客户端语义色板键集（与客户端 ThemeColors 键集一一对应）。
+ * 值允许 #RRGGBB 十六进制或 rgba() 字符串——客户端直接原样应用。
+ */
+export type ThemeColorKey =
+  | 'background' | 'surface' | 'surfaceRaised' | 'surfaceMuted' | 'text' | 'textSecondary' | 'border'
+  | 'brand' | 'brandPressed' | 'brandSoft'
+  | 'success' | 'warning' | 'warningSoft' | 'error' | 'info'
+  | 'membershipBronze' | 'membershipSilver' | 'membershipGold' | 'scrim';
+
+export type ThemePalette = Readonly<Record<ThemeColorKey, string>>;
+
 export type RuntimeConfig = Readonly<{
   schemaVersion: number;
   version: number;
@@ -76,6 +88,8 @@ export type RuntimeConfig = Readonly<{
     tagline: string;
     primaryColor: string;
   }>;
+  /** 客户端颜色系统（auth 服务保存的整套语义色板；客户端以其覆盖内置 tokens）。 */
+  theme: ThemePalette;
   splash: SplashCampaign | null;
   cacheTtlSeconds: number;
   telemetry: Readonly<{
@@ -117,16 +131,38 @@ export const defaultConfig: RuntimeConfig = {
   schemaVersion: 1,
   version: 2,
   brand: {
-    appName: '终北统一认证',
-    tagline: '把灵感变成作品',
-    primaryColor: '#A84444',
+    appName: 'Lofi Companion',
+    tagline: '安静开始，专注完成',
+    primaryColor: '#4F8FE8',
+  },
+  // doc-07 夜色设计令牌（与客户端 tokens.ts colors 逐项一致）
+  theme: {
+    background: '#091522',
+    surface: '#0D1B2B',
+    surfaceRaised: '#122338',
+    surfaceMuted: '#06101C',
+    text: '#F3EFE7',
+    textSecondary: '#B4BECA',
+    border: 'rgba(243,239,231,0.08)',
+    brand: '#4F8FE8',
+    brandPressed: '#3E79C9',
+    brandSoft: 'rgba(79,143,232,0.16)',
+    success: '#63BF94',
+    warning: '#D6A556',
+    warningSoft: 'rgba(214,165,86,0.16)',
+    error: '#D66C72',
+    info: '#6EA6F2',
+    membershipBronze: '#A97E5C',
+    membershipSilver: '#9AA4B2',
+    membershipGold: '#C9A45C',
+    scrim: 'rgba(6,16,28,0.88)',
   },
   splash: {
-    id: 'summer-create',
-    title: '创作，从一个好模板开始',
-    description: '专业工具、智能素材与跨端体验，都已准备就绪。',
-    badge: '本周精选',
-    actionLabel: '开始探索',
+    id: 'lofi-opening',
+    title: '今晚，从一间安静的房间开始',
+    description: '选一位陪伴角色，放一段 lofi，完成你的第一轮专注。',
+    badge: '新学期',
+    actionLabel: '进入房间',
     imageUrl: null,
     videoUrl: null,
     linkUrl: null,
@@ -224,65 +260,54 @@ export const defaultConfig: RuntimeConfig = {
     coupons: false,
     invites: false,
   },
+  // 权益键对齐 docs/05-MONETIZATION.md §4；生成额度走 credit ledger，不在此列
   entitlements: [
-    { key: 'export.hd', label: '高清导出', description: '导出 1080P 高清内容' },
-    { key: 'templates.pro', label: '高级模板', description: '使用专业模板与素材' },
-    { key: 'cloud.100gb', label: '100 GB 云空间', description: '跨设备同步作品' },
-    { key: 'team.workspace', label: '团队空间', description: '成员与权限协作' },
+    { key: 'catalog.premium.active', label: '高级皮肤目录', description: '订阅期内畅享全部官方与季节皮肤' },
+    { key: 'room.advanced_slots', label: '高级房间布置', description: '更多房间槽位、环境音与事件动作' },
+    { key: 'insights.advanced', label: '高级学习洞察', description: '深度学习统计与跨设备皮肤/房间同步' },
+    { key: 'generation.custom.enabled', label: 'AI 定制皮肤', description: '生成属于你的陪伴角色与房间' },
   ],
   tiers: [
     {
       id: 'free',
       name: 'Free',
-      summary: '基础创作工具',
+      summary: '基础专注、三套免费皮肤与学习记录',
       recommended: false,
       accent: '#667085',
       entitlements: [],
     },
     {
-      id: 'pro',
-      name: 'Pro',
-      summary: '适合高频创作者',
+      id: 'plus',
+      name: 'Companion Plus',
+      summary: '全部皮肤、高级房间布置与学习洞察',
       recommended: true,
-      accent: '#A84444',
-      entitlements: ['export.hd', 'templates.pro', 'cloud.100gb'],
-    },
-    {
-      id: 'team',
-      name: 'Team',
-      summary: '面向团队协作',
-      recommended: false,
-      accent: '#3C6EAD',
-      entitlements: ['export.hd', 'templates.pro', 'cloud.100gb', 'team.workspace'],
+      accent: '#4F8FE8',
+      entitlements: [
+        'catalog.premium.active',
+        'room.advanced_slots',
+        'insights.advanced',
+        'generation.custom.enabled',
+      ],
     },
   ],
   plans: [
     {
-      id: 'pro-monthly',
-      tierId: 'pro',
-      name: 'Pro 月度',
+      id: 'plus-monthly',
+      tierId: 'plus',
+      name: 'Plus 月度',
       interval: 'month',
       priceMinor: 1800,
       currency: 'CNY',
       provider: 'mock',
-      storeProductMapping: { apple: 'com.zhongbei.pro.monthly', google: 'pro_monthly_001', hms: 'pro_monthly_001' },
+      storeProductMapping: { apple: 'com.zhongbei.plus.monthly', google: 'plus_monthly_001', hms: 'plus_monthly_001' },
     },
     {
-      id: 'pro-yearly',
-      tierId: 'pro',
-      name: 'Pro 年度',
+      id: 'plus-yearly',
+      tierId: 'plus',
+      name: 'Plus 年度',
       interval: 'year',
       priceMinor: 16800,
       originalPriceMinor: 21600,
-      currency: 'CNY',
-      provider: 'mock',
-    },
-    {
-      id: 'team-yearly',
-      tierId: 'team',
-      name: 'Team 年度',
-      interval: 'year',
-      priceMinor: 39800,
       currency: 'CNY',
       provider: 'mock',
     },
