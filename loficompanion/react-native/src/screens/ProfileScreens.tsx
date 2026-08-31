@@ -17,8 +17,14 @@ import { colors, radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
 
 export function ProfileScreen() {
-  const { user, config, navigate, signOut, showConfirm } = useApp();
-  if (!user) return <SignedOutProfile />;
+  const { user, config, navigate, signOut, showConfirm, replace } = useApp();
+  // 访客直达登录页（产品决策 2026-08-31：中间「登录后同步」页增加操作步骤、
+  // 造成流失）。replace 语义保证登录页无返回入口，登录成功后由
+  // onAuthenticated 复位到首页。
+  useEffect(() => {
+    if (!user) replace('auth.signIn');
+  }, [user, replace]);
+  if (!user) return null;
   const tier = config.tiers.find((item) => item.id === user.tierId);
   const requestSignOut = () => showConfirm({
     title: '退出登录？',

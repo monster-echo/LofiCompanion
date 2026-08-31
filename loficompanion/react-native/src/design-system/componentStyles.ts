@@ -16,6 +16,7 @@ export const buttonStyles = StyleSheet.create({
   danger: { backgroundColor: colors.error },
   pressed: { opacity: 0.78 },
   disabled: { opacity: 0.46 },
+  disabledOpacityless: {},
   label: { fontSize: 16, fontWeight: '700' },
   icon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 });

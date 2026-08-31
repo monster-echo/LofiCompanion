@@ -13,6 +13,7 @@ import { AppIcon, IconName } from './AppIcon';
 import { telemetry } from '../telemetry/Telemetry';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { buttonStyles, componentStyles } from './componentStyles';
+import { disabledContainer } from './derivedTokens';
 
 export function AppButton({
   label,
@@ -35,10 +36,18 @@ export function AppButton({
     : variant === 'danger'
       ? buttonStyles.danger
       : buttonStyles.secondary;
-  const foreground = variant === 'secondary' ? palette.text : colors.surface;
-  const background = variant === 'secondary'
-    ? palette.surface
-    : variant === 'danger' ? colors.error : colors.brand;
+  // 禁用态语义化：整体透明在夜色下不满足对比度（doc-09 §7），改为禁用专用
+  // 实色容器 + 保持可读的 label（doc-07「禁用态保持可读」意图）。
+  const foreground = disabled
+    ? palette.text
+    : variant === 'secondary'
+      ? palette.text
+      : colors.surface;
+  const background = disabled
+    ? (variant === 'secondary' ? palette.surface : disabledContainer)
+    : variant === 'secondary'
+      ? palette.surface
+      : variant === 'danger' ? colors.error : colors.brand;
   return (
     <Pressable
       accessibilityRole="button"
@@ -55,7 +64,7 @@ export function AppButton({
           borderColor: variant === 'secondary' ? palette.border : background,
         },
         pressed && buttonStyles.pressed,
-        disabled && buttonStyles.disabled,
+        disabled && buttonStyles.disabledOpacityless,
       ]}
     >
       {icon ? <AppIcon name={icon} color={foreground} size={20} /> : null}

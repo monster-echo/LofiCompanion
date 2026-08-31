@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppButton, PageHeader } from '../design-system/components';
+import { usePreferences } from '../preferences/PreferencesProvider';
 import { useApp } from '../state/AppStore';
 import { colors, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
@@ -19,6 +20,7 @@ const authCopy: Record<AuthMode, Readonly<{ title: string; action: string }>> = 
 };
 
 export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
+  const { palette } = usePreferences();
   const {
     navigate,
     signIn,
@@ -94,6 +96,8 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
           <TextInput
             accessibilityLabel="用户名"
             onChangeText={setUsername}
+            placeholderTextColor={palette.textSecondary}
+
             placeholder="用户名"
             style={styles.input}
             value={username}
@@ -105,6 +109,8 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
               accessibilityLabel="手机号"
               keyboardType="phone-pad"
               onChangeText={setPhone}
+              placeholderTextColor={palette.textSecondary}
+
               placeholder="+86 13800000000"
               style={styles.input}
               value={phone}
@@ -115,6 +121,8 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
                 keyboardType="number-pad"
                 maxLength={6}
                 onChangeText={setCode}
+                placeholderTextColor={palette.textSecondary}
+
                 placeholder="6 位短信验证码"
                 style={styles.input}
                 value={code}
@@ -127,6 +135,8 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
             accessibilityLabel={mode === 'signIn' ? '账号' : '邮箱'}
             autoCapitalize="none"
             onChangeText={(value) => { setEmail(value); clearAuthError(); }}
+            placeholderTextColor={palette.textSecondary}
+
             placeholder={mode === 'signIn' ? '用户名 / 邮箱 / 手机号' : '邮箱'}
             style={styles.input}
             value={email}
@@ -139,6 +149,8 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
           <TextInput
             accessibilityLabel="密码"
             onChangeText={(value) => { setPassword(value); clearAuthError(); }}
+            placeholderTextColor={palette.textSecondary}
+
             placeholder={mode === 'reset' ? '新密码' : '密码'}
             secureTextEntry
             style={styles.input}
@@ -151,6 +163,8 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
             keyboardType="number-pad"
             maxLength={6}
             onChangeText={setCode}
+            placeholderTextColor={palette.textSecondary}
+
             placeholder="6 位验证码"
             style={styles.input}
             value={code}
