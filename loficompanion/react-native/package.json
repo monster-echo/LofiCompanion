@@ -10,7 +10,8 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "skins:generate": "node scripts/generate-skin.mjs"
+    "skins:generate": "node scripts/generate-skin.mjs",
+    "eas-build-post-install": "node ./scripts/provide-google-services.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.8",
