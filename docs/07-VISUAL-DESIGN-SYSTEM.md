@@ -101,6 +101,7 @@
 | `actionPrimary` | `rain.500` |
 | `actionPressed` | `#3E79C9` |
 | `actionFocus` | `rain.400` |
+| `onAction` | `#FFFFFF`（彩色实底按钮前景；随服务端 theme 色板下发） |
 | `achievement` | `lamp.500` |
 | `success` | `leaf.500` |
 | `danger` | `danger.500` |

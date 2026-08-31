@@ -47,6 +47,24 @@ export interface SkinEventMapping {
   returnState: CompanionState;
 }
 
+/**
+ * 动画参数（skin.yaml `animation` 段）：沉浸面的取景与过渡。
+ * focalZoom=1 表示按容器 cover 取景、不做额外放大裁切。
+ */
+export interface SkinAnimationConfig {
+  crossfadeMs: number;
+  focalZoom: number;
+}
+
+/** 健康事件自动排程（skin.yaml `wellness` 段）：喝水随主题配置区间随机触发 */
+export interface SkinWellnessConfig {
+  autoDrink: {
+    enabled: boolean;
+    minIntervalMinutes: number;
+    maxIntervalMinutes: number;
+  };
+}
+
 /** 皮肤清单（内置或远端下发） */
 export interface SkinManifest {
   id: string;
@@ -59,4 +77,6 @@ export interface SkinManifest {
   eventMappings: SkinEventMapping[];
   /** 主题令牌（doc-01 §5.2）：皮肤自带的强调色/表面色，界面点缀随皮肤切换 */
   themeTokens: { accent: string; surface: string };
+  animation?: SkinAnimationConfig;
+  wellness?: SkinWellnessConfig;
 }

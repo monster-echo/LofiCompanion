@@ -1,0 +1,59 @@
+# 皮肤唯一配置源（雨夜书房）。
+# 修改后运行 `npm run skins:generate` 重新生成
+# src/features/skins/domain/rainyStudyRoom.generated.ts（CI 用 --check 校验同步）。
+# 海报为 1290×2796 全屏图，放在本 YAML 同目录。
+
+id: rainy-study-room-v1
+slug: rainy-study-room
+name: 雨夜书房
+accessType: free
+manifestVersion: 1
+defaultState: ready
+
+# doc-01 §5.2：rain.500 / night.850
+themeTokens:
+  accent: '#4F8FE8'
+  surface: '#0D1B2B'
+
+# 动画参数：crossfadeMs=状态切换交叉淡化；focalZoom=取景放大倍率（1=不裁切）
+animation:
+  crossfadeMs: 150
+  focalZoom: 1.0
+
+# 健康事件自动排程：专注进行中按区间随机触发喝水事件（分钟）
+wellness:
+  autoDrink:
+    enabled: true
+    minIntervalMinutes: 18
+    maxIntervalMinutes: 30
+
+# 六种陪伴状态的海报与取景（poster 相对本目录；focal 归一化 0..1）
+states:
+  - state: ready
+    poster: ready.png
+  - state: focusing
+    poster: focusing.png
+  - state: paused
+    poster: paused.png
+  - state: drinking
+    poster: drinking.png
+  - state: resting
+    poster: resting.png
+  - state: completed
+    poster: completed.png
+# 全局缺省取景/时长（单状态可用 focal/durationMs 覆盖）
+defaults:
+  focal: { x: 0.5, y: 0.38 }
+  durationMs: 4000
+
+# doc-01 §5.4 P0 事件表：优先级 / 是否可打断逐项一致；
+# cooldownSeconds 仅健康类非零；returnState 为动作播完后的回归状态
+events:
+  - { eventType: session.ready, priority: 60, interruptible: true, returnState: ready }
+  - { eventType: focus.started, priority: 80, interruptible: false, returnState: focusing }
+  - { eventType: focus.loop, priority: 10, interruptible: true, returnState: focusing }
+  - { eventType: wellness.drink, priority: 70, interruptible: false, returnState: focusing, cooldownSeconds: 60 }
+  - { eventType: focus.paused, priority: 90, interruptible: true, returnState: paused }
+  - { eventType: break.started, priority: 80, interruptible: false, returnState: resting }
+  - { eventType: focus.resumed, priority: 90, interruptible: false, returnState: focusing }
+  - { eventType: focus.completed, priority: 100, interruptible: false, returnState: ready }

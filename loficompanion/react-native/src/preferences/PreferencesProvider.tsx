@@ -1,4 +1,4 @@
-import React, { createContext, ReactNode, useContext } from 'react';
+import React, { createContext, ReactNode, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useApp } from '../state/AppStore';
@@ -20,13 +20,18 @@ type PreferencesValue = Readonly<{
 const PreferencesContext = createContext<PreferencesValue | null>(null);
 
 export function PreferencesProvider({ children }: Readonly<{ children: ReactNode }>) {
-  const { user } = useApp();
+  const { user, config } = useApp();
   const systemScheme = useColorScheme();
   const mode = normalizeTheme(user?.settings.theme);
   const locale = user?.settings.language === 'en-US' ? 'en-US' : 'zh-CN';
   const dark = mode === 'dark' || (mode === 'system' && systemScheme === 'dark');
-  const palette = dark ? darkColors : colors;
   const textScale = normalizeTextScale(user?.settings.textScale);
+  // 颜色系统由服务端（auth.zhongbei.tech）下发：逐键覆盖内置 tokens；
+  // 联机门禁保证进入 App 前必为服务端值，缺省键兜底内置夜色。
+  const palette = useMemo<ThemeColors>(
+    () => ({ ...(dark ? darkColors : colors), ...config.theme }),
+    [dark, config.theme],
+  );
   applyTheme(palette, textScale);
   const value: PreferencesValue = {
     locale,

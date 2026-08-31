@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { FocusActionBar, FocusActionItem } from '../../../design-system/FocusActionBar';
 import { FocusTimerRing } from '../../../design-system/FocusTimerRing';
@@ -21,7 +22,7 @@ import { useFocus } from '../application/FocusStore';
 import { effectiveSeconds as computeEffective } from '../domain/engine';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { SheetOverlay } from './SheetOverlay';
-import { ACTIVITY_STATUS, FOCUS_STRINGS as STR } from './strings';
+import { FOCUS_STRINGS as STR } from './strings';
 import type { CompanionEventType } from '../../skins/domain/types';
 import type { IconName } from '../../../design-system/AppIcon';
 
@@ -176,21 +177,18 @@ export function FocusActiveScreen() {
     });
   }, [focus.banner, focus.reducedMotion, bannerAnim]);
 
-  // 横幅可见时 250ms 刷新局部时间，驱动进度线与冷却倒计时
+  // 横幅可见时 250ms 刷新局部时间，驱动进度线
   useEffect(() => {
-    if (!displayBanner && !focus.cooldown) return;
+    if (!displayBanner) return;
     const id = setInterval(bumpNow, 250);
     return () => clearInterval(id);
-  }, [displayBanner, focus.cooldown, bumpNow]);
+  }, [displayBanner, bumpNow]);
 
   if (!session) {
     // complete/abandon 已提交、替换导航进行中的一帧空壳
     return <View style={styles.screen} />;
   }
 
-  const cooldownRemain = focus.cooldown
-    ? Math.max(0, Math.ceil((focus.cooldown.until - nowMs) / 1000))
-    : 0;
   const bannerRatio = displayBanner
     ? Math.max(
         0,
@@ -198,6 +196,8 @@ export function FocusActiveScreen() {
       )
     : 0;
 
+  // 喝水不再提供手动按钮：由主题配置自动排程（skin.yaml wellness.autoDrink，
+  // 区间随机触发 wellness.drink 事件——陪伴动作与横幅照常出现）。
   const items: FocusActionItem[] = [
     paused
       ? {
@@ -220,18 +220,6 @@ export function FocusActiveScreen() {
             focus.actions.pause(Date.now());
           },
         },
-    {
-      key: 'drink',
-      icon: 'droplet',
-      label: STR.drinkAction,
-      variant: 'accent',
-      disabled: focus.cooldown !== null,
-      badge: focus.cooldown ? STR.drinkCooldown(cooldownRemain) : undefined,
-      onPress: () => {
-        wake();
-        focus.actions.drink(Date.now());
-      },
-    },
     {
       key: 'end',
       icon: 'stop',
@@ -258,17 +246,14 @@ export function FocusActiveScreen() {
   return (
     <TouchableWithoutFeedback onPress={wake}>
       <View style={styles.screen}>
+        {/* 沉浸专注：隐藏系统状态栏，卸载时由 PreferencesProvider 恢复 light */}
+        <StatusBar hidden animated={false} />
         <ImmersiveMediaSurface
           manifest={focus.skin}
           state={mediaState}
           reducedMotion={focus.reducedMotion}
           style={StyleSheet.absoluteFill}
         />
-
-        {/* 顶部状态（安全区下 20，居中） */}
-        <Animated.View style={[styles.topStatus, { opacity: chrome }]}>
-          <Text style={styles.topStatusText}>{ACTIVITY_STATUS[session.activity]}</Text>
-        </Animated.View>
 
         {/* 计时环：中心 Y≈250；暂停时中心下方显示「已暂停」 */}
         <Animated.View
@@ -288,6 +273,7 @@ export function FocusActiveScreen() {
             style={[
               styles.banner,
               {
+                top: insets.top + 12,
                 opacity: bannerAnim,
                 transform: [
                   {
@@ -323,12 +309,9 @@ export function FocusActiveScreen() {
           </Animated.View>
         ) : null}
 
-        {/* 控制栏（底部安全区上 64）+ 轮次说明（控制栏下 16） */}
+        {/* 控制栏（底部安全区上 64） */}
         <Animated.View style={[styles.controls, { opacity: chrome }]}>
           <FocusActionBar items={items} />
-        </Animated.View>
-        <Animated.View style={[styles.roundCaption, { opacity: chrome }]}>
-          <Text style={styles.roundText}>{STR.round(focus.today.sessions + 1)}</Text>
         </Animated.View>
 
         {/* 结束二次确认 sheet */}
@@ -374,17 +357,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: semantic.canvasDeep,
   },
-  topStatus: {
-    position: 'absolute',
-    top: 20,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  topStatusText: {
-    ...type.label,
-    color: semantic.textSecondary,
-  },
   ringWrap: {
     position: 'absolute',
     left: 0,
@@ -392,8 +364,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   banner: {
+    // top 由渲染处注入（insets.top + 12，横幅始终在安全区之下）
     position: 'absolute',
-    top: 12,
     left: space.x4,
     right: space.x4,
     height: 72,
@@ -446,17 +418,6 @@ const styles = StyleSheet.create({
     bottom: 64,
     alignItems: 'center',
   },
-  roundCaption: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 31, // 控制栏底 64 − 间距 16 − caption 行高 17
-    alignItems: 'center',
-  },
-  roundText: {
-    ...type.caption,
-    color: semantic.textSecondary,
-  },
   confirmTitle: {
     ...type.title3,
     color: semantic.textPrimary,
@@ -500,7 +461,8 @@ const styles = StyleSheet.create({
   },
   confirmDangerText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    // 危险实底按钮前景恒白（与 AppButton onAction 语义一致）
+    color: semantic.onAction,
   },
   pressed: {
     opacity: 0.82,

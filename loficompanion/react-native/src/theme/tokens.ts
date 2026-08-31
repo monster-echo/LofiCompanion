@@ -34,6 +34,8 @@ export const semantic = {
   actionPrimary: primitives.rain[500],
   actionPressed: '#3E79C9',
   actionFocus: primitives.rain[400],
+  /** 彩色（主色/危险）实底按钮的前景色——与主色解耦的「其上文字」语义 */
+  onAction: '#FFFFFF',
   achievement: primitives.lamp[500],
   success: primitives.leaf[500],
   danger: primitives.danger[500],
@@ -51,6 +53,8 @@ export const semantic = {
 export const colors = {
   background: semantic.canvas,
   surface: semantic.surface,
+  // 新增键（随服务端 theme 色板扩展，additive 不破坏既有消费方）
+  surfaceRaised: semantic.surfaceRaised,
   surfaceMuted: semantic.surfaceInset,
   text: semantic.textPrimary,
   textSecondary: semantic.textSecondary,

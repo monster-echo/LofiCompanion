@@ -1,5 +1,5 @@
 import { stateAsset } from '../../skins/domain/resolve';
-import { rainyStudyRoomManifest } from '../../skins/domain/rainyStudyRoom';
+import { rainyStudyRoomManifest } from '../../skins/domain/rainyStudyRoom.generated';
 import type { CompanionState } from '../../skins/domain/types';
 
 /**

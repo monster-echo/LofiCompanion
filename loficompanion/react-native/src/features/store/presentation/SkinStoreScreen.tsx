@@ -32,13 +32,21 @@ import { storePoster } from './storePosters';
 const CARD_WIDTH = 176;
 const POSTER_HEIGHT = 104;
 
-// RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充
+// RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充。
+// Fabric 下 Image 不吃「仅四边 inset」的 absolute 定位，须显式给宽高（见 ImmersiveMediaSurface）
 const absoluteFill = {
   position: 'absolute' as const,
   left: 0,
   right: 0,
   top: 0,
   bottom: 0,
+} as const;
+const imageFill = {
+  position: 'absolute' as const,
+  left: 0,
+  top: 0,
+  width: '100%' as const,
+  height: '100%' as const,
 } as const;
 
 export function SkinStoreScreen() {
@@ -195,7 +203,7 @@ function CurrentSkinBanner({
       accessibilityRole="text"
     >
       {poster ? (
-        <Image source={poster} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={poster} style={imageFill} resizeMode="cover" />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.bannerPlaceholder]} />
       )}
@@ -269,7 +277,7 @@ function StoreCard({
     >
       <View style={styles.posterArea}>
         {poster ? (
-          <Image source={poster} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <Image source={poster} style={imageFill} resizeMode="cover" />
         ) : (
           <View style={styles.posterPlaceholder}>
             <AppIcon name="image" color={semantic.textMuted} size={22} />

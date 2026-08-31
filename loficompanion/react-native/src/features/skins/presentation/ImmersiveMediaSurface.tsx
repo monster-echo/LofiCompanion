@@ -28,9 +28,9 @@ export type ImmersiveMediaSurfaceProps = Readonly<{
 // doc-07 §9.3 叠层：顶部约 136dp（scrimTop→透明），底部约 260dp（透明→scrimBottom）
 const TOP_SCRIM_HEIGHT = 136;
 const BOTTOM_SCRIM_HEIGHT = 260;
-const CROSSFADE_MS = 150;
-/** 小屏裁切放大倍率：围绕焦点取景的可接受简化（doc-07 §9.2） */
-const FOCAL_ZOOM = 1.15;
+// 动画参数缺省值；skin.yaml `animation` 段可逐主题覆盖（focalZoom=1 不裁切）
+const DEFAULT_CROSSFADE_MS = 150;
+const DEFAULT_FOCAL_ZOOM = 1;
 
 let gradientSeq = 0;
 
@@ -38,13 +38,22 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-// RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充
+// RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充。
+// 注意：Fabric 下 RCTImageComponentView 对「仅用四边 inset 的 absolute 定位」
+// 不生效（会回退到图片像素固有尺寸、放大裁切糊图），Image 必须显式给宽高。
 const absoluteFill = {
   position: 'absolute' as const,
   left: 0,
   right: 0,
   top: 0,
   bottom: 0,
+};
+const imageFill = {
+  position: 'absolute' as const,
+  left: 0,
+  top: 0,
+  width: '100%' as const,
+  height: '100%' as const,
 };
 
 /**
@@ -89,7 +98,7 @@ export function ImmersiveMediaSurface({
     fade.setValue(0);
     Animated.timing(fade, {
       toValue: 1,
-      duration: CROSSFADE_MS,
+      duration: manifest.animation?.crossfadeMs ?? DEFAULT_CROSSFADE_MS,
       easing: Easing.out(Easing.ease),
       useNativeDriver: true,
     }).start(({ finished }) => {
@@ -110,11 +119,13 @@ export function ImmersiveMediaSurface({
     );
   };
 
-  // 焦点取景：图像放大 1.15×，把焦点平移到容器中心并夹紧边缘
+  // 焦点取景：按 manifest.animation.focalZoom 放大（1=不放大不裁切），
+  // 把焦点平移到容器中心并夹紧边缘
   const frame = (() => {
-    if (!layout) return null;
-    const width = layout.width * FOCAL_ZOOM;
-    const height = layout.height * FOCAL_ZOOM;
+    const focalZoom = manifest.animation?.focalZoom ?? DEFAULT_FOCAL_ZOOM;
+    if (!layout || focalZoom === 1) return null;
+    const width = layout.width * focalZoom;
+    const height = layout.height * focalZoom;
     const left = clamp(
       layout.width / 2 - layers.current.focalPointX * width,
       layout.width - width,
@@ -130,7 +141,7 @@ export function ImmersiveMediaSurface({
 
   const imageStyle = frame
     ? { position: 'absolute' as const, width: frame.width, height: frame.height, left: frame.left, top: frame.top }
-    : absoluteFill;
+    : imageFill;
 
   return (
     <View
@@ -140,7 +151,7 @@ export function ImmersiveMediaSurface({
       importantForAccessibility="no-hide-descendants"
     >
       {layers.previous ? (
-        <Image source={layers.previous.poster} style={absoluteFill} resizeMode={resizeMode} />
+        <Image source={layers.previous.poster} style={imageFill} resizeMode={resizeMode} />
       ) : null}
       <Animated.View
         style={[

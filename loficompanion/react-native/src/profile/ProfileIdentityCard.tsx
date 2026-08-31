@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppCard } from '../design-system/components';
 import { usePreferences } from '../preferences/PreferencesProvider';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
 
 export function ProfileIdentityCard({
@@ -15,7 +15,8 @@ export function ProfileIdentityCard({
 }: Readonly<{
   displayName: string;
   username: string;
-  email: string;
+  /** null = 未绑定（含伪邮箱）：整行不渲染，不展示占位文案 */
+  email: string | null;
   bio: string;
   avatarUrl?: string | null;
   onAvatarPress?: () => void;
@@ -38,13 +39,13 @@ export function ProfileIdentityCard({
             style={identityStyles.avatarAction}
           >
             {avatar}
-            <Text style={identityStyles.avatarHint}>点击更换</Text>
+            <Text style={[identityStyles.avatarHint, { color: palette.brand }]}>点击更换</Text>
           </Pressable>
         ) : avatar}
         <View style={identityStyles.copy}>
           <Text style={styles.heading}>{displayName}</Text>
           <Text style={styles.caption}>@{username}</Text>
-          <Text style={styles.secondary}>{email}</Text>
+          {email ? <Text style={styles.secondary}>{email}</Text> : null}
         </View>
         <Text
           style={[
@@ -75,7 +76,7 @@ function ProfileAvatar({
   }
   return (
     <View style={[identityStyles.avatar, { backgroundColor: palette.brandSoft }]}>
-      <Text style={identityStyles.avatarText}>{label}</Text>
+      <Text style={[identityStyles.avatarText, { color: palette.brand }]}>{label}</Text>
     </View>
   );
 }
@@ -84,22 +85,20 @@ const identityStyles = StyleSheet.create({
   container: { alignItems: 'center', gap: spacing.x3, paddingVertical: spacing.x3 },
   copy: { alignItems: 'center', gap: spacing.x1 },
   bio: {
-    color: colors.textSecondary,
     textAlign: 'center',
     width: '100%',
     padding: spacing.x3,
     borderRadius: radii.control,
-    backgroundColor: colors.surfaceMuted,
   },
   avatarAction: { alignItems: 'center', gap: spacing.x2 },
-  avatarHint: { color: colors.brand, fontWeight: '700' },
+  // avatarHint 颜色由渲染处 palette.brand 注入
+  avatarHint: { fontWeight: '700' },
   avatar: {
     width: 96,
     height: 96,
     borderRadius: radii.round,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.brandSoft,
   },
-  avatarText: { color: colors.brand, fontSize: 20, fontWeight: '700' },
+  avatarText: { fontSize: 20, fontWeight: '700' },
 });

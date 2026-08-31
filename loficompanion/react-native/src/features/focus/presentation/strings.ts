@@ -24,13 +24,10 @@ export const FOCUS_STRINGS = {
   beginFocus: '开始专注',
   invalidSession: '活动或时长无效，请调整后再开始',
   sessionRunning: '已有一轮专注正在进行',
-  // S04 专注中
+  // S04 专注中（喝水无手动按钮：由主题 wellness.autoDrink 自动排程触发）
   paused: '已暂停',
-  round: (n: number) => `第 ${n} 轮`,
   pauseAction: '暂停',
   resumeAction: '继续',
-  drinkAction: '喝水',
-  drinkCooldown: (s: number) => `冷却中 ${s}s`,
   endAction: '结束',
   endConfirmTitle: '提前结束这轮？',
   endConfirmStay: '再坚持一下',
@@ -64,15 +61,6 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   coding: '编程',
   vocab: '背单词',
   free: '自由专注',
-};
-
-/** 活动类型 → 专注中顶部状态（doc-08 §5，随活动变化） */
-export const ACTIVITY_STATUS: Record<ActivityType, string> = {
-  homework: '正在陪你写作业',
-  reading: '正在陪你阅读',
-  coding: '正在陪你写代码',
-  vocab: '正在陪你背单词',
-  free: '正在陪你专注',
 };
 
 /** S03 活动单选项（展示顺序即标签排列顺序） */

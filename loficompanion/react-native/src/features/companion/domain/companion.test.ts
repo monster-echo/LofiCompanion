@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rainyStudyRoomManifest as manifest } from '../../skins/domain/rainyStudyRoom';
+import { rainyStudyRoomManifest as manifest } from '../../skins/domain/rainyStudyRoom.generated';
 import type { SkinManifest } from '../../skins/domain/types';
 import type { CompanionRuntimeState } from './stateMachine';
 import { advance, dispatch, initialState } from './stateMachine';

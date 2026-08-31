@@ -1,12 +1,13 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Platform, SafeAreaView } from 'react-native';
 import * as ExpoSplashScreen from 'expo-splash-screen';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 import { AppRoute } from './src/navigation/routes';
 import { AppProvider } from './src/state/AppStore';
+import { ConnectionGate } from './src/screens/ConnectionGate';
 import { FocusProvider } from './src/features/focus/application/FocusStore';
 import { SyncProvider } from './src/features/sync/application/SyncStore';
 import { FeedbackHost } from './src/design-system/FeedbackHost';
@@ -51,17 +52,36 @@ export default function App() {
 
 function AppSurface() {
   const { palette } = usePreferences();
-  const { openEntryRoute, refreshBootstrap } = useApp();
+  const { openEntryRoute, refreshBootstrap, serverReady } = useApp();
   const resume = useCallback(() => { void refreshBootstrap(); }, [refreshBootstrap]);
+  // 导航主题与应用夜色调色板对齐：native-tabs/native-stack 的场景底色、
+  // 液态玻璃 Tab 取景都消费 theme.colors——缺省浅色主题会在切换时闪灰底。
+  const navigationTheme = useMemo(
+    () => ({
+      ...(DarkTheme as typeof DarkTheme),
+      colors: {
+        primary: palette.brand,
+        background: palette.background,
+        card: palette.surface,
+        text: palette.text,
+        border: palette.border,
+        notification: palette.brand,
+      },
+    }),
+    [palette],
+  );
   // 入口意图解析必须在 NavigationContainer onReady 之后（否则 navigate 早于
   // mount 触发 dev LogBox「navigation 尚未初始化」竞态警告）。
   const [navReady, setNavReady] = useState(false);
   useEntryIntents(openEntryRoute, resume, navReady);
+  // 联机门禁：bootstrap 成功前不放行（hooks 顺序保持——门禁只是渲染分支）。
+  if (!serverReady) return <ConnectionGate />;
   return (
     <SafeAreaProvider>
       <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
         <NavigationContainer
           ref={navigationRef}
+          theme={navigationTheme}
           onReady={() => setNavReady(true)}
           onStateChange={() => {
             // Screen-view telemetry fires on every navigation state change

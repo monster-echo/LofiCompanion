@@ -1,31 +1,36 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { colors, radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
 import { AppIcon } from './AppIcon';
 import { AppButton } from './components';
+import { AppToastHost, TOAST_DURATION_MS } from './AppToast';
 
+/**
+ * 全局反馈宿主：Toast 交给 react-native-toast-message 顶部展示（AppToast），
+ * 危险操作二次确认弹窗仍在此渲染。showToast 的调用方 API 不变。
+ */
 export function FeedbackHost() {
   const { toast, confirm, closeConfirm } = useApp();
   const { palette } = usePreferences();
-  const toastColor = toast?.tone === 'success'
-    ? colors.success
-    : toast?.tone === 'error'
-      ? colors.error
-      : colors.info;
+  // toast 状态变化 → 命令式触发顶部 toast；id 去重避免同一提示重复弹出
+  const shownIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!toast || shownIdRef.current === toast.id) return;
+    shownIdRef.current = toast.id;
+    Toast.show({
+      type: toast.tone,
+      text1: toast.message,
+      visibilityTime: TOAST_DURATION_MS,
+      onPress: () => Toast.hide(),
+    });
+  }, [toast]);
   return (
     <>
-      {toast ? (
-        <View
-          accessibilityLiveRegion="polite"
-          style={[feedbackStyles.toast, { backgroundColor: palette.surface, borderColor: palette.border }]}
-        >
-          <AppIcon name={toast.tone === 'error' ? 'alert' : 'check'} color={toastColor} size={20} />
-          <Text style={styles.body}>{toast.message}</Text>
-        </View>
-      ) : null}
+      <AppToastHost />
       <Modal visible={Boolean(confirm)} transparent animationType="fade">
         <Pressable style={feedbackStyles.scrim} onPress={closeConfirm}>
           <Pressable
@@ -33,7 +38,7 @@ export function FeedbackHost() {
             onPress={() => undefined}
           >
             <View style={[feedbackStyles.alertIcon, { backgroundColor: palette.brandSoft }]}>
-              <AppIcon name="alert" color={colors.warning} size={28} />
+              <AppIcon name="alert" color={palette.warning} size={28} />
             </View>
             <Text style={styles.heading}>{confirm?.title}</Text>
             <Text style={[styles.secondary, feedbackStyles.center]}>{confirm?.message}</Text>
@@ -60,21 +65,6 @@ export function FeedbackHost() {
 }
 
 const feedbackStyles = StyleSheet.create({
-  toast: {
-    position: 'absolute',
-    left: spacing.x4,
-    right: spacing.x4,
-    bottom: spacing.x6,
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.x3,
-    borderRadius: radii.control,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.x4,
-  },
   scrim: {
     flex: 1,
     alignItems: 'center',

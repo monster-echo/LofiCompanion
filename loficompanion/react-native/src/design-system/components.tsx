@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { AppRoute } from '../navigation/routes';
 import { useApp } from '../state/AppStore';
-import { colors } from '../theme/tokens';
+import { semantic } from '../theme/tokens';
 import { styles } from '../theme/styles';
 import { AppIcon, IconName } from './AppIcon';
 import { telemetry } from '../telemetry/Telemetry';
@@ -36,18 +36,18 @@ export function AppButton({
     : variant === 'danger'
       ? buttonStyles.danger
       : buttonStyles.secondary;
-  // 禁用态语义化：整体透明在夜色下不满足对比度（doc-09 §7），改为禁用专用
-  // 实色容器 + 保持可读的 label（doc-07「禁用态保持可读」意图）。
+  // 实底按钮（主色/危险）可用态前景恒白（semantic.onAction）——彩色底上的
+  // 高对比惯例；禁用态弱化为次级文字色（doc-07「禁用态保持可读」意图）。
   const foreground = disabled
-    ? palette.text
+    ? palette.textSecondary
     : variant === 'secondary'
       ? palette.text
-      : colors.surface;
+      : semantic.onAction;
   const background = disabled
     ? (variant === 'secondary' ? palette.surface : disabledContainer)
     : variant === 'secondary'
       ? palette.surface
-      : variant === 'danger' ? colors.error : colors.brand;
+      : variant === 'danger' ? palette.error : palette.brand;
   return (
     <Pressable
       accessibilityRole="button"
@@ -83,7 +83,7 @@ export function OfflineBanner() {
       onPress={() => void refreshBootstrap()}
       style={componentStyles.offline}
     >
-      <AppIcon name="alert" color={colors.warning} size={18} />
+      <AppIcon name="alert" color={palette.warning} size={18} />
       <Text style={[componentStyles.offlineText, { color: palette.text }]}>
         当前离线，正在使用本地配置 · 点击重试
       </Text>
@@ -195,7 +195,7 @@ export function ListRow({
       {icon ? (
         <AppIcon
           name={icon}
-          color={destructive ? colors.error : iconColor ?? palette.textSecondary}
+          color={destructive ? palette.error : iconColor ?? palette.textSecondary}
           size={20}
         />
       ) : null}
@@ -211,13 +211,14 @@ export function ToggleRow({
   value,
   onChange,
 }: Readonly<{ label: string; value: boolean; onChange: (value: boolean) => void }>) {
+  const { palette } = usePreferences();
   return (
     <View style={styles.row}>
       <Text style={styles.rowText}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: colors.border, true: colors.brand }}
+        trackColor={{ false: palette.border, true: palette.brand }}
       />
     </View>
   );

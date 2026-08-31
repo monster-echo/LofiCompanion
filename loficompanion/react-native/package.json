@@ -9,7 +9,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "skins:generate": "node scripts/generate-skin.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.8",
@@ -38,11 +39,14 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
+    "react-native-toast-message": "^2.5.0",
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@types/react": "^19.1.1",
+    "sf-symbols-typescript": "^2.2.0",
     "typescript": "~5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "yaml": "^2.9.0"
   }
 }

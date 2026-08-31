@@ -50,6 +50,8 @@ type AppContextValue = Readonly<{
   authProviderPolicy: AuthProviderPolicy;
   online: boolean;
   bootstrapped: boolean;
+  /** 本次会话内服务端 bootstrap 至少成功过一次——联机门禁据此放行进 App */
+  serverReady: boolean;
   busy: boolean;
   purchaseState: PurchaseState;
   setPurchaseState: (state: PurchaseState) => void;
@@ -105,6 +107,9 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [authProviderPolicy, setAuthProviderPolicy] = useState(defaultProviderPolicy);
   const [online, setOnline] = useState(true);
   const [bootstrapped, setBootstrapped] = useState(false);
+  // 联机门禁：颜色系统等运行时配置必须来自服务端——离线不静默回退本地值，
+  // 本次会话内 bootstrap 未成功过就不放行进入 App（AppSurface 渲染连接页）。
+  const [serverReady, setServerReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [purchaseState, setPurchaseState] = useState<PurchaseState>({ kind: 'idle' });
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
@@ -134,6 +139,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
       setAuthProviderConfig(payload.authProviderConfig);
       setAuthProviderPolicy(payload.authProviderPolicy);
       setOnline(true);
+      setServerReady(true);
       void telemetry.configure(payload.config);
       await saveCachedConfig(payload.config);
     } catch {
@@ -255,6 +261,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     authProviderPolicy,
     online,
     bootstrapped,
+    serverReady,
     busy,
     lastAuthError,
     clearAuthError,
@@ -270,6 +277,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     authProviderConfig,
     authProviderPolicy,
     bootstrapped,
+    serverReady,
     busy,
     pendingPlanId,
     purchaseState,

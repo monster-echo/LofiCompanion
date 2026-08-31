@@ -13,11 +13,12 @@ import { useApp } from '../state/AppStore';
 import { AvatarCropEditor } from '../profile/AvatarCropEditor';
 import { ProfileIdentityCard } from '../profile/ProfileIdentityCard';
 import { usePreferences } from '../preferences/PreferencesProvider';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
 
 export function ProfileScreen() {
   const { user, config, navigate, signOut, showConfirm, replace } = useApp();
+  const { palette } = usePreferences();
   // 访客直达登录页（产品决策 2026-08-31：中间「登录后同步」页增加操作步骤、
   // 造成流失）。replace 语义保证登录页无返回入口，登录成功后由
   // onAuthenticated 复位到首页。
@@ -40,13 +41,20 @@ export function ProfileScreen() {
         <ProfileIdentityCard
           displayName={user.displayName}
           username={user.username}
-          email={user.hasEmail && user.email ? user.email : '未绑定邮箱'}
+          email={user.hasEmail && user.email ? user.email : null}
           bio={user.bio}
           avatarUrl={user.avatarUrl}
         />
-        <View style={profileStyles.membership}>
-          <Text style={profileStyles.membershipTitle}>{tier?.name ?? user.tierId}</Text>
-          <Text style={profileStyles.membershipText}>
+        <View
+          style={[
+            profileStyles.membership,
+            { backgroundColor: palette.surfaceRaised, borderColor: palette.border },
+          ]}
+        >
+          <Text style={[profileStyles.membershipTitle, { color: palette.text }]}>
+            {tier?.name ?? user.tierId}
+          </Text>
+          <Text style={[profileStyles.membershipText, { color: palette.textSecondary }]}>
             {tier?.summary ?? '会员信息由服务端动态配置'}
           </Text>
           <AppButton
@@ -119,7 +127,7 @@ function Avatar({ avatarUrl, label }: Readonly<{ avatarUrl?: string | null; labe
   }
   return (
     <View style={[profileStyles.avatar, { backgroundColor: palette.brandSoft }]}>
-      <Text style={profileStyles.avatarText}>{label}</Text>
+      <Text style={[profileStyles.avatarText, { color: palette.brand }]}>{label}</Text>
     </View>
   );
 }
@@ -130,6 +138,7 @@ export function EditProfileScreen() {
   const [bio, setBio] = useState(user?.bio ?? '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '');
   const [cropAsset, setCropAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+
   const chooseAvatar = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -157,7 +166,7 @@ export function EditProfileScreen() {
         <ProfileIdentityCard
           displayName={displayName || user?.username || 'M'}
           username={user?.username ?? ''}
-          email={user?.hasEmail && user?.email ? user.email : '未绑定邮箱'}
+          email={user?.hasEmail && user?.email ? user.email : null}
           bio={bio}
           avatarUrl={avatarUrl}
           onAvatarPress={() => void chooseAvatar()}
@@ -204,6 +213,7 @@ export function EditProfileScreen() {
   );
 }
 
+// 颜色一律渲染时由 palette 注入（服务端色板可覆盖）；此处只保留布局常量。
 const profileStyles = StyleSheet.create({
   fullWidth: { width: '100%' },
   bioInput: { minHeight: 96, textAlignVertical: 'top' },
@@ -213,15 +223,14 @@ const profileStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radii.round,
-    backgroundColor: colors.brandSoft,
   },
-  avatarText: { color: colors.brand, fontSize: 20, fontWeight: '700' },
+  avatarText: { fontSize: 20, fontWeight: '700' },
   membership: {
     borderRadius: radii.card,
     padding: spacing.x5,
     gap: spacing.x3,
-    backgroundColor: colors.text,
+    borderWidth: 1,
   },
-  membershipTitle: { color: colors.surface, fontSize: 22, fontWeight: '700' },
-  membershipText: { color: colors.border, fontSize: 14 },
+  membershipTitle: { fontSize: 22, fontWeight: '700' },
+  membershipText: { fontSize: 14 },
 });

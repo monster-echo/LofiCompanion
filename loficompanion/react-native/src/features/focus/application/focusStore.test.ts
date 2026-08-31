@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { rainyStudyRoomManifest as manifest } from '../../skins/domain/rainyStudyRoom';
+import { rainyStudyRoomManifest as manifest } from '../../skins/domain/rainyStudyRoom.generated';
+import type { SkinManifest } from '../../skins/domain/types';
 import type { AchievementRuleKey } from '../../achievements/domain/rules';
 import { createAchievementRepository } from '../../achievements/data/achievementRepository';
 import { createSkinSelectionRepository } from '../../skins/data/skinSelectionRepository';
@@ -32,14 +33,19 @@ function memoryDriver(): StorageDriver {
 interface HarnessOptions {
   driver: StorageDriver;
   granted?: AchievementRuleKey[];
+  /** 覆盖皮肤清单（自动喝水排程测试用短间隔） */
+  manifest?: SkinManifest;
+  /** 确定性随机源；缺省恒 0（= 取区间下界，可复现） */
+  rng?: () => number;
 }
 
-function makeController({ driver, granted = [] }: HarnessOptions) {
+function makeController({ driver, granted = [], manifest: skin = manifest, rng }: HarnessOptions) {
   return createFocusController({
     repo: createFocusRepository(driver),
     achievementRepo: createAchievementRepository(driver),
     skinRepo: createSkinSelectionRepository(driver),
-    manifest,
+    manifest: skin,
+    rng,
     loadGranted: async () =>
       granted.map((ruleKey) => ({ ruleKey, grantedAtUtc: T0 })),
     loadRoomItems: async () => [],
@@ -253,40 +259,83 @@ describe('FocusStore 编排：强杀恢复', () => {
   });
 });
 
-describe('FocusStore 编排：喝水与冷却', () => {
-  it('60s 冷却内的第二次喝水：companion 引用不变、横幅不被覆盖、cooldown 提示剩余', async () => {
+describe('FocusStore 编排：自动喝水（主题排程）', () => {
+  /** 固定间隔皮肤：min=max → 到点确定（与 rng 无关） */
+  const everyMinutes = (minutes: number): SkinManifest => ({
+    ...manifest,
+    wellness: {
+      autoDrink: { enabled: true, minIntervalMinutes: minutes, maxIntervalMinutes: minutes },
+    },
+  });
+
+  it('按主题排程到点触发：开播、横幅、冷却就位、立即重排；播完回归 focusing', async () => {
     const driver = memoryDriver();
-    const controller = makeController({ driver });
+    const controller = makeController({ driver, rng: () => 0 });
     await controller.restore(T0);
     controller.startSession('homework', 25, T0);
-    controller.tick(T0 + ACTION_MS); // focus.started（80、不可打断）播完，喝水才能开播
+    // 默认清单（skin.yaml）：18–30 分钟区间，rng=0 → 取下界 18 分钟
+    expect(controller.getState().nextAutoDrinkAt).toBe(T0 + 18 * MIN);
 
-    controller.drink(T0 + 5000);
-    const first = controller.getState();
-    expect(first.companion.playing?.eventType).toBe('wellness.drink');
-    expect(first.banner).toEqual({
+    controller.tick(T0 + ACTION_MS); // 未到点：不触发
+    expect(controller.getState().companion.playing).toBeNull();
+    expect(controller.getState().nextAutoDrinkAt).toBe(T0 + 18 * MIN);
+
+    controller.tick(T0 + 18 * MIN); // 到点：wellness.drink 开播
+    const s = controller.getState();
+    expect(s.companion.playing?.eventType).toBe('wellness.drink');
+    expect(s.companion.playing?.startedAt).toBe(T0 + 18 * MIN);
+    expect(s.banner).toEqual({
       eventType: 'wellness.drink',
-      endsAt: T0 + 5000 + ACTION_MS,
+      endsAt: T0 + 18 * MIN + ACTION_MS,
     });
+    // 首次开播不产生冷却提示（冷却提示只在冷却窗口内的再次派发时出现）
+    expect(s.cooldown).toBeNull();
+    expect(s.nextAutoDrinkAt).toBe(T0 + 36 * MIN); // 触发即重排下一轮
 
-    controller.drink(T0 + 10_000);
-    const second = controller.getState();
-    expect(second.companion).toBe(first.companion); // 状态完全不变（同引用）
-    expect(second.banner).toBe(first.banner);
-    // 剩余 = ceil((T0+5000+60000 − (T0+10000))/1000) = 55s
-    expect(second.cooldown).toEqual({
-      eventType: 'wellness.drink',
-      until: T0 + 10_000 + 55_000,
-    });
+    controller.tick(T0 + 18 * MIN + ACTION_MS); // 播完回归
+    expect(controller.getState().companion.playing).toBeNull();
+    expect(controller.getState().companion.state).toBe('focusing');
+  });
 
-    // 冷却过期后再喝：先把上一次动作 tick 播完（playing 不会自行过期），
-    // 再触发 → 正常开播，lastFiredAt 更新
-    controller.tick(T0 + 5000 + ACTION_MS);
-    controller.drink(T0 + 66_000);
-    const third = controller.getState();
-    expect(third.companion.playing?.startedAt).toBe(T0 + 66_000);
-    expect(third.banner?.endsAt).toBe(T0 + 66_000 + ACTION_MS);
-    expect(third.companion.lastFiredAt['wellness.drink']).toBe(T0 + 66_000);
+  it('60s 冷却内到点的下一次排程：不重播、状态引用不变、冷却提示刷新', async () => {
+    const driver = memoryDriver();
+    const controller = makeController({ driver, manifest: everyMinutes(0.5) }); // 每 30s
+    await controller.restore(T0);
+    controller.startSession('homework', 25, T0);
+
+    controller.tick(T0 + 30_000); // 第 1 次：开播
+    expect(controller.getState().companion.playing?.eventType).toBe('wellness.drink');
+    expect(controller.getState().nextAutoDrinkAt).toBe(T0 + 60_000);
+
+    controller.tick(T0 + 34_000); // 第一杯播完、横幅到期
+    const idle = controller.getState();
+    expect(idle.companion.playing).toBeNull();
+    expect(idle.banner).toBeNull();
+
+    controller.tick(T0 + 60_000); // 落在 60s 冷却内：状态完全不变，仅刷新冷却提示
+    const s = controller.getState();
+    expect(s.companion).toBe(idle.companion);
+    expect(s.banner).toBeNull();
+    // 剩余 = 60s − (60s − 30s) = 30s → until = T0 + 90s
+    expect(s.cooldown).toEqual({ eventType: 'wellness.drink', until: T0 + 90_000 });
+    expect(s.nextAutoDrinkAt).toBe(T0 + 90_000);
+
+    controller.tick(T0 + 90_000); // 冷却恰好过期：正常开播
+    expect(controller.getState().companion.playing?.eventType).toBe('wellness.drink');
+    expect(controller.getState().companion.playing?.startedAt).toBe(T0 + 90_000);
+  });
+
+  it('暂停期间不消耗喝水排程：恢复后至少再等一个最小间隔', async () => {
+    const driver = memoryDriver();
+    const controller = makeController({ driver, rng: () => 0 }); // 18 分钟固定
+    await controller.restore(T0);
+    controller.startSession('homework', 25, T0);
+    controller.pause(T0 + 5 * MIN);
+    controller.resume(T0 + 15 * MIN);
+    // 排程原为 T0+18min；恢复钳制为 max(原值, 恢复时刻+18min) = T0+33min
+    expect(controller.getState().nextAutoDrinkAt).toBe(T0 + 33 * MIN);
+    controller.tick(T0 + 20 * MIN);
+    expect(controller.getState().companion.playing).toBeNull();
   });
 
   it('tick 推进：动作播完自动回归基态（清单 returnState），横幅到期清除', async () => {
@@ -309,13 +358,17 @@ describe('FocusStore 编排：喝水与冷却', () => {
     expect(s.banner).toBeNull(); // now >= endsAt
   });
 
-  it('播放期间 tick：基态被 focus.paused 改写后，队列事件按优先级接力播放', async () => {
+  it('播放期间到点：focus.started 不可打断 → 喝水入队，focus.paused 后按优先级接力', async () => {
+    // 每 2s 一次排程：T0+2s 的到点落在 focus.started 播放窗口内
     const driver = memoryDriver();
-    const controller = makeController({ driver });
+    const controller = makeController({ driver, manifest: everyMinutes(2 / 60) });
     await controller.restore(T0);
-    controller.startSession('homework', 25, T0);
-    controller.drink(T0 + 1000); // focus.started 不可打断 → wellness.drink 入队
-    controller.pause(T0 + 2000); // 基态立即 paused，focus.paused(90) 也入队
+    controller.startSession('homework', 25, T0); // next = T0+2s；focus.started 播放中
+
+    controller.tick(T0 + 3000); // 到点：focus.started（80、不可打断）→ drink(70) 入队
+    expect(controller.getState().companion.playing?.eventType).toBe('focus.started');
+    expect(controller.getState().companion.queue).toHaveLength(1);
+    controller.pause(T0 + 3500); // 基态立即 paused，focus.paused(90) 也入队
 
     controller.tick(T0 + ACTION_MS); // focus.started 播完 → 弹出优先级最高的 focus.paused
     const s = controller.getState();
@@ -407,7 +460,6 @@ describe('FocusStore 编排：输入守卫与外围动作', () => {
     expect(() => {
       controller.pause(T0);
       controller.resume(T0);
-      controller.drink(T0);
       controller.complete(T0);
       controller.abandon(T0);
       controller.tick(T0);

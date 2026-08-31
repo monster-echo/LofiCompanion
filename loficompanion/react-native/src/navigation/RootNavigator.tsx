@@ -1,7 +1,10 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { useRoute } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeBottomTabNavigator } from '@react-navigation/bottom-tabs/unstable';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import type { ImageSourcePropType } from 'react-native';
+import type { SFSymbol } from 'sf-symbols-typescript';
 import type { RootParamList } from './navigationRef';
 
 import { AuthScreen, AuthMode } from '../screens/AuthScreens';
@@ -29,7 +32,7 @@ import { NewTicketScreen, ProductFeedbackScreen } from '../screens/SupportFormSc
 import { PermissionsScreen, StorageScreen, TextSizeScreen } from '../screens/SettingsUtilityScreens';
 import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
-import { AppIcon, IconName } from '../design-system/AppIcon';
+import type { IconName } from '../design-system/AppIcon';
 import { semantic } from '../theme/tokens';
 import { FocusHomeScreen } from '../features/focus/presentation/FocusHomeScreen';
 import { FocusSetupSheet } from '../features/focus/presentation/FocusSetupSheet';
@@ -55,65 +58,93 @@ type RootTabList = Pick<
   'home' | 'achievements.home' | 'leaderboard.home' | 'profile.home'
 >;
 
-const Tab = createBottomTabNavigator<RootTabList>();
+const NativeTab = createNativeBottomTabNavigator<RootTabList>();
 
 type TabDef = Readonly<{
   name: keyof RootTabList;
   icon: IconName;
+  /** iOS 原生 Tab 图标：SF Symbols（选中实心 / 未选中描边），系统自动渲染液态玻璃质感 */
+  sfFocused: SFSymbol;
+  sfIdle: SFSymbol;
+  /** Android 原生 Tab 图标：三倍图位图，原生按 active/inactive tint 自动染色 */
+  image: ImageSourcePropType;
   zh: string;
   en: string;
 }>;
 
 // doc-08 §1：四个 Tab 根页——专注 / 成就 / 排行 / 我的
 const TABS: readonly TabDef[] = [
-  { name: 'home', icon: 'droplet', zh: '专注', en: 'Focus' },
-  { name: 'achievements.home', icon: 'bookmark', zh: '成就', en: 'Achievements' },
-  { name: 'leaderboard.home', icon: 'group', zh: '排行', en: 'Ranks' },
-  { name: 'profile.home', icon: 'user', zh: '我的', en: 'Me' },
+  {
+    name: 'home',
+    icon: 'droplet',
+    sfFocused: 'drop.fill',
+    sfIdle: 'drop',
+    image: require('../../assets/icons/tabbar/droplet.png'),
+    zh: '专注',
+    en: 'Focus',
+  },
+  {
+    name: 'achievements.home',
+    icon: 'bookmark',
+    sfFocused: 'bookmark.fill',
+    sfIdle: 'bookmark',
+    image: require('../../assets/icons/tabbar/bookmark.png'),
+    zh: '成就',
+    en: 'Achievements',
+  },
+  {
+    name: 'leaderboard.home',
+    icon: 'group',
+    sfFocused: 'person.2.fill',
+    sfIdle: 'person.2',
+    image: require('../../assets/icons/tabbar/group.png'),
+    zh: '排行',
+    en: 'Ranks',
+  },
+  {
+    name: 'profile.home',
+    icon: 'user',
+    sfFocused: 'person.fill',
+    sfIdle: 'person',
+    image: require('../../assets/icons/tabbar/user.png'),
+    zh: '我的',
+    en: 'Me',
+  },
 ];
 
 /**
- * 底部 Tab 容器（@react-navigation/bottom-tabs）。Tab 屏懒挂载、访问后保活，
- * 切换不再整页重建（issue #1/#9）。样式按 doc-07 夜色：surface 底 +
- * borderSoft 上边框，active actionPrimary / inactive textMuted；
- * 底部安全区由 App 外层 SafeArea 承担，Tab bar 高 64（doc-07 §7.3）。
+ * 底部 Tab 容器（@react-navigation/bottom-tabs 的 native 实现，原生
+ * UITabBarController / BottomNavigationView 承载）：Tab 原生保活；
+ * iOS 26+ 系统直接绘制液态玻璃悬浮 Tab（样式交由系统，自定义
+ * backgroundColor/边框不再生效）；Android 为 Material 3 导航栏。
+ * 图标：iOS 用 SF Symbols（选中实心、未选中描边）；Android 用位图原生染色。
  */
 function MainTabs() {
   const { locale } = usePreferences();
   return (
-    <Tab.Navigator
+    <NativeTab.Navigator
       initialRouteName="home"
-      safeAreaInsets={{ bottom: 0 }}
       screenOptions={{
         headerShown: false,
-        lazy: true,
         tabBarActiveTintColor: semantic.actionPrimary,
         tabBarInactiveTintColor: semantic.textMuted,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
-        tabBarStyle: {
-          backgroundColor: semantic.surface,
-          borderTopColor: semantic.borderSoft,
-          borderTopWidth: 1,
-          height: 64,
-        },
-        sceneStyle: { backgroundColor: semantic.canvas },
       }}
     >
       {TABS.map((tab) => (
-        <Tab.Screen
+        <NativeTab.Screen
           key={tab.name}
           name={tab.name}
           component={TAB_COMPONENTS[tab.name]}
           options={{
             tabBarLabel: locale === 'en-US' ? tab.en : tab.zh,
-            tabBarAccessibilityLabel: tab.zh,
-            tabBarIcon: ({ color }) => (
-              <AppIcon name={tab.icon} color={color} size={22} />
-            ),
+            tabBarIcon: ({ focused }) =>
+              Platform.OS === 'ios'
+                ? { type: 'sfSymbol', name: focused ? tab.sfFocused : tab.sfIdle }
+                : { type: 'image', source: tab.image },
           }}
         />
       ))}
-    </Tab.Navigator>
+    </NativeTab.Navigator>
   );
 }
 

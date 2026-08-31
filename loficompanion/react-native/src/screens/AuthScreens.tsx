@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { AppButton, PageHeader } from '../design-system/components';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { useApp } from '../state/AppStore';
-import { colors, spacing } from '../theme/tokens';
+import { spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
 import { useAuthRecovery } from '../auth/AuthRecoveryStore';
 import { SocialAuthButtons } from '../auth/SocialAuthButtons';
@@ -171,7 +171,7 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
           />
         ) : null}
         {lastAuthError ? (
-          <Text style={authStyles.errorText}>{lastAuthError}</Text>
+          <Text style={[authStyles.errorText, { color: palette.error }]}>{lastAuthError}</Text>
         ) : null}
         <AppButton
           disabled={busy || !isValid({ mode, email, password, username, code, phone, phoneCodeSent })}
@@ -217,13 +217,13 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
               <Text
                 accessibilityRole="link"
                 onPress={() => navigate('settings.termsOfService')}
-                style={authStyles.legalLinkInline}
+                style={{ color: palette.brand }}
               >用户协议</Text>
               {' '}与{' '}
               <Text
                 accessibilityRole="link"
                 onPress={() => navigate('settings.privacyPolicy')}
-                style={authStyles.legalLinkInline}
+                style={{ color: palette.brand }}
               >隐私政策</Text>
             </Text>
           </View>
@@ -269,6 +269,6 @@ const authStyles = StyleSheet.create({
   },
   checkboxTarget: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   consentText: { flexShrink: 1 },
-  legalLinkInline: { color: colors.brand },
-  errorText: { color: colors.error, fontSize: 13 },
+  // 颜色随服务端色板（palette.brand / palette.error）在渲染处内联
+  errorText: { fontSize: 13 },
 });

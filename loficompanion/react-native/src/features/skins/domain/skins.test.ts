@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rainyStudyRoomManifest } from './rainyStudyRoom';
+import { rainyStudyRoomManifest } from './rainyStudyRoom.generated';
 import { mappingFor, stateAsset } from './resolve';
 import type {
   CompanionEventType,
@@ -99,6 +99,33 @@ describe('雨夜书房清单', () => {
   it('空 states 清单抛错（契约兜底，绝不返回 undefined）', () => {
     const empty: SkinManifest = { ...rainyStudyRoomManifest, states: [] };
     expect(() => stateAsset(empty, 'ready')).toThrow();
+  });
+
+  it('清单源 skin.yaml 与生成物同步（改 YAML 后必须重跑 skins:generate）', async () => {
+    // 直接执行生成器 --check：生成物内容与 YAML 派生输出逐字节一致
+    const { execFile } = await import('node:child_process');
+    const { dirname, join } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const scriptPath = join(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../../../scripts/generate-skin.mjs',
+    );
+    await new Promise<void>((resolve, reject) => {
+      execFile(
+        process.execPath,
+        [scriptPath, 'rainy-study-room', '--check'],
+        (error, stdout, stderr) => {
+          if (error) reject(new Error(String(stderr || stdout || error)));
+          else resolve();
+        },
+      );
+    });
+    expect(rainyStudyRoomManifest.animation).toEqual({ crossfadeMs: 150, focalZoom: 1 });
+    expect(rainyStudyRoomManifest.wellness?.autoDrink).toEqual({
+      enabled: true,
+      minIntervalMinutes: 18,
+      maxIntervalMinutes: 30,
+    });
   });
 });
 

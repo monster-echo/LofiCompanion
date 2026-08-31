@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { AccessibilityInfo, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { rainyStudyRoomManifest } from '../../skins/domain/rainyStudyRoom';
+import { rainyStudyRoomManifest } from '../../skins/domain/rainyStudyRoom.generated';
 import type {
   CompanionEventType,
   SkinManifest,
@@ -76,7 +76,6 @@ export interface FocusApi {
     ): StartSessionResult;
     pause(now: number): void;
     resume(now: number): void;
-    drink(now: number): void;
     complete(now: number): void;
     abandon(now: number): void;
     selectSkin(skinId: string): void;
@@ -113,7 +112,6 @@ function toFocusApi(controller: FocusController, state: FocusState): FocusApi {
       startSession: controller.startSession,
       pause: controller.pause,
       resume: controller.resume,
-      drink: controller.drink,
       complete: controller.complete,
       abandon: controller.abandon,
       selectSkin: controller.selectSkin,

@@ -73,6 +73,8 @@ export interface FocusControllerDeps {
   loadGranted: () => Promise<readonly GrantRecord[]>;
   /** 已解锁房间收藏物；缺省视为空（兼容未接线的旧调用方） */
   loadRoomItems?: () => Promise<readonly RoomItemSnapshot[]>;
+  /** 健康事件随机排程用；测试注入确定性序列（缺省 Math.random） */
+  rng?: () => number;
 }
 
 /** 完成页载荷：一次完成的会话 + 统计 + 本次新授予的成就 */
@@ -113,6 +115,8 @@ export interface FocusState {
   companion: CompanionRuntimeState;
   banner: BannerView | null;
   cooldown: CooldownView | null;
+  /** 下次自动喝水时刻（skin.yaml wellness.autoDrink 排程；无活动会话为 null） */
+  nextAutoDrinkAt: number | null;
   reducedMotion: boolean;
   newGrants: AchievementRuleKey[];
   completions: CompletionView | null;
@@ -136,7 +140,6 @@ export interface FocusController {
   ): StartSessionResult;
   pause(now: number): void;
   resume(now: number): void;
-  drink(now: number): void;
   complete(now: number): void;
   abandon(now: number): void;
   selectSkin(skinId: string): void;
@@ -161,6 +164,23 @@ function noop(): void {
 export function createFocusController(deps: FocusControllerDeps): FocusController {
   const { repo, achievementRepo, skinRepo, manifest } = deps;
 
+  /** 自动喝水排程：skin.yaml wellness.autoDrink 区间内随机取下个触发点。 */
+  function scheduleAutoDrink(now: number): number | null {
+    const auto = manifest.wellness?.autoDrink;
+    if (!auto?.enabled) return null;
+    const minMs = Math.max(0, auto.minIntervalMinutes) * 60_000;
+    const maxMs = Math.max(minMs, auto.maxIntervalMinutes * 60_000);
+    const roll = deps.rng ? deps.rng() : Math.random();
+    return now + minMs + roll * (maxMs - minMs);
+  }
+
+  /** 自动喝水的最小间隔（resume 后钳制用）；未启用返回 null。 */
+  function minAutoDrinkDelayMs(): number | null {
+    const auto = manifest.wellness?.autoDrink;
+    if (!auto?.enabled) return null;
+    return Math.max(0, auto.minIntervalMinutes) * 60_000;
+  }
+
   let state: FocusState = {
     hydrated: false,
     activeSession: null,
@@ -175,6 +195,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     companion: initialState(manifest.defaultState),
     banner: null,
     cooldown: null,
+    nextAutoDrinkAt: null,
     reducedMotion: false,
     newGrants: [],
     completions: null,
@@ -301,6 +322,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       history,
       granted: grantedRecords,
       roomItems: roomItemSnapshots,
+      nextAutoDrinkAt: null,
       newGrants: grants,
       completions: {
         session: doc,
@@ -403,7 +425,12 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       pauses: [],
       docVersion: 1,
     };
-    commit({ activeSession: doc, remainingSeconds: input.plannedSeconds, effectiveSeconds: 0 });
+    commit({
+      activeSession: doc,
+      remainingSeconds: input.plannedSeconds,
+      effectiveSeconds: 0,
+      nextAutoDrinkAt: scheduleAutoDrink(now),
+    });
     dispatchCompanion('focus.started', now);
     void track(repo.saveActive(doc)).catch(noop);
     return { ok: true };
@@ -424,13 +451,15 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     if (!doc) return;
     const resumed = resumeSession(doc, now);
     if (resumed === doc) return;
-    commit({ activeSession: resumed });
+    // 暂停期间不消耗喝水排程：恢复后至少再等一个最小间隔
+    const minDelay = minAutoDrinkDelayMs();
+    const nextAutoDrinkAt =
+      minDelay !== null && state.nextAutoDrinkAt !== null
+        ? Math.max(state.nextAutoDrinkAt, now + minDelay)
+        : state.nextAutoDrinkAt;
+    commit({ activeSession: resumed, nextAutoDrinkAt });
     dispatchCompanion('focus.resumed', now);
     void track(repo.saveActive(resumed)).catch(noop);
-  }
-
-  function drink(now: number): void {
-    dispatchCompanion('wellness.drink', now);
   }
 
   function complete(now: number): void {
@@ -457,6 +486,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       summary: summarize(history, now),
       history,
       banner: null,
+      nextAutoDrinkAt: null,
       companion: initialState(manifest.defaultState),
     });
     void track(repo.appendHistory(abandoned)).catch(noop);
@@ -476,6 +506,15 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     if (doc && (doc.status === 'active' || doc.status === 'paused')) {
       patch.remainingSeconds = remainingSeconds(doc, now);
       patch.effectiveSeconds = effectiveSeconds(doc, now);
+    }
+    // 自动喝水（主题排程）：仅在活跃计时中触发，播完回归 focusing
+    if (
+      doc?.status === 'active' &&
+      state.nextAutoDrinkAt !== null &&
+      now >= state.nextAutoDrinkAt
+    ) {
+      dispatchCompanion('wellness.drink', now);
+      patch.nextAutoDrinkAt = scheduleAutoDrink(now);
     }
     if (state.companion.playing) {
       // advance 未到点为空操作（同引用）；到点弹出队列/回归并产出效果
@@ -515,7 +554,6 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     startSession,
     pause,
     resume,
-    drink,
     complete,
     abandon,
     selectSkin,

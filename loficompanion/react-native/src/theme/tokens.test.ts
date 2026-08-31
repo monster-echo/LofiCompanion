@@ -39,6 +39,7 @@ describe('doc-07 §4.2 语义映射', () => {
       actionPrimary: '#4F8FE8',
       actionPressed: '#3E79C9',
       actionFocus: '#6EA6F2',
+      onAction: '#FFFFFF',
       achievement: '#D7A85F',
       success: '#63BF94',
       danger: '#D66C72',
@@ -85,6 +86,7 @@ describe('colors 夜色取值', () => {
   it('语义替换后的取值', () => {
     expect(colors.background).toBe('#091522');
     expect(colors.surface).toBe('#0D1B2B');
+    expect(colors.surfaceRaised).toBe('#122338');
     expect(colors.surfaceMuted).toBe('#06101C');
     expect(colors.text).toBe('#F3EFE7');
     expect(colors.textSecondary).toBe('#B4BECA');
@@ -101,7 +103,7 @@ describe('colors 夜色取值', () => {
 
   it('键集不变（既有页面可编译）', () => {
     const legacyKeys = [
-      'background', 'surface', 'surfaceMuted', 'text', 'textSecondary', 'border',
+      'background', 'surface', 'surfaceRaised', 'surfaceMuted', 'text', 'textSecondary', 'border',
       'brand', 'brandPressed', 'brandSoft', 'success', 'warning', 'warningSoft',
       'error', 'info', 'membershipBronze', 'membershipSilver', 'membershipGold', 'scrim',
     ];

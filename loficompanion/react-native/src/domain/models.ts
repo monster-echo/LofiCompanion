@@ -1,4 +1,5 @@
 import { OrderStatus, StoreProductMapping } from '../payment/paymentModels';
+import type { ThemeColors } from '../theme/tokens';
 
 export type UserSettings = Readonly<Record<string, string | boolean | number>>;
 
@@ -71,6 +72,11 @@ export type RuntimeConfig = Readonly<{
     tagline: string;
     primaryColor: string;
   }>;
+  /**
+   * 服务端下发的语义色板（auth 服务保存的一套颜色系统）。逐键可选，
+   * 缺省键由客户端内置 tokens 兜底；联机门禁保证进入 App 前必为服务端值。
+   */
+  theme?: Readonly<Partial<ThemeColors>>;
   splash: Readonly<{
     id: string;
     title: string;
