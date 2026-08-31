@@ -46,7 +46,8 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "associatedDomains": [
         "applinks:auth.zhongbei.tech"
-      ]
+      ],
+      "buildNumber": "1"
     },
     "android": {
       "package": "tech.zhongbei.loficompanion",
@@ -69,7 +70,20 @@
             "DEFAULT"
           ]
         }
+      ],
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "0662e5a2-f405-439a-9797-0ac326c4ca6a"
+      }
+    },
+    "owner": "rwecho007"
   }
 }

@@ -1,0 +1,43 @@
+{
+  "cli": {
+    "version": ">= 21.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_APP_ID": "loficompanion",
+        "EXPO_PUBLIC_APP_ENVIRONMENT": "development"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ID": "loficompanion",
+        "EXPO_PUBLIC_APP_ENVIRONMENT": "production",
+        "EXPO_PUBLIC_API_URL": "https://auth.zhongbei.tech",
+        "EXPO_PUBLIC_BIZ_API_URL": "https://lofi-biz.zhongbei.tech"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ID": "loficompanion",
+        "EXPO_PUBLIC_APP_ENVIRONMENT": "production",
+        "EXPO_PUBLIC_API_URL": "https://auth.zhongbei.tech",
+        "EXPO_PUBLIC_BIZ_API_URL": "https://lofi-biz.zhongbei.tech"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
