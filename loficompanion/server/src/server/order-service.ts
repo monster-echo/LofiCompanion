@@ -46,6 +46,8 @@ type CreateOrderInput = Readonly<{
 
 export async function createOrder(input: CreateOrderInput): Promise<{
   orderId: string; storeProductId: string; status: 'pending';
+  /** 支付通道——客户端据此选择 IAP/Mock provider（additive，旧客户端忽略） */
+  provider: string;
 }> {
   const plan = resolvePlan(input.config, input.planId);
   const storeKey = storeKeyForPlatform(input.platform);
@@ -53,13 +55,13 @@ export async function createOrder(input: CreateOrderInput): Promise<{
   const storeProductId = plan.storeProductMapping?.[storeKey];
   if (!storeProductId) throw new ApiError(404, 'PRODUCT_NOT_MAPPED', `方案未配置 ${storeKey} 商品 ID`);
   const existing = await findOrder(input.userId, input.idempotencyKey);
-  if (existing) return { orderId: existing.id, storeProductId, status: 'pending' };
+  if (existing) return { orderId: existing.id, storeProductId, status: 'pending', provider: plan.provider };
   const order = await insertPendingOrder({
     userId: input.userId, planId: plan.id, tierId: plan.tierId,
     idempotencyKey: input.idempotencyKey, amountMinor: plan.priceMinor,
     currency: plan.currency, provider: plan.provider,
   });
-  return { orderId: order.id, storeProductId, status: 'pending' };
+  return { orderId: order.id, storeProductId, status: 'pending', provider: plan.provider };
 }
 
 type VerifyInput = Readonly<{
