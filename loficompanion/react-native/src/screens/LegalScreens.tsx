@@ -7,80 +7,104 @@ import {
   subscriptionTerms,
   termsOfService,
 } from '../legal/legalDocuments';
+import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
+import { useTranslation } from 'react-i18next';
 import { styles } from '../theme/styles';
 import { radii, spacing } from '../theme/tokens';
 
+type LegalType = 'privacy' | 'terms' | 'subscription';
+
+/** 解析后的法务文档：服务端（locale 匹配）优先，回落内置中文文书。 */
+interface ResolvedLegal {
+  title: string;
+  /** 结构化段落（内置文书）；服务端 content 按空行切分为平铺段落 */
+  sections: ReadonlyArray<{ title: string; paragraphs: readonly string[] }>;
+  revision: string;
+  localeTag: 'zh-CN' | 'en-US';
+}
+
+function useResolvedLegal(type: LegalType): ResolvedLegal {
+  const { config } = useApp();
+  const { locale } = usePreferences();
+  const entry = config.legal.find((doc) => doc.type === type && doc.locale === locale)
+    ?? config.legal.find((doc) => doc.type === type && doc.locale === 'zh-CN');
+  if (entry) {
+    return {
+      title: entry.title,
+      revision: entry.revision,
+      localeTag: entry.locale,
+      sections: [{
+        title: '',
+        paragraphs: entry.content.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean),
+      }],
+    };
+  }
+  const bundled: LegalDocument =
+    type === 'privacy' ? privacyPolicy
+      : type === 'terms' ? termsOfService
+        : subscriptionTerms;
+  return {
+    title: bundled.title,
+    revision: '2026-07-30',
+    localeTag: 'zh-CN',
+    sections: bundled.sections.map((section) => ({
+      title: section.title,
+      paragraphs: section.bullets ? [...section.paragraphs, ...section.bullets] : section.paragraphs,
+    })),
+  };
+}
+
 export function LegalIndexScreen() {
+  const { t } = useTranslation('legal');
   return (
     <View style={styles.page}>
-      <PageHeader title="协议与政策" />
+      <PageHeader title={t('indexTitle')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.heading}>透明、清晰地说明我们的规则</Text>
-        <Text style={styles.secondary}>
-          你可以分别查看隐私数据处理方式和使用服务时适用的条款。
-        </Text>
+        <Text style={styles.heading}>{t('indexIntro')}</Text>
+        <Text style={styles.secondary}>{t('indexHeading')}</Text>
         <AppCard>
-          <ListRow
-            label="隐私政策"
-            route="settings.privacyPolicy"
-            value="数据与隐私权利"
-          />
-          <ListRow
-            label="用户协议"
-            route="settings.termsOfService"
-            value="账号与订阅规则"
-          />
-          <ListRow
-            label="订阅与自动续期说明"
-            route="settings.subscriptionTerms"
-            value="付款、续期与取消规则"
-          />
+          <ListRow label={t('privacyLabel')} route="settings.privacyPolicy" value={t('privacyValue')} />
+          <ListRow label={t('termsLabel')} route="settings.termsOfService" value={t('termsValue')} />
+          <ListRow label={t('subscriptionLabel')} route="settings.subscriptionTerms" value={t('subscriptionValue')} />
         </AppCard>
-        <Text style={styles.caption}>生效日期：2026 年 7 月 30 日 · 简体中文</Text>
       </ScrollView>
     </View>
   );
 }
 
 export function PrivacyPolicyScreen() {
-  return <LegalDocumentScreen document={privacyPolicy} />;
+  return <LegalDocumentScreen type="privacy" />;
 }
 
 export function TermsOfServiceScreen() {
-  return <LegalDocumentScreen document={termsOfService} />;
+  return <LegalDocumentScreen type="terms" />;
 }
 
 export function SubscriptionTermsScreen() {
-  return <LegalDocumentScreen document={subscriptionTerms} />;
+  return <LegalDocumentScreen type="subscription" />;
 }
 
-function LegalDocumentScreen({ document }: Readonly<{ document: LegalDocument }>) {
+function LegalDocumentScreen({ type }: Readonly<{ type: LegalType }>) {
   const { palette } = usePreferences();
+  const { t } = useTranslation('legal');
+  const doc = useResolvedLegal(type);
   return (
     <View style={styles.page}>
-      <PageHeader title={document.title} />
+      <PageHeader title={doc.title} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[legalStyles.hero, { backgroundColor: palette.brandSoft }]}>
-          <Text style={styles.title}>{document.title}</Text>
-          <Text style={styles.secondary}>生效日期：{document.effectiveDate}</Text>
-          <Text style={styles.body}>{document.summary}</Text>
+          <Text style={styles.title}>{doc.title}</Text>
+          <Text style={styles.secondary}>{t('versionLine', { revision: doc.revision, locale: doc.localeTag })}</Text>
         </View>
-        {document.sections.map((section) => (
-          <View key={section.title} style={legalStyles.section}>
-            <Text style={styles.heading}>{section.title}</Text>
-            {section.paragraphs.map((paragraph) => (
-              <Text key={paragraph} style={[styles.body, legalStyles.copy]}>{paragraph}</Text>
-            ))}
-            {section.bullets?.map((item) => (
-              <View key={item} style={legalStyles.bulletRow}>
-                <View style={[legalStyles.bullet, { backgroundColor: palette.brand }]} />
-                <Text style={[styles.body, legalStyles.bulletText]}>{item}</Text>
-              </View>
+        {doc.sections.map((section, index) => (
+          <View key={`${section.title}-${index}`} style={legalStyles.section}>
+            {section.title !== '' ? <Text style={styles.heading}>{section.title}</Text> : null}
+            {section.paragraphs.map((paragraph, pIndex) => (
+              <Text key={`${index}-${pIndex}`} style={[styles.body, legalStyles.copy]}>{paragraph}</Text>
             ))}
           </View>
         ))}
-        <Text style={styles.caption}>文档版本：2026-07-30 · zh-CN</Text>
       </ScrollView>
     </View>
   );
