@@ -85,7 +85,9 @@ export function StudyRoomScreen() {
               >
                 <Image
                   source={stateAsset(room.manifest, 'ready').poster as number}
-                  style={StyleSheet.absoluteFill}
+                  // Fabric 下 Image 不吃「仅四边 inset」absolute（回退像素固有尺寸、
+                  // 放大裁切），须显式宽高（对齐 ImmersiveMediaSurface/SkinPreviewCard 既有解法）
+                  style={imageFill}
                   resizeMode="cover"
                   blurRadius={2}
                 />
@@ -121,6 +123,15 @@ const absoluteFill = {
   right: 0,
   top: 0,
   bottom: 0,
+};
+
+// Image 专用的全填充（Fabric 不吃仅四边 inset 的 absolute，须给宽高）
+const imageFill = {
+  position: 'absolute' as const,
+  left: 0,
+  top: 0,
+  width: '100%' as const,
+  height: '100%' as const,
 };
 
 const makeStyles = (p: ThemeColors) => StyleSheet.create({

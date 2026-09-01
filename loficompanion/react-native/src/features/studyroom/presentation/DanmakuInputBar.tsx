@@ -23,6 +23,7 @@ export function DanmakuInputBar({
   const { t } = useTranslation('studyroom');
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState('');
+  const [focused, setFocused] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
   const cooldownUntil = state.sendCooldownUntil;
@@ -48,12 +49,16 @@ export function DanmakuInputBar({
     setDraft('');
   };
 
+  // 输入中（聚焦或已有草稿）不随沉浸弱化隐去：键盘交互不会重排弱化计时器，
+  // 否则打字 5s 后输入条被整体淡出——作曲态恒显。
+  const composing = signedIn && (focused || draft.length > 0);
+
   return (
     <Animated.View
       style={[
         styles.bar,
         { bottom: Math.max(insets.bottom + space.x2, 92) },
-        chromeOpacity ? { opacity: chromeOpacity } : null,
+        chromeOpacity && !composing ? { opacity: chromeOpacity } : null,
       ]}
       pointerEvents="box-none"
     >
@@ -63,6 +68,8 @@ export function DanmakuInputBar({
             style={styles.input}
             value={draft}
             onChangeText={setDraft}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             placeholder={t('inputPlaceholder')}
             placeholderTextColor={semantic.textMuted}
             maxLength={DANMAKU_MAX_CHARS_CLIENT}
