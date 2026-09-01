@@ -34,3 +34,11 @@ export function findSkinManifestByIdOrSlug(
     manifests.find((skin) => skin.slug === idOrSlug)
   );
 }
+
+/** 皮肤展示名：英文界面用 nameEn（skin.yaml name_en），缺省回落中文名。 */
+export function skinDisplayName(
+  manifest: Pick<SkinManifest, 'name' | 'nameEn'>,
+  locale: 'zh-CN' | 'en-US',
+): string {
+  return locale === 'en-US' ? (manifest.nameEn ?? manifest.name) : manifest.name;
+}

@@ -232,6 +232,7 @@ export const ${manifestName}: SkinManifest = {
   id: ${literal(doc.id)},
   slug: ${literal(doc.slug)},
   name: ${literal(doc.name)},
+${doc.name_en ? `  nameEn: ${literal(doc.name_en)},` : ''}
   accessType: ${literal(doc.accessType)},
   manifestVersion: ${doc.manifestVersion},
   defaultState: ${literal(doc.defaultState)},

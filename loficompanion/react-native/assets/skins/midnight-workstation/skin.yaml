@@ -7,6 +7,7 @@ id: midnight-workstation-v1
 slug: midnight-workstation
 name: 深夜工作台
 # 免费皮肤（doc-01 PRD：三套内置皮肤全免费）；服务端 skins.access_type = free
+name_en: Midnight Workstation
 accessType: free
 manifestVersion: 1
 defaultState: ready

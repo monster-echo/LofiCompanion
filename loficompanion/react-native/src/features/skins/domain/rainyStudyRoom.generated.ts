@@ -108,6 +108,7 @@ export const rainyStudyRoomManifest: SkinManifest = {
   id: "rainy-study-room-v1",
   slug: "rainy-study-room",
   name: "雨夜书房",
+  nameEn: "Rainy Study Room",
   accessType: "free",
   manifestVersion: 1,
   defaultState: "ready",

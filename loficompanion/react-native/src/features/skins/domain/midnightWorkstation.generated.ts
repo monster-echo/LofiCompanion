@@ -108,6 +108,7 @@ export const midnightWorkstationManifest: SkinManifest = {
   id: "midnight-workstation-v1",
   slug: "midnight-workstation",
   name: "深夜工作台",
+  nameEn: "Midnight Workstation",
   accessType: "free",
   manifestVersion: 1,
   defaultState: "ready",

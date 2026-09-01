@@ -17,13 +17,14 @@ import { AppIcon } from '../../../design-system/AppIcon';
 import { MockPaymentProvider } from '../../../payment/mockPaymentProvider';
 import type { RootParamList } from '../../../navigation/navigationRef';
 import { useApp } from '../../../state/AppStore';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { colors, radii, semantic, space, type } from '../../../theme/tokens';
 import type { StorageDriver } from '../../focus/data/storageDriver';
 import { useFocus } from '../../focus/application/FocusStore';
 import { SheetOverlay } from '../../focus/presentation/SheetOverlay';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
 import type { CompanionState } from '../../skins/domain/types';
-import { findSkinManifestByIdOrSlug } from '../../skins/domain/registry';
+import { findSkinManifestByIdOrSlug, skinDisplayName } from '../../skins/domain/registry';
 import { createPendingOrderRepository } from '../data/pendingOrderRepository';
 import {
   formatPrice,
@@ -71,6 +72,7 @@ export function SkinDetailScreen() {
   const skinSlug = params?.skinSlug ?? '';
   const { user, navigate, back, showToast } = useApp();
   const focus = useFocus();
+  const { locale } = usePreferences();
   const signedIn = user !== null;
   const { width: windowWidth } = useWindowDimensions();
 
@@ -316,7 +318,7 @@ export function SkinDetailScreen() {
           <View style={styles.infoCard}>
             <View style={styles.nameRow}>
               <Text style={styles.skinName}>
-                {product?.skinName ?? findSkinManifestByIdOrSlug(focus.skins, skinSlug)?.name ?? focus.skin.name}
+                {product?.skinName ?? (() => { const m = findSkinManifestByIdOrSlug(focus.skins, skinSlug); return m ? skinDisplayName(m, locale) : focus.skin.name; })()}
               </Text>
             </View>
             <View style={styles.creatorRow}>

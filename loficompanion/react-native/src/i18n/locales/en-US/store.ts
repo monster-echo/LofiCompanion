@@ -11,6 +11,8 @@ export const store = {
   sectionPaid: 'One-time purchase',
   sectionPremium: 'Plus picks',
   plusLabel: 'Plus',
+  skinCardA11y: 'Theme {{name}}, {{count}} states, {{tail}}',
+  priceFree: 'Free',
   loadFailed: "Couldn't load prices — check your connection",
   retry: 'Reload',
   storeEntry: 'More themes in the store',

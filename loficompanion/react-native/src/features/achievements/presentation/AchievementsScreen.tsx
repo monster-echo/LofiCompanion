@@ -16,6 +16,8 @@ import {
 } from '../domain/insights';
 import { useTranslation } from 'react-i18next';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { skinDisplayName } from '../../skins/domain/registry';
 
 /**
  * S07 学习成就（doc-08 §8）。Tab 根页：指标区 + 我的成就网格。
@@ -120,6 +122,7 @@ function EmptyState({
   onStart: () => void;
 }>) {
   const { t } = useTranslation('achievements');
+  const { locale } = usePreferences();
   const firstDef = ACHIEVEMENT_DEFS[0];
   return (
     <View style={styles.empty}>
@@ -130,7 +133,7 @@ function EmptyState({
           reducedMotion={reducedMotion}
           style={StyleSheet.absoluteFill}
         />
-        <Text style={styles.emptyMediaCaption}>{`${t('emptyRoomCaption')} · ${manifest.name}`}</Text>
+        <Text style={styles.emptyMediaCaption}>{`${t('emptyRoomCaption')} · ${skinDisplayName(manifest, locale)}`}</Text>
       </View>
       <Text style={styles.emptyHint}>{t('emptyHint')}</Text>
       <Text style={styles.emptyCondition}>{`${t(`rule.${firstDef.ruleKey}.name`)} · ${t(`rule.${firstDef.ruleKey}.description`)}`}</Text>

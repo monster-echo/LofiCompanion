@@ -24,6 +24,8 @@ import { useFocus } from "../application/FocusStore";
 import { effectiveSeconds as computeEffective } from "../domain/engine";
 import { formatTimerSeconds } from "../../../design-system/FocusTimerRing";
 import { ImmersiveMediaSurface } from "../../skins/presentation/ImmersiveMediaSurface";
+import { skinDisplayName } from "../../skins/domain/registry";
+import { usePreferences } from "../../../preferences/PreferencesProvider";
 import { SheetOverlay } from "./SheetOverlay";
 import { useTranslation } from 'react-i18next';
 import { useFocusQuickPrefs } from "./focusQuickPrefs";
@@ -53,6 +55,7 @@ const FLOATING_TAB_FLOOR = 92;
 
 export function FocusActiveScreen() {
   const focus = useFocus();
+  const { locale } = usePreferences();
   const { t } = useTranslation('focus');
   const { showToast, replace, signedIn } = useApp();
   const insets = useSafeAreaInsets();
@@ -247,7 +250,7 @@ export function FocusActiveScreen() {
               { top: insets.top + 14, opacity: chrome },
             ]}
           >
-            <Text style={styles.skinName}>{focus.skin.name}</Text>
+            <Text style={styles.skinName}>{skinDisplayName(focus.skin, locale)}</Text>
             <View style={styles.statusRow}>
               <View style={styles.statusDot} />
               <Text style={styles.statusText}>

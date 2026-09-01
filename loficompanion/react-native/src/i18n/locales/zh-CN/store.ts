@@ -12,6 +12,8 @@ export const store = {
   sectionPaid: '永久购买',
   sectionPremium: 'Plus 精选',
   plusLabel: 'Plus',
+  skinCardA11y: '皮肤 {{name}}，{{count}} 个状态，{{tail}}',
+  priceFree: '免费',
   loadFailed: '价格加载失败，请检查网络',
   retry: '重新加载',
   storeEntry: '更多皮肤商店',

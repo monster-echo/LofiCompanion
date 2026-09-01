@@ -108,6 +108,7 @@ export const sunnyClassroomManifest: SkinManifest = {
   id: "sunny-classroom-v1",
   slug: "sunny-classroom",
   name: "阳光教室",
+  nameEn: "Sunny Classroom",
   accessType: "free",
   manifestVersion: 1,
   defaultState: "ready",

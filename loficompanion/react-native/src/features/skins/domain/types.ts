@@ -92,6 +92,8 @@ export interface SkinManifest {
   id: string;
   slug: string;
   name: string;
+  /** 英文展示名（skin.yaml name_en；缺省回落 name——服务端目录同理） */
+  nameEn?: string;
   accessType: SkinAccessType;
   manifestVersion: number;
   defaultState: CompanionState;

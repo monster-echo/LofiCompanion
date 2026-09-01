@@ -11,6 +11,8 @@ import {
 import { apiClient } from '../../../data/apiClient';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { skinDisplayName } from '../../skins/domain/registry';
 import { colors, radii, semantic, space, type } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
@@ -56,6 +58,7 @@ const imageFill = {
 
 export function SkinStoreScreen() {
   const { back, navigate, user } = useApp();
+  const { locale } = usePreferences();
   const { t } = useTranslation('store');
   const focus = useFocus();
   const signedIn = user !== null;
@@ -159,7 +162,7 @@ export function SkinStoreScreen() {
         >
           <CurrentSkinBanner
             slug={focus.skin.slug}
-            name={focus.skin.name}
+            name={skinDisplayName(focus.skin, locale)}
             width={Math.min(windowWidth - space.x4 * 2, 358)}
           />
 
@@ -268,14 +271,16 @@ function StoreCard({
   const { t } = useTranslation('store');
   const poster = storePoster(card.slug, 'ready');
   const priceText = card.accessType === 'free'
-    ? '免费'
+    ? t('priceFree')
     : card.priceLabel ?? t('plusLabel');
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`皮肤 ${card.name}，${t('stateCount', { n: card.stateCount })}，${
-        card.owned ? t('ownedBadge') : priceText
-      }`}
+      accessibilityLabel={t('skinCardA11y', {
+        name: card.name,
+        count: card.stateCount,
+        tail: card.owned ? t('ownedBadge') : priceText,
+      })}
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,

@@ -7,6 +7,7 @@ id: sunny-classroom-v1
 slug: sunny-classroom
 name: 阳光教室
 # 免费皮肤（doc-01 PRD：三套内置皮肤全免费）；服务端 skins.access_type = free
+name_en: Sunny Classroom
 accessType: free
 manifestVersion: 1
 defaultState: ready

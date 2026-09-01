@@ -2,6 +2,8 @@ import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { stateAsset } from "../features/skins/domain/resolve";
 import type { SkinManifest } from "../features/skins/domain/types";
+import { usePreferences } from '../preferences/PreferencesProvider';
+import { skinDisplayName } from '../features/skins/domain/registry';
 import { radii, semantic, space, type } from "../theme/tokens";
 import { AppIcon } from "./AppIcon";
 
@@ -33,12 +35,14 @@ export function SkinPreviewCard({
   trailingLabel,
   width = SKIN_PREVIEW_CARD_WIDTH,
 }: SkinPreviewCardProps) {
+  const { locale } = usePreferences();
+  const displayName = skinDisplayName(manifest, locale);
   const poster = stateAsset(manifest, "ready").poster;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`选择皮肤 ${manifest.name}`}
+      accessibilityLabel={`选择皮肤 ${displayName}`}
       accessibilityState={{ selected, disabled: disabled === true }}
       disabled={disabled}
       onPress={onPress}
@@ -61,7 +65,7 @@ export function SkinPreviewCard({
       <View style={[styles.nameRow, { zIndex: 1 }]} pointerEvents="none">
         <View style={styles.namePill}>
           <Text style={styles.name} numberOfLines={1}>
-            {manifest.name}
+            {displayName}
           </Text>
         </View>
         {trailingLabel ? (
