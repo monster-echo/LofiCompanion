@@ -1,6 +1,8 @@
 import { achievements as enAchievements } from './locales/en-US/achievements';
 import { leaderboards as enLeaderboards } from './locales/en-US/leaderboards';
+import { auth as enAuth } from './locales/en-US/auth';
 import { common as enCommon } from './locales/en-US/common';
+import { launch as enLaunch } from './locales/en-US/launch';
 import { focus as enFocus } from './locales/en-US/focus';
 import { settings as enSettings } from './locales/en-US/settings';
 import { skins as enSkins } from './locales/en-US/skins';
@@ -8,7 +10,9 @@ import { store as enStore } from './locales/en-US/store';
 import { studyroom as enStudyroom } from './locales/en-US/studyroom';
 import { achievements as zhAchievements } from './locales/zh-CN/achievements';
 import { leaderboards as zhLeaderboards } from './locales/zh-CN/leaderboards';
+import { auth as zhAuth } from './locales/zh-CN/auth';
 import { common as zhCommon } from './locales/zh-CN/common';
+import { launch as zhLaunch } from './locales/zh-CN/launch';
 import { focus as zhFocus } from './locales/zh-CN/focus';
 import { settings as zhSettings } from './locales/zh-CN/settings';
 import { skins as zhSkins } from './locales/zh-CN/skins';
@@ -21,7 +25,9 @@ import { studyroom as zhStudyroom } from './locales/zh-CN/studyroom';
 // 注意取模块的具名导出——namespace import 会多包一层导致 t() 落空。
 export const resources = {
   'zh-CN': {
+    auth: zhAuth,
     common: zhCommon,
+    launch: zhLaunch,
     settings: zhSettings,
     studyroom: zhStudyroom,
     skins: zhSkins,
@@ -31,7 +37,9 @@ export const resources = {
     leaderboards: zhLeaderboards,
   },
   'en-US': {
+    auth: enAuth,
     common: enCommon,
+    launch: enLaunch,
     settings: enSettings,
     studyroom: enStudyroom,
     skins: enSkins,

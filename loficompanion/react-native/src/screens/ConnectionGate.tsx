@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '../design-system/components';
 import { useApp } from '../state/AppStore';
 import { semantic, space, type } from '../theme/tokens';
+import { useTranslation } from 'react-i18next';
 
 /**
  * 启动联机门禁：颜色系统等运行时配置必须来自服务端（auth.zhongbei.tech），
@@ -11,6 +12,7 @@ import { semantic, space, type } from '../theme/tokens';
  */
 export function ConnectionGate() {
   const { online, refreshBootstrap } = useApp();
+  const { t } = useTranslation('common');
   const [retrying, setRetrying] = React.useState(false);
   const retry = React.useCallback(async () => {
     setRetrying(true);
@@ -25,16 +27,16 @@ export function ConnectionGate() {
       {online ? (
         <>
           <ActivityIndicator color={semantic.actionFocus} size="large" />
-          <Text style={styles.title}>正在连接服务…</Text>
-          <Text style={styles.hint}>正在从服务端获取最新配置</Text>
+          <Text style={styles.title}>{t('connecting')}</Text>
+          <Text style={styles.hint}>{t('fetchingConfig')}</Text>
         </>
       ) : (
         <>
-          <Text style={styles.title}>无法连接服务器</Text>
-          <Text style={styles.hint}>请检查网络后重试；离线状态无法进入 App。</Text>
+          <Text style={styles.title}>{t('cannotConnect')}</Text>
+          <Text style={styles.hint}>{t('offlineHint')}</Text>
           <View style={styles.action}>
             <AppButton
-              label={retrying ? '重试中…' : '重试'}
+              label={retrying ? t('retrying') : t('retry')}
               disabled={retrying}
               onPress={() => void retry()}
             />

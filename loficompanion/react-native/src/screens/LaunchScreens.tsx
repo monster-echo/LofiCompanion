@@ -6,6 +6,7 @@ import { AppButton } from '../design-system/components';
 import { PromoIllustration } from '../design-system/PromoIllustration';
 import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
+import { useTranslation } from 'react-i18next';
 import { RuntimeConfig } from '../domain/models';
 import { colors, radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
@@ -23,6 +24,7 @@ const MAX_SPLASH_WAIT_MS = 8000; // fetch 无显式超时，最长等待兜底�
 export function SplashScreen() {
   const { replace, config, bootstrapped, online } = useApp();
   const { palette } = usePreferences();
+  const { t } = useTranslation('launch');
   const [minElapsed, setMinElapsed] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const doneRef = useRef(false);
@@ -79,16 +81,16 @@ export function SplashScreen() {
     // 阶段 loading：logo + appName + tagline + 转圈 + "加载中…"
     // 背景用 app 主色，原生 splash → loading → 闪屏 → home 全程一致
     return (
-      <View accessibilityLabel="启动中" style={[styles.centered, { backgroundColor: palette.background }]}>
+      <View accessibilityLabel={t('starting')} style={[styles.centered, { backgroundColor: palette.background }]}>
         <Image
           source={LogoImage}
           style={launchStyles.logoMark}
-          accessibilityLabel="品牌图标"
+          accessibilityLabel={t('brandIcon')}
         />
         <Text style={styles.title}>{config.brand.appName}</Text>
         <Text style={styles.secondary}>{config.brand.tagline}</Text>
         <ActivityIndicator color={colors.brand} style={launchStyles.loadingSpinner} />
-        <Text style={launchStyles.loadingText}>加载中…</Text>
+        <Text style={launchStyles.loadingText}>{t('loading')}</Text>
       </View>
     );
   }
@@ -115,15 +117,16 @@ function SkipCapsule({
   countdown,
   onSkip,
 }: Readonly<{ canSkip: boolean; countdown: number; onSkip: () => void }>) {
+  const { t } = useTranslation('launch');
   return (
     <Pressable
-      accessibilityLabel={`跳过闪屏，剩余 ${countdown} 秒`}
+      accessibilityLabel={t('skipSplash', { n: countdown })}
       accessibilityRole="button"
       onPress={onSkip}
       style={launchStyles.skipCapsule}
     >
       <Text style={launchStyles.skipCapsuleText}>
-        {canSkip ? `${countdown}s 跳过` : `${countdown}s`}
+        {canSkip ? t('skipShort', { n: countdown }) : `${countdown}s`}
       </Text>
     </Pressable>
   );
@@ -136,6 +139,7 @@ function SplashMedia({
   splash,
   background,
 }: Readonly<{ splash: NonNullable<RuntimeConfig['splash']>; background: string }>) {
+  const { t } = useTranslation('launch');
   const [failed, setFailed] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
   const fade = useRef(new Animated.Value(0)).current;
@@ -170,7 +174,7 @@ function SplashMedia({
     <View style={[launchStyles.splashMediaRoot, { backgroundColor: background }]}>
       {/* 媒体加载占位：app 背景色 + 品牌 logo，避免等待期黑屏/色差 */}
       <View style={[launchStyles.mediaPlaceholder, { backgroundColor: background }]}>
-        <Image source={LogoImage} style={launchStyles.placeholderLogo} accessibilityLabel="品牌图标" />
+        <Image source={LogoImage} style={launchStyles.placeholderLogo} accessibilityLabel={t('brandIcon')} />
       </View>
       {hasMedia ? (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]}>
@@ -183,7 +187,7 @@ function SplashMedia({
             />
           ) : (
             <Image
-              accessibilityLabel="闪屏图片"
+              accessibilityLabel={t('splashImage')}
               onError={() => setFailed(true)}
               onLoad={() => setMediaReady(true)}
               resizeMode="cover"
@@ -207,13 +211,14 @@ function SplashMedia({
 
 export function OnboardingScreen() {
   const { replace } = useApp();
+  const { t } = useTranslation('launch');
   return (
     <View style={styles.centered}>
       <PromoIllustration />
-      <Text style={styles.title}>三步了解核心功能</Text>
-      <Text style={styles.secondary}>首次安装展示，完成后不会重复出现。</Text>
+      <Text style={styles.title}>{t('onboardingTitle')}</Text>
+      <Text style={styles.secondary}>{t('onboardingHint')}</Text>
       <View style={launchStyles.fullWidth}>
-        <AppButton label="完成引导" onPress={() => replace('home')} />
+        <AppButton label={t('onboardingDone')} onPress={() => replace('home')} />
       </View>
     </View>
   );

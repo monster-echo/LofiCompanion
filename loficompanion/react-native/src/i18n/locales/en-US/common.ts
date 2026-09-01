@@ -1,2 +1,10 @@
 // 跨域共用文案（en-US）。键集须与 zh-CN/common.ts deep-equal（parity.test.ts）。
-export const common = {} as const;
+export const common = {
+  connecting: 'Connecting…',
+  fetchingConfig: 'Fetching the latest configuration',
+  cannotConnect: "Can't reach the server",
+  offlineHint: 'Check your connection and retry — the app needs to be online on first launch.',
+  retry: 'Retry',
+  retrying: 'Retrying…',
+  back: 'Back',
+} as const;

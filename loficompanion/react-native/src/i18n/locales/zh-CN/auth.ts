@@ -1,0 +1,53 @@
+// 认证域文案（zh-CN 为权威源）。
+export const auth = {
+  // 各模式标题/主行动
+  titleSignIn: '欢迎回来',
+  titleSignUp: '创建账号',
+  titlePhone: '手机号登录',
+  titleForgot: '找回密码',
+  titleVerify: '验证邮箱',
+  titleReset: '设置新密码',
+  actionSignIn: '登录',
+  actionSignUp: '注册',
+  actionSendCode: '发送验证码',
+  actionConfirmCode: '确认验证码',
+  actionConfirmChange: '确认修改',
+  actionVerifyAndSignIn: '验证并登录',
+  subtitle: '安全同步你的会员、订单与偏好设置。',
+  processing: '正在处理…',
+  // 表单标签与占位
+  labelUsername: '用户名',
+  labelPhone: '手机号',
+  labelSmsCode: '短信验证码',
+  labelAccount: '账号',
+  labelEmail: '邮箱',
+  labelPassword: '密码',
+  labelCode: '验证码',
+  placeholderUsername: '用户名',
+  placeholderSmsCode: '6 位短信验证码',
+  placeholderAccount: '用户名 / 邮箱 / 手机号',
+  placeholderEmail: '邮箱',
+  placeholderNewPassword: '新密码',
+  placeholderPassword: '密码',
+  placeholderCode: '6 位验证码',
+  // 流程反馈
+  codeSent: '验证码已发送',
+  codeSentTo: '验证码已发送至 {{email}}',
+  consentRequired: '请先阅读并同意用户协议与隐私政策',
+  // 次级入口
+  forgotAction: '忘记密码',
+  createAccountAction: '创建账号',
+  // 授权勾选（分段拼装以保留行内链接）
+  consentCheckbox: '同意用户协议与隐私政策',
+  consentPrefix: '我已阅读并同意 ',
+  termsLabel: '《用户协议》',
+  conjunction: ' 和 ',
+  privacyLabel: '《隐私政策》',
+  consentSuffix: '，并授权我们按上述文件处理我的相关信息，用于提供账号、专注同步、排行与客服服务。',
+  // 社交登录
+  otherWays: '其他登录方式',
+  labelPhoneShort: '手机号',
+  githubFailed: 'GitHub 授权失败，请重试',
+  googleFailed: 'Google 授权失败，请重试',
+  appleFailed: 'Apple 登录失败，请重试',
+} as const;

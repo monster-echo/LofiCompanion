@@ -1,3 +1,11 @@
 // 跨域共用文案（zh-CN）。Phase 1 先立命名空间，键随 Phase 2 批次填充
 // （如 close / justNow / retry）。
-export const common = {} as const;
+export const common = {
+  connecting: '正在连接服务…',
+  fetchingConfig: '正在从服务端获取最新配置',
+  cannotConnect: '无法连接服务器',
+  offlineHint: '请检查网络后重试；离线状态无法进入 App。',
+  retry: '重试',
+  retrying: '重试中…',
+  back: '返回',
+} as const;

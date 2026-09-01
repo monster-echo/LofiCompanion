@@ -6,6 +6,7 @@ import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { AuthProviderIcon } from './AuthProviderIcon';
 import { useApp } from '../state/AppStore';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing } from '../theme/tokens';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -30,6 +31,7 @@ export function SocialAuthButtons({
     socialSignIn,
     showToast,
   } = useApp();
+  const { t } = useTranslation('auth');
   const [appleAvailable, setAppleAvailable] = useState(false);
   const redirectUri = AuthSession.makeRedirectUri({ scheme: 'mobilestarter', path: 'oauth' });
   const nonce = useMemo(() => Crypto.randomUUID(), []);
@@ -63,7 +65,7 @@ export function SocialAuthButtons({
         codeVerifier: githubRequest.codeVerifier,
       });
     } else if (githubResponse?.type === 'error') {
-      showToast('GitHub 授权失败，请重试', 'error');
+      showToast(t('githubFailed'), 'error');
     }
   }, [githubRequest, githubResponse, redirectUri, showToast, socialSignIn]);
 
@@ -75,7 +77,7 @@ export function SocialAuthButtons({
         nonce,
       });
     } else if (googleResponse?.type === 'error') {
-      showToast('Google 授权失败，请重试', 'error');
+      showToast(t('googleFailed'), 'error');
     }
   }, [googleResponse, showToast, socialSignIn]);
 
@@ -94,7 +96,7 @@ export function SocialAuthButtons({
       }
     } catch (error) {
       if ((error as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
-        showToast('Apple 登录失败，请重试', 'error');
+        showToast(t('appleFailed'), 'error');
       }
     }
   };
@@ -108,7 +110,7 @@ export function SocialAuthButtons({
     <View style={socialStyles.section}>
       <View style={socialStyles.divider}>
         <View style={socialStyles.line} />
-        <Text style={socialStyles.caption}>其他登录方式</Text>
+        <Text style={socialStyles.caption}>{t('otherWays')}</Text>
         <View style={socialStyles.line} />
       </View>
       <View style={socialStyles.row}>
@@ -143,7 +145,7 @@ export function SocialAuthButtons({
       {authProviderPolicy.phone ? (
         <AuthProviderIcon
           enabled={authProviders.phone}
-          label="手机号"
+          label={t('labelPhoneShort')}
           name="phone"
           onPress={() => {
             if (!onBeforeAuthenticate || onBeforeAuthenticate()) navigate('auth.phone');
