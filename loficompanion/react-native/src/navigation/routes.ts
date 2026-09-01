@@ -6,6 +6,7 @@ export type AppRoute =
   | 'main.tabs'
   | 'home'
   | 'studyroom.home'
+  | 'studyroom.active'
   | 'skins.gallery'
   | 'store.home'
   | 'store.skinDetail'

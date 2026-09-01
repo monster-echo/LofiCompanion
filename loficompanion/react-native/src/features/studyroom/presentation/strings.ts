@@ -4,14 +4,24 @@
  */
 
 export const STUDY_ROOM_STRINGS = {
+  // Tab 列表页：先选房，后进入
   roomTitle: '自习室',
+  listSubtitle: '挑一间房，和正在学习的人坐在一起',
   onlineNow: (n: number) => `${n} 人在自习`,
-  switchRoom: '换个自习室',
-  closeLabel: '关闭',
-  // 状态
+  enterRoom: (name: string) => `进入${name}`,
+  countsUnavailable: '在线人数暂时看不了，稍后再试',
+  retry: '重试',
+  // 房间页
+  exitRoom: '退出自习室',
+  quickMenuLabel: '快捷设置',
+  keepAwakeLabel: '屏幕常亮',
+  muteLabel: '静音',
+  onState: '已开启',
+  offState: '已关闭',
   connecting: '连接中…',
   reconnecting: '重连中…',
-  // 输入条
+  closeLabel: '关闭',
+  // 输入条（点击屏幕浮现，5s 无操作自动弱化）
   inputPlaceholder: '说点什么，为彼此加油…',
   signInToChat: '登录后加入弹幕',
   send: '发送',

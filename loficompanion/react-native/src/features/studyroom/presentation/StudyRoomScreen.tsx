@@ -1,142 +1,192 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import {
+  Image,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useApp } from '../../../state/AppStore';
-import { useFocus } from '../../focus/application/FocusStore';
-import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { AppIcon } from '../../../design-system/AppIcon';
-import { mediaControl } from '../../../design-system/derivedTokens';
 import { radii, semantic, space, type } from '../../../theme/tokens';
-import { useStudyRoom, useStudyRoomState } from '../application/StudyRoomStore';
-import { defaultRoomId, roomForId } from '../domain/rooms';
-import { DanmakuLayer } from './DanmakuLayer';
-import { DanmakuInputBar } from './DanmakuInputBar';
-import { RoomSwitcherSheet } from './RoomSwitcherSheet';
+import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
+import { stateAsset } from '../../skins/domain/resolve';
+import { fetchRoomCounts } from '../data/roomsClient';
+import { STUDY_ROOMS, type StudyRoomDef } from '../domain/rooms';
+import { resolveStudyRoomWsUrl, studyRoomHttpBaseOf } from '../domain/wsUrl';
 import { STUDY_ROOM_STRINGS as STR } from './strings';
 
 /**
- * S-自习室 Tab 根页：共享 lofi 画面（内置皮肤 ready 态媒体）+ 弹幕 +
- * 在线人数，类似 YouTube lofi 直播间。连接生命周期由 useFocusEffect 驱动
- * （原生 Tab 保活：focus=enter 建连、blur=leave 断开省电）；视频沿用
- * 全局静音约定，音乐继续走全局音乐系统。
+ * S-自习室 Tab 根页：公开自习室列表（先选房、后进入）。房间 = 内置皮肤
+ * 主题，海报即皮肤 ready 态；在线人数来自 WS 服务的内存态（GET /rooms，
+ * 聚焦刷新 + 15s 轮询兜底，无需建连）。点卡片进入 studyroom.active
+ * 全屏房间——视频与 lofi 声音只在房间内出现。
  */
+
+const COUNTS_POLL_MS = 15_000;
+
 export function StudyRoomScreen() {
-  const controller = useStudyRoom();
-  const state = useStudyRoomState();
-  const { showToast } = useApp();
-  const { reducedMotion } = useFocus();
+  const { navigate } = useApp();
   const insets = useSafeAreaInsets();
-  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const { state, refreshing, refresh } = useAsyncRefresh(() => fetchRoomCounts(httpBase()), []);
 
-  // Tab 聚焦即进入（复用上次房间）；离开断连并释放常亮
-  useFocusEffect(
-    useCallback(() => {
-      controller.actions.enter();
-      activateKeepAwakeAsync('studyroom').catch(() => undefined);
-      return () => {
-        controller.actions.leave();
-        deactivateKeepAwake('studyroom');
-      };
-      // controller 身份稳定
-    }, [controller]),
-  );
-
-  // 服务端 reject 的即时反馈（按 at 去重，避免重复弹）
-  const lastReject = state.lastReject;
-  const consumedRejectAt = useRef(0);
   useEffect(() => {
-    if (!lastReject || lastReject.at === consumedRejectAt.current) return;
-    consumedRejectAt.current = lastReject.at;
-    const message =
-      lastReject.reason === 'blocked'
-        ? STR.rejectedBlocked
-        : lastReject.reason === 'too_long'
-          ? STR.rejectedTooLong
-          : lastReject.reason === 'cooldown'
-            ? STR.cooldownHint(lastReject.retryAfterSeconds ?? 3)
-            : STR.sendFailed;
-    showToast(message, 'info');
-  }, [lastReject, showToast]);
+    const timer = setInterval(() => {
+      void refresh();
+    }, COUNTS_POLL_MS);
+    return () => clearInterval(timer);
+  }, [refresh]);
 
-  const room = roomForId(state.roomId ?? defaultRoomId());
-  const offline = state.status === 'connecting' || state.status === 'reconnecting';
+  const countsUnavailable = state.status === 'error';
+  const countFor = (room: StudyRoomDef): number | null => {
+    if (state.status !== 'ready') return null;
+    return state.data.find((row) => row.roomId === room.id)?.onlineCount ?? 0;
+  };
 
   return (
     <View style={styles.screen}>
-      <ImmersiveMediaSurface
-        manifest={room.manifest}
-        state="ready"
-        reducedMotion={reducedMotion}
-        style={StyleSheet.absoluteFill}
-      />
-
-      <DanmakuLayer reducedMotion={reducedMotion} />
-
-      {/* 顶栏：房间名 + 在线数 + 换房入口 */}
-      <View
-        style={[styles.topBar, { top: insets.top + space.x3 }]}
-        pointerEvents="box-none"
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + space.x4, paddingBottom: insets.bottom + 120 },
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            tintColor={semantic.textSecondary}
+          />
+        }
       >
-        <View style={styles.titlePill}>
-          <Text style={styles.titleText}>{room.name}</Text>
+        <Text style={styles.title}>{STR.roomTitle}</Text>
+        <Text style={styles.subtitle}>{STR.listSubtitle}</Text>
+        {countsUnavailable ? <Text style={styles.countsHint}>{STR.countsUnavailable}</Text> : null}
+        <View style={styles.cards}>
+          {STUDY_ROOMS.map((room) => {
+            const count = countFor(room);
+            return (
+              <Pressable
+                key={room.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${STR.enterRoom(room.name)}，${
+                  count === null ? '' : STR.onlineNow(count)
+                }`}
+                onPress={() => navigate('studyroom.active', { roomId: room.id })}
+                style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+              >
+                <Image
+                  source={stateAsset(room.manifest, 'ready').poster as number}
+                  style={StyleSheet.absoluteFill}
+                  resizeMode="cover"
+                  blurRadius={2}
+                />
+                <View style={styles.cardScrim} />
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardName}>{room.name}</Text>
+                  <View style={styles.cardFooter}>
+                    <View style={styles.onlineRow}>
+                      <View style={styles.dot} />
+                      <Text style={styles.onlineText}>
+                        {count === null ? ' ' : STR.onlineNow(count)}
+                      </Text>
+                    </View>
+                    <View style={styles.enterPill}>
+                      <Text style={styles.enterText}>{STR.enterRoom(room.name)}</Text>
+                      <AppIcon name="chevron-right" color={semantic.textPrimary} size={14} />
+                    </View>
+                  </View>
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
-        <View style={styles.titlePill}>
-          <View style={styles.dot} />
-          <Text style={styles.onlineText}>{STR.onlineNow(state.onlineCount)}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={STR.switchRoom}
-          onPress={() => setSwitcherOpen(true)}
-          style={({ pressed }) => [styles.switchButton, pressed && styles.pressed]}
-        >
-          <AppIcon name="group" color={semantic.textPrimary} size={20} />
-        </Pressable>
-      </View>
-
-      {/* 连接状态：非 open 时温和提示（不阻塞看视频） */}
-      {offline ? (
-        <View style={[styles.statusChip, { top: insets.top + 64 }]} pointerEvents="none">
-          <Text style={styles.statusText}>
-            {state.status === 'connecting' ? STR.connecting : STR.reconnecting}
-          </Text>
-        </View>
-      ) : null}
-
-      <DanmakuInputBar />
-
-      <RoomSwitcherSheet visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
+      </ScrollView>
     </View>
   );
 }
+
+/** WS 地址 → 同源 HTTP 基地址（与 WS 共用 env 配置与开发缺省）。 */
+function httpBase(): string {
+  return studyRoomHttpBaseOf(
+    resolveStudyRoomWsUrl({
+      wsUrl: process.env.EXPO_PUBLIC_STUDYROOM_WS_URL,
+      platformOS: Platform.OS,
+      isDev: __DEV__,
+    }),
+  );
+}
+
+// RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充（对齐 SheetOverlay）
+const absoluteFill = {
+  position: 'absolute' as const,
+  left: 0,
+  right: 0,
+  top: 0,
+  bottom: 0,
+};
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: semantic.canvasDeep,
   },
-  topBar: {
-    position: 'absolute',
-    left: space.x4,
-    right: space.x4,
-    flexDirection: 'row',
-    alignItems: 'center',
+  content: {
+    paddingHorizontal: space.x4,
     gap: space.x2,
   },
-  titlePill: {
+  title: {
+    ...type.title1,
+    color: semantic.textPrimary,
+  },
+  subtitle: {
+    ...type.body,
+    color: semantic.textSecondary,
+    marginBottom: space.x3,
+  },
+  countsHint: {
+    ...type.caption,
+    color: semantic.textMuted,
+    marginBottom: space.x2,
+  },
+  cards: {
+    gap: space.x4,
+  },
+  card: {
+    height: 184,
+    borderRadius: radii.card,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: semantic.borderSoft,
+  },
+  cardScrim: {
+    ...absoluteFill,
+    backgroundColor: 'rgba(6, 12, 22, 0.52)',
+  },
+  cardBody: {
+    ...absoluteFill,
+    padding: space.x5,
+    justifyContent: 'space-between',
+  },
+  cardName: {
+    ...type.title2,
+    color: semantic.textPrimary,
+    textShadowColor: 'rgba(6,16,28,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 12,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  onlineRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.x1,
-    borderRadius: radii.round,
-    backgroundColor: mediaControl,
-    paddingHorizontal: space.x3,
-    paddingVertical: space.x2,
-  },
-  titleText: {
-    ...type.bodyStrong,
-    color: semantic.textPrimary,
   },
   dot: {
     width: 6,
@@ -149,26 +199,20 @@ const styles = StyleSheet.create({
     color: semantic.textSecondary,
     fontVariant: ['tabular-nums'],
   },
-  switchButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.round,
-    backgroundColor: mediaControl,
+  enterPill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 'auto',
-  },
-  statusChip: {
-    position: 'absolute',
-    alignSelf: 'center',
+    gap: 4,
     borderRadius: radii.round,
-    backgroundColor: mediaControl,
+    backgroundColor: 'rgba(12, 14, 20, 0.55)',
+    borderWidth: 1,
+    borderColor: semantic.borderSoft,
     paddingHorizontal: space.x3,
     paddingVertical: space.x1,
   },
-  statusText: {
-    ...type.caption,
-    color: semantic.textSecondary,
+  enterText: {
+    ...type.label,
+    color: semantic.textPrimary,
   },
   pressed: {
     opacity: 0.82,

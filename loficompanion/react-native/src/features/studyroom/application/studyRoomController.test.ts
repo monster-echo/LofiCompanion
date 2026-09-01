@@ -79,19 +79,26 @@ function createController(fake: FakeTransport) {
   });
 }
 
-async function enterOpen(controller: ReturnType<typeof createController>, fake: FakeTransport) {
-  controller.actions.enter();
+async function enterOpen(
+  controller: ReturnType<typeof createController>,
+  fake: FakeTransport,
+  roomId: 'rainy-study-room' | 'sunny-classroom' | 'midnight-workstation' = 'rainy-study-room',
+) {
+  controller.actions.enter(roomId);
   await Promise.resolve(); // readToken 微任务
   fake.status('open');
 }
 
 describe('studyRoomController', () => {
-  it('enters with resolved url + token and reaches open', async () => {
+  it('enters the requested room with resolved url + token and reaches open', async () => {
     const fake = createFakeTransport();
     const controller = createController(fake);
-    controller.actions.enter();
+    controller.actions.enter('rainy-study-room');
     await Promise.resolve();
-    expect(fake.connects).toEqual([{ url: 'ws://localhost:3321/studyroom', token: 'token-1' }]);
+    expect(fake.connects).toEqual([
+      { url: 'ws://localhost:3321/studyroom?room=rainy-study-room', token: 'token-1' },
+    ]);
+    expect(controller.getState().roomId).toBe('rainy-study-room');
     expect(controller.getState().status).toBe('connecting');
     fake.status('open');
     expect(controller.getState().status).toBe('open');
@@ -139,7 +146,7 @@ describe('studyRoomController', () => {
   it('queues sends while connecting and flushes in order on open', async () => {
     const fake = createFakeTransport();
     const controller = createController(fake);
-    controller.actions.enter();
+    controller.actions.enter('rainy-study-room');
     await Promise.resolve();
     controller.actions.send('一');
     controller.actions.send('二');
@@ -162,18 +169,19 @@ describe('studyRoomController', () => {
     expect(controller.getState().lastReject?.reason).toBe('blocked');
   });
 
-  it('reconnects after an unexpected close and clears attempts on reopen', async () => {
+  it('reconnects into the same room after an unexpected close', async () => {
     vi.useFakeTimers();
     try {
       const fake = createFakeTransport();
       const controller = createController(fake);
-      controller.actions.enter();
+      controller.actions.enter('midnight-workstation');
       await vi.runAllTimersAsync(); // readToken 微任务
       fake.status('open');
       fake.status('closed'); // 意外断开
       expect(controller.getState().status).toBe('reconnecting');
       await vi.advanceTimersByTimeAsync(1000); // 500ms 首次退避 + 抖动
       expect(fake.connects).toHaveLength(2);
+      expect(fake.connects[1]?.url).toContain('room=midnight-workstation');
       fake.status('open');
       expect(controller.getState().status).toBe('open');
       // 第二次断开重连（attempts 已清零，退避从头算）
@@ -199,15 +207,5 @@ describe('studyRoomController', () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it('switchRoom updates state optimistically and notifies the server while open', async () => {
-    const fake = createFakeTransport();
-    const controller = createController(fake);
-    await enterOpen(controller, fake);
-    fake.emit(snapshotEvent());
-    controller.actions.switchRoom('sunny-classroom');
-    expect(controller.getState().roomId).toBe('sunny-classroom');
-    expect(fake.sent).toContainEqual({ type: 'room.switch', roomId: 'sunny-classroom' });
   });
 });

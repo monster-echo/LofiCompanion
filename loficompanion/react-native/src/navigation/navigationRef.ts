@@ -10,9 +10,13 @@ export type GroupRouteParams = Readonly<{ groupId: string }>;
 // P1-A: store.skinDetail 携带目标皮肤 slug（S15 详情/购买）。
 export type SkinDetailRouteParams = Readonly<{ skinSlug: string }>;
 
+// 自习室：studyroom.active 携带目标房间 id（房间=内置皮肤 slug）。
+export type StudyRoomRouteParams = Readonly<{ roomId: string }>;
+
 export type RootParamList = {
   [K in AppRoute]: K extends 'groups.detail' | 'weekly.settlement' ? GroupRouteParams
     : K extends 'store.skinDetail' ? SkinDetailRouteParams
+    : K extends 'studyroom.active' ? StudyRoomRouteParams
     : undefined;
 };
 

@@ -27,3 +27,12 @@ export function resolveStudyRoomWsUrl(env: StudyRoomWsUrlEnv): string {
   const host = env.platformOS === 'android' ? '10.0.2.2' : 'localhost';
   return `ws://${host}:${STUDYROOM_WS_PORT_DEFAULT}${STUDYROOM_WS_PATH}`;
 }
+
+/** WS 地址 → 同源 HTTP 基地址（房间列表 GET /rooms 用）：ws:// → http://，去掉路径。 */
+export function studyRoomHttpBaseOf(wsUrl: string): string {
+  const url = new URL(wsUrl);
+  url.protocol = url.protocol === 'wss:' ? 'https:' : 'http:';
+  url.pathname = '';
+  url.search = '';
+  return url.toString().replace(/\/+$/, '');
+}

@@ -35,6 +35,7 @@ import type { IconName } from '../design-system/AppIcon';
 import { semantic } from '../theme/tokens';
 import { FocusHomeScreen } from '../features/focus/presentation/FocusHomeScreen';
 import { StudyRoomScreen } from '../features/studyroom/presentation/StudyRoomScreen';
+import { StudyRoomActiveScreen } from '../features/studyroom/presentation/StudyRoomActiveScreen';
 import { FocusSetupSheet } from '../features/focus/presentation/FocusSetupSheet';
 import { FocusActiveScreen } from '../features/focus/presentation/FocusActiveScreen';
 import { FocusCompleteScreen } from '../features/focus/presentation/FocusCompleteScreen';
@@ -85,12 +86,10 @@ const TABS: readonly TabDef[] = [
   },
   {
     name: 'studyroom.home',
-    // 排行榜遗留的 group 三倍图暂复用（iOS 走 SF Symbols 不受影响）；
-    // 专属台灯/书桌图标为后续打磨项
     icon: 'group',
-    sfFocused: 'person.3.fill',
-    sfIdle: 'person.3',
-    image: require('../../assets/icons/tabbar/group.png'),
+    sfFocused: 'person.2.fill',
+    sfIdle: 'person.2',
+    image: require('../../assets/icons/tabbar/studyroom.png'),
     zh: '自习室',
     en: 'Study Room',
   },
@@ -226,6 +225,15 @@ export function RootNavigator() {
         options={{
           presentation: 'fullScreenModal',
           // 专注中不允许手势下滑退出（doc-08 §5 ending 语义由确认 sheet 承担）
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="studyroom.active"
+        component={StudyRoomActiveScreen}
+        options={{
+          presentation: 'fullScreenModal',
+          // 房间内不允许手势下滑退出（左上「退出」承担离开语义，误触会断掉弹幕连接）
           gestureEnabled: false,
         }}
       />

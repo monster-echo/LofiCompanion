@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../../state/AppStore';
 import { radii, semantic, space, type } from '../../../theme/tokens';
@@ -11,9 +11,12 @@ import { STUDY_ROOM_STRINGS as STR } from './strings';
  * 弹幕输入条：访客整条显示「登录后加入弹幕」（点击走 auth.signIn，
  * 登录回来自动还 位）；登录后为输入框 + 发送钮。冷却倒计时读本地乐观
  * sendCooldownUntil（发送即置位，服务端 reject 校正），不发轮询。
+ * chromeOpacity：房间页沉浸弱化时随控制件一并隐去（点击屏幕恢复）。
  */
 
-export function DanmakuInputBar() {
+export function DanmakuInputBar({
+  chromeOpacity,
+}: Readonly<{ chromeOpacity?: Animated.Value }>) {
   const controller = useStudyRoom();
   const state = useStudyRoomState();
   const { signedIn, navigate } = useApp();
@@ -45,8 +48,12 @@ export function DanmakuInputBar() {
   };
 
   return (
-    <View
-      style={[styles.bar, { bottom: Math.max(insets.bottom + space.x2, 92) }]}
+    <Animated.View
+      style={[
+        styles.bar,
+        { bottom: Math.max(insets.bottom + space.x2, 92) },
+        chromeOpacity ? { opacity: chromeOpacity } : null,
+      ]}
       pointerEvents="box-none"
     >
       {signedIn ? (
@@ -88,7 +95,7 @@ export function DanmakuInputBar() {
           <Text style={styles.guestText}>{STR.signInToChat}</Text>
         </Pressable>
       )}
-    </View>
+    </Animated.View>
   );
 }
 

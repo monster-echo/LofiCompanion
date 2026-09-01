@@ -26,6 +26,12 @@ export interface MusicController extends FocusMusicEffects {
    * （会话活跃 ∧ 画面在场 才出声）。锁屏/切后台不改变导航聚焦，后台续播不受影响。
    */
   setScreenActive(active: boolean): void;
+  /**
+   * 氛围在场（自习室）：房间本身就是「在听 lofi」的场景，无需专注会话。
+   * 出声条件放宽为 (会话活跃 ∨ 氛围在场) ∧ 画面在场 ∧ 未静音；
+   * 自习室 Screen 聚焦时置 true、失焦/卸载置 false。
+   */
+  setAmbientActive(active: boolean): void;
   /** 选曲：会话中调用立即切换，空闲时仅记录（下轮生效） */
   selectTrack(track: MusicTrack): void;
   /** 测试/开发释放底层播放器 */

@@ -40,8 +40,8 @@ export interface StudyRoomController {
   /** 弹幕事件出口：history = join 快照错峰回放；live = 实时广播。返回退订函数。 */
   onDanmaku(listener: (message: DanmakuMessage, origin: DanmakuOrigin) => void): () => void;
   actions: {
-    enter(): void;
-    switchRoom(roomId: StudyRoomId): void;
+    /** 进入指定房间（列表页选中后调用）；断线重连一直指向该房间。 */
+    enter(roomId: StudyRoomId): void;
     send(content: string): void;
     leave(): void;
   };
@@ -73,6 +73,8 @@ export function createStudyRoomController(deps: {
     sendCooldownUntil: 0,
     lastReject: null,
   };
+  /** 期望房间：enter 显式指定；重连握手 query 始终带上它 */
+  let desiredRoom: StudyRoomId = defaultRoomId();
 
   const listeners = new Set<() => void>();
   const danmakuListeners = new Set<(message: DanmakuMessage, origin: DanmakuOrigin) => void>();
@@ -99,8 +101,10 @@ export function createStudyRoomController(deps: {
     void deps
       .readToken()
       .then((token) => {
+        const url = new URL(deps.resolveUrl());
+        url.searchParams.set('room', desiredRoom);
         deps.transport.connect({
-          url: deps.resolveUrl(),
+          url: url.toString(),
           token,
           onEvent,
           onStatus,
@@ -184,19 +188,12 @@ export function createStudyRoomController(deps: {
       return () => danmakuListeners.delete(listener);
     },
     actions: {
-      enter() {
+      enter(roomId) {
+        desiredRoom = roomId;
+        patch({ roomId, onlineCount: 0 });
         desired = true;
         attempts = 0;
         connect();
-      },
-      switchRoom(roomId) {
-        if (roomId === state.roomId) return;
-        patch({ roomId, onlineCount: 0 });
-        if (state.status === 'open') {
-          deps.transport.send({ type: 'room.switch', roomId });
-        } else if (desired) {
-          connect(); // 重连握手 query 会带上新房间
-        }
       },
       send(content) {
         patch({ sendCooldownUntil: now() + SEND_COOLDOWN_MS });
