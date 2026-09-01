@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AppButton, AppCard, ListRow, PageHeader } from '../design-system/components';
+import { storeSkuOf, useStorePrices } from '../payment/useStorePrices';
 import { RestoreRow } from './MembershipRestoreRow';
 import { BillingPlan, MembershipTier } from '../domain/models';
 import { useApp } from '../state/AppStore';
@@ -15,6 +16,8 @@ export function MembershipScreen() {
   const { t } = useTranslation('membership');
   const { config, user, navigate, busy, setPendingPlanId, setPurchaseState } = useApp();
   const [selected, setSelected] = useState(config.plans[0]?.id ?? '');
+  // 商店本地化价格（审核要求价格来自商店）；商店不可达回落服务端定价
+  const storePrices = useStorePrices(config.plans);
   const selectedPlan = config.plans.find((plan) => plan.id === selected);
   const buy = () => {
     if (!user) { navigate('auth.signIn'); return; }
@@ -39,6 +42,10 @@ export function MembershipScreen() {
             plan={plan}
             selected={selected === plan.id}
             select={() => setSelected(plan.id)}
+            storePrice={(() => {
+              const sku = storeSkuOf(plan);
+              return sku !== null ? storePrices[sku] : undefined;
+            })()}
           />
         ))}
         {config.plans.length ? (
@@ -106,18 +113,20 @@ function TierCard({ tier, current }: Readonly<{ tier: MembershipTier; current: b
   );
 }
 
-function PlanCard({ accent, plan, selected, select }: Readonly<{
+function PlanCard({ accent, plan, selected, select, storePrice }: Readonly<{
   accent: string;
   plan: BillingPlan;
   selected: boolean;
   select: () => void;
+  /** 商店本地化价格（getProducts）；商店不可达时 undefined → 回落服务端价格 */
+  storePrice: string | undefined;
 }>) {
   const { t } = useTranslation('membership');
   return (
     <AppCard>
       <ListRow
         label={plan.name}
-        value={formatPrice(plan, t)}
+        value={storePrice ?? formatPrice(plan, t)}
         onPress={select}
         icon={selected ? 'check' : 'crown'}
         iconColor={accent}

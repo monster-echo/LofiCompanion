@@ -27,7 +27,7 @@ describe('payment models', () => {
   });
 
   it('CreateOrderResult shape', () => {
-    const r: CreateOrderResult = { orderId: 'o1', storeProductId: 'com.x.pro', status: 'pending' };
+    const r: CreateOrderResult = { orderId: 'o1', storeProductId: 'com.x.pro', status: 'pending', provider: 'mock' };
     expect(r.storeProductId).toBe('com.x.pro');
   });
 });

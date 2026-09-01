@@ -1,6 +1,6 @@
 export type StoreProductMapping = Readonly<{ apple?: string; google?: string; hms?: string }>;
 
-export type StoreProduct = Readonly<{ storeProductId: string; title?: string }>;
+export type StoreProduct = Readonly<{ storeProductId: string; title?: string; /** 商店本地化价格串（如 ¥18.00），商店不可达时缺省 */ localizedPrice?: string }>;
 
 export type PurchaseResult = Readonly<{ storeProductId: string; receipt: unknown }>;
 

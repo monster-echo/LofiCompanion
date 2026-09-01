@@ -106,8 +106,12 @@ export class IapPaymentProvider implements PaymentProvider {
     const target = this.store === 'apple' ? mapping.apple : mapping.google;
     if (!target) return [];
     const products = await RNIap.getProducts({ skus: [target] });
-    return (products as readonly { id?: string; productId?: string; title?: string }[])
-      .map((p) => ({ storeProductId: String(p.id ?? p.productId ?? ''), title: p.title }))
+    return (products as readonly { id?: string; productId?: string; title?: string; displayPrice?: string; localizedPrice?: string }[])
+      .map((p) => ({
+        storeProductId: String(p.id ?? p.productId ?? ''),
+        title: p.title,
+        localizedPrice: p.displayPrice ?? p.localizedPrice,
+      }))
       .filter((p) => p.storeProductId !== '');
   }
 
