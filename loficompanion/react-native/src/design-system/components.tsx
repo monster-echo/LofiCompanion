@@ -13,7 +13,6 @@ import { AppIcon, IconName } from './AppIcon';
 import { telemetry } from '../telemetry/Telemetry';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { buttonStyles, componentStyles } from './componentStyles';
-import { disabledContainer } from './derivedTokens';
 import { useTranslation } from 'react-i18next';
 
 export function AppButton({
@@ -45,7 +44,7 @@ export function AppButton({
       ? palette.text
       : semantic.onAction;
   const background = disabled
-    ? (variant === 'secondary' ? palette.surface : disabledContainer)
+    ? (variant === 'secondary' ? palette.surface : palette.actionDisabled)
     : variant === 'secondary'
       ? palette.surface
       : variant === 'danger' ? palette.error : palette.brand;

@@ -43,7 +43,3 @@ export const rankAccentSoft: Record<RankAccentTone, string> = {
   silver: withAlpha(primitives.mist[300], 0.16),
   bronze: withAlpha(colors.membershipBronze, 0.16),
 };
-
-// AppButton 禁用容器：brand 70% over canvas 的等效实色（整体 46% 透明在深色下
-// 对背景仅 2.15:1，低于 doc-09 §7 可操作图形 3:1 下限；doc-07 0.45 值基于旧浅色主题）。
-export const disabledContainer = '#3A6AAD';

@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { colors, radii, spacing, ThemeColors } from './tokens';
+import { colors, semantic, radii, spacing, ThemeColors } from './tokens';
 
-export let styles = createStyles(colors, 1);
+export let styles = createStyles({ ...colors, ...semantic }, 1);
 
 export function applyTheme(palette: ThemeColors, textScale: number) {
   styles = createStyles(palette, textScale);

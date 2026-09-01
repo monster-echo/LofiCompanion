@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as tokens from './tokens';
 
-const { colors, darkColors, primitives, semantic } = tokens;
+const { colors, darkColors, lightColors, primitives, semantic, semanticLight } = tokens;
 const typeScale = tokens.type;
 
 describe('doc-07 §4.1 原语', () => {
@@ -14,9 +14,9 @@ describe('doc-07 §4.1 原语', () => {
         800: '#122338',
         700: '#1B3048',
       },
-      rain: { 500: '#4F8FE8', 400: '#6EA6F2' },
+      rain: { 500: '#4F8FE8', 400: '#6EA6F2', 600: '#3E79C9' },
       lamp: { 500: '#D7A85F' },
-      paper: { 100: '#F3EFE7' },
+      paper: { 50: '#FAF8F3', 100: '#F3EFE7', 200: '#E7E1D4' },
       mist: { 300: '#B4BECA', 500: '#7E8A99' },
       leaf: { 500: '#63BF94' },
       warning: { 500: '#D6A556' },
@@ -46,6 +46,33 @@ describe('doc-07 §4.2 语义映射', () => {
       borderSoft: 'rgba(243,239,231,0.08)',
       borderStandard: 'rgba(243,239,231,0.12)',
       borderEmphasis: 'rgba(110,166,242,0.50)',
+      actionDisabled: '#3A6AAD',
+      scrimTop: 'rgba(6,16,28,0.62)',
+      scrimBottom: 'rgba(6,16,28,0.88)',
+    });
+  });
+
+  it('亮色映射（暖纸白）：纸面为底、墨色文字、品牌雨蓝不变', () => {
+    expect(semanticLight).toEqual({
+      canvas: '#F3EFE7',
+      canvasDeep: '#E7E1D4',
+      surface: '#FAF8F3',
+      surfaceRaised: '#FFFFFF',
+      surfaceInset: '#E9E3D6',
+      textPrimary: '#091522',
+      textSecondary: '#1B3048',
+      textMuted: '#7E8A99',
+      actionPrimary: '#4F8FE8',
+      actionPressed: '#3E79C9',
+      actionFocus: '#6EA6F2',
+      onAction: '#FFFFFF',
+      achievement: '#D7A85F',
+      success: '#63BF94',
+      danger: '#D66C72',
+      borderSoft: 'rgba(9,21,34,0.10)',
+      borderStandard: 'rgba(9,21,34,0.16)',
+      borderEmphasis: 'rgba(79,143,232,0.55)',
+      actionDisabled: 'rgba(79,143,232,0.40)',
       scrimTop: 'rgba(6,16,28,0.62)',
       scrimBottom: 'rgba(6,16,28,0.88)',
     });
@@ -95,6 +122,7 @@ describe('colors 夜色取值', () => {
     expect(colors.brandPressed).toBe('#3E79C9');
     expect(colors.brandSoft).toBe('rgba(79,143,232,0.16)');
     expect(colors.success).toBe('#63BF94');
+    expect(colors.successSoft).toBe('rgba(99,191,148,0.16)');
     expect(colors.warning).toBe('#D6A556');
     expect(colors.error).toBe('#D66C72');
     expect(colors.info).toBe('#6EA6F2');
@@ -104,15 +132,23 @@ describe('colors 夜色取值', () => {
   it('键集不变（既有页面可编译）', () => {
     const legacyKeys = [
       'background', 'surface', 'surfaceRaised', 'surfaceMuted', 'text', 'textSecondary', 'border',
-      'brand', 'brandPressed', 'brandSoft', 'success', 'warning', 'warningSoft',
+      'brand', 'brandPressed', 'brandSoft', 'success', 'successSoft', 'warning', 'warningSoft',
       'error', 'info', 'membershipBronze', 'membershipSilver', 'membershipGold', 'scrim',
     ];
     expect(Object.keys(colors).sort()).toEqual([...legacyKeys].sort());
   });
 
-  it('darkColors 键集与 colors 深度相等', () => {
+  it('darkColors 为 colors 同一取值（暗色默认）', () => {
     expect(Object.keys(darkColors).sort()).toEqual(Object.keys(colors).sort());
     expect(darkColors).toEqual(colors);
+  });
+
+  it('lightColors 键集与 colors 一致但取值不同（暖纸白）', () => {
+    expect(Object.keys(lightColors).sort()).toEqual(Object.keys(colors).sort());
+    expect(lightColors).not.toEqual(colors);
+    expect(lightColors.background).toBe('#F3EFE7');
+    expect(lightColors.text).toBe('#091522');
+    expect(lightColors.successSoft).toBe('rgba(99,191,148,0.20)');
   });
 
   it('会员色为三种可区分的低饱和中性金属色', () => {

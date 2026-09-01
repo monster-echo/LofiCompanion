@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../state/AppStore';
-import { colors, darkColors, ThemeColors } from '../theme/tokens';
+import { colors, semantic, lightColors, semanticLight, ThemeColors } from '../theme/tokens';
 import { applyTheme } from '../theme/styles';
 import { currentLanguage, i18n, type Locale } from '../i18n/core';
 import { deviceLocale } from '../i18n/deviceLocale';
@@ -57,7 +57,10 @@ export function PreferencesProvider({ children }: Readonly<{ children: ReactNode
   // 颜色系统由服务端（auth.zhongbei.tech）下发：逐键覆盖内置 tokens；
   // 联机门禁保证进入 App 前必为服务端值，缺省键兜底内置夜色。
   const palette = useMemo<ThemeColors>(
-    () => ({ ...(dark ? darkColors : colors), ...config.theme }),
+    () => ({
+      ...(dark ? { ...colors, ...semantic } : { ...lightColors, ...semanticLight }),
+      ...config.theme,
+    }),
     [dark, config.theme],
   );
   applyTheme(palette, textScale);
