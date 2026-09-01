@@ -125,8 +125,8 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   name: {
     ...type.bodyStrong,
-    // 纸白文字（paper.100）直接压在深色胶囊+海报影像上，主题无关，不随亮色调色板翻转
-    color: "#F3EFE7",
+    // 皮肤名压在深色胶囊+海报影像上：onMedia 固定浅色（主题无关，不随亮暗翻转）
+    color: p.onMedia,
   },
   trailing: {
     borderRadius: radii.round,

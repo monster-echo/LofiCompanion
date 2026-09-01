@@ -432,7 +432,9 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   bannerName: {
     ...type.title3,
-    color: p.textPrimary,
+    // banner 标题压在固定暗色 scrim 之上（bannerScrim）：onMedia 固定浅色
+    // （原 textPrimary 亮色下变深字 → 暗底深字不可读，3.3 修复）
+    color: p.onMedia,
     flexShrink: 1,
   },
   inUseBadge: {

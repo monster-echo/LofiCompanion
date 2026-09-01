@@ -78,38 +78,60 @@
 | `night.700` | `#1B3048` | 强调边界 |
 | `rain.500` | `#4F8FE8` | 主操作与进度 |
 | `rain.400` | `#6EA6F2` | 选中和焦点 |
-| `lamp.500` | `#D7A85F` | 房间成就强调 |
-| `paper.100` | `#F3EFE7` | 主文字与计时 |
-| `mist.300` | `#B4BECA` | 次文字 |
+| `rain.600` | `#3E79C9` | 主操作按压 |
+| `lamp.500` | `#D7A85F` | 暗色成就强调（房间旧金） |
+| `lamp.600` | `#B6852F` | 亮色成就强调（暖纸底加深档） |
+| `paper.50` | `#FAF8F3` | 主文字圆底／亮色纸族基底 |
+| `paper.100` | `#F3EFE7` | 暗色主文字与计时／媒体上文字 |
+| `paper.200` | `#E7E1D4` | 纸族加深档 |
+| `mist.300` | `#B4BECA` | 暗色次文字／媒体上次文字 |
 | `mist.500` | `#7E8A99` | 元数据与未选中图标 |
-| `leaf.500` | `#63BF94` | 在线、完成与健康状态 |
-| `warning.500` | `#D6A556` | 提醒 |
-| `danger.500` | `#D66C72` | 破坏性操作 |
+| `mist.600` | `#5B6472` | 亮色次文字 |
+| `leaf.500` | `#63BF94` | 暗色在线、完成与健康状态 |
+| `leaf.600` | `#3F9E74` | 亮色在线、完成（加深档） |
+| `warning.500` | `#D6A556` | 暗色提醒 |
+| `warning.600` | `#A87F1E` | 亮色提醒 |
+| `danger.500` | `#D66C72` | 暗色破坏性操作 |
+| `danger.600` | `#C2454E` | 亮色破坏性操作 |
+
+> 600 档为亮色加深档（暖纸白底上保证图形 3:1／文字 4.5:1 对比）。亮色纸面取
+> 「提亮档」字面值（canvas `#F7F2E9`、surface `#FBF8F2`、inset `#EFE7D8`），
+> 独立于 paper 原语族。
 
 ### 4.2 语义映射
 
-| 语义令牌 | 暗色值 |
-|---|---|
-| `canvas` | `night.900` |
-| `canvasDeep` | `night.950` |
-| `surface` | `night.850` |
-| `surfaceRaised` | `night.800` |
-| `surfaceInset` | `night.950` |
-| `textPrimary` | `paper.100` |
-| `textSecondary` | `mist.300` |
-| `textMuted` | `mist.500` |
-| `actionPrimary` | `rain.500` |
-| `actionPressed` | `#3E79C9` |
-| `actionFocus` | `rain.400` |
-| `onAction` | `#FFFFFF`（彩色实底按钮前景；随服务端 theme 色板下发） |
-| `achievement` | `lamp.500` |
-| `success` | `leaf.500` |
-| `danger` | `danger.500` |
-| `borderSoft` | `rgba(243,239,231,0.08)` |
-| `borderStandard` | `rgba(243,239,231,0.12)` |
-| `borderEmphasis` | `rgba(110,166,242,0.50)` |
-| `scrimTop` | `rgba(6,16,28,0.62)` |
-| `scrimBottom` | `rgba(6,16,28,0.88)` |
+| 语义令牌 | 暗色值 | 亮色值（暖纸白） |
+|---|---|---|
+| `canvas` | `night.900` | `#F7F2E9` 提亮纸 |
+| `canvasDeep` | `night.950` | `#EFE7D8` |
+| `surface` | `night.850` | `#FBF8F2` |
+| `surfaceRaised` | `night.800` | `#FFFFFF` |
+| `surfaceInset` | `night.950` | `#EFE7D8` |
+| `textPrimary` | `paper.100`，`#F3EFE7` | `#10161F` 墨字 |
+| `textSecondary` | `mist.300` | `mist.600`，`#5B6472` |
+| `textMuted` | `mist.500` | `mist.500`，`#7E8A99` |
+| `actionPrimary` | `rain.500` | `rain.500` |
+| `actionPressed` | `rain.600`，`#3E79C9` | `rain.600` |
+| `actionFocus` | `rain.400` | `rain.400` |
+| `onAction` | `#FFFFFF`（彩色实底按钮前景；随服务端 theme 色板下发） | `#FFFFFF` |
+| `onMedia` | `paper.100`（主题无关） | `paper.100`（同左） |
+| `onMediaSecondary` | `mist.300`（主题无关） | `mist.300`（同左） |
+| `achievement` | `lamp.500` | `lamp.600` |
+| `success` | `leaf.500` | `leaf.600` |
+| `warning` | `warning.500` | `warning.600` |
+| `danger` | `danger.500` | `danger.600` |
+| `borderSoft` | `rgba(243,239,231,0.08)` | `rgba(16,22,31,0.14)` |
+| `borderStandard` | `rgba(243,239,231,0.12)` | `rgba(16,22,31,0.20)` |
+| `borderEmphasis` | `rgba(110,166,242,0.50)` | `rgba(79,143,232,0.55)` |
+| `actionDisabled` | `#3A6AAD` | `rgba(79,143,232,0.35)` |
+| `scrimTop` | `rgba(6,16,28,0.62)` | `rgba(6,16,28,0.62)`（主题无关） |
+| `scrimBottom` | `rgba(6,16,28,0.88)` | `rgba(6,16,28,0.88)`（主题无关） |
+
+> 暗色为 doc-07 原值（勿再微调）。亮色为明亮暖纸白：纸面为底、墨字为文、品牌雨蓝不变；
+> 琥珀/草绿/珊瑚红取 600 加深档。`onMedia/onMediaSecondary` 用于**悬于皮肤影像或
+> 其暗色玻璃之上的文字/图标**——海报为深色构图，文字必须固定浅色，两模式同值，
+> 不随亮暗翻转（对应主界面底部结果板外、皮肤卡名、房间卡文字、商店 banner 标题等）。
+> `scrimTop/Bottom` 压皮肤影像之上，两模式相同。
 
 色彩比例目标约为 70% 夜色中性、20% 媒体内容、8% 雨蓝操作、2% 琥珀或状态色。
 同一视图不能同时让雨蓝、琥珀、绿色竞争主操作。

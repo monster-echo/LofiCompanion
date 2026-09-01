@@ -15,12 +15,12 @@ describe('doc-07 §4.1 原语', () => {
         700: '#1B3048',
       },
       rain: { 500: '#4F8FE8', 400: '#6EA6F2', 600: '#3E79C9' },
-      lamp: { 500: '#D7A85F' },
+      lamp: { 500: '#D7A85F', 600: '#B6852F' },
       paper: { 50: '#FAF8F3', 100: '#F3EFE7', 200: '#E7E1D4' },
-      mist: { 300: '#B4BECA', 500: '#7E8A99' },
-      leaf: { 500: '#63BF94' },
-      warning: { 500: '#D6A556' },
-      danger: { 500: '#D66C72' },
+      mist: { 300: '#B4BECA', 500: '#7E8A99', 600: '#5B6472' },
+      leaf: { 500: '#63BF94', 600: '#3F9E74' },
+      warning: { 500: '#D6A556', 600: '#A87F1E' },
+      danger: { 500: '#D66C72', 600: '#C2454E' },
     });
   });
 });
@@ -40,8 +40,11 @@ describe('doc-07 §4.2 语义映射', () => {
       actionPressed: '#3E79C9',
       actionFocus: '#6EA6F2',
       onAction: '#FFFFFF',
+      onMedia: '#F3EFE7',
+      onMediaSecondary: '#B4BECA',
       achievement: '#D7A85F',
       success: '#63BF94',
+      warning: '#D6A556',
       danger: '#D66C72',
       borderSoft: 'rgba(243,239,231,0.08)',
       borderStandard: 'rgba(243,239,231,0.12)',
@@ -52,27 +55,30 @@ describe('doc-07 §4.2 语义映射', () => {
     });
   });
 
-  it('亮色映射（暖纸白）：纸面为底、墨色文字、品牌雨蓝不变', () => {
+  it('亮色映射（暖纸白）：明亮纸面、墨色文字、品牌雨蓝不变、状态色取 600 加深档', () => {
     expect(semanticLight).toEqual({
-      canvas: '#F3EFE7',
-      canvasDeep: '#E7E1D4',
-      surface: '#FAF8F3',
+      canvas: '#F7F2E9',
+      canvasDeep: '#EFE7D8',
+      surface: '#FBF8F2',
       surfaceRaised: '#FFFFFF',
-      surfaceInset: '#E9E3D6',
-      textPrimary: '#091522',
-      textSecondary: '#1B3048',
+      surfaceInset: '#EFE7D8',
+      textPrimary: '#10161F',
+      textSecondary: '#5B6472',
       textMuted: '#7E8A99',
       actionPrimary: '#4F8FE8',
       actionPressed: '#3E79C9',
       actionFocus: '#6EA6F2',
       onAction: '#FFFFFF',
-      achievement: '#D7A85F',
-      success: '#63BF94',
-      danger: '#D66C72',
-      borderSoft: 'rgba(9,21,34,0.10)',
-      borderStandard: 'rgba(9,21,34,0.16)',
+      onMedia: '#F3EFE7',
+      onMediaSecondary: '#B4BECA',
+      achievement: '#B6852F',
+      success: '#3F9E74',
+      warning: '#A87F1E',
+      danger: '#C2454E',
+      borderSoft: 'rgba(16,22,31,0.14)',
+      borderStandard: 'rgba(16,22,31,0.20)',
       borderEmphasis: 'rgba(79,143,232,0.55)',
-      actionDisabled: 'rgba(79,143,232,0.40)',
+      actionDisabled: 'rgba(79,143,232,0.35)',
       scrimTop: 'rgba(6,16,28,0.62)',
       scrimBottom: 'rgba(6,16,28,0.88)',
     });
@@ -146,9 +152,14 @@ describe('colors 夜色取值', () => {
   it('lightColors 键集与 colors 一致但取值不同（暖纸白）', () => {
     expect(Object.keys(lightColors).sort()).toEqual(Object.keys(colors).sort());
     expect(lightColors).not.toEqual(colors);
-    expect(lightColors.background).toBe('#F3EFE7');
-    expect(lightColors.text).toBe('#091522');
+    expect(lightColors.background).toBe('#F7F2E9');
+    expect(lightColors.text).toBe('#10161F');
+    expect(lightColors.surface).toBe('#FBF8F2');
+    expect(lightColors.textSecondary).toBe('#5B6472');
     expect(lightColors.successSoft).toBe('rgba(99,191,148,0.20)');
+    expect(lightColors.success).toBe('#3F9E74');
+    expect(lightColors.error).toBe('#C2454E');
+    expect(lightColors.info).toBe('#4F8FE8');
   });
 
   it('会员色为三种可区分的低饱和中性金属色', () => {

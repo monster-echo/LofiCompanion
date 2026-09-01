@@ -19,7 +19,8 @@ import { AppIcon } from "../../../design-system/AppIcon";
 import { replaceRoute } from "../../../navigation/navigationRef";
 import { useApp } from "../../../state/AppStore";
 import { fonts } from "../../../design-system/fonts";
-import { radii, semantic, space, type } from "../../../theme/tokens";
+import { radii, semantic, space, type, type ThemeColors } from "../../../theme/tokens";
+import { useThemeStyles } from "../../../theme/useThemeStyles";
 import { useFocus } from "../application/FocusStore";
 import { effectiveSeconds as computeEffective } from "../domain/engine";
 import { formatTimerSeconds } from "../../../design-system/FocusTimerRing";
@@ -56,7 +57,10 @@ const FLOATING_TAB_FLOOR = 92;
 
 export function FocusActiveScreen() {
   const focus = useFocus();
-  const { locale } = usePreferences();
+  const { locale, palette } = usePreferences();
+  // sheet（快捷设置/结束确认）是主题化 UI 层：内容令牌走主题（亮色暖纸白面板+暗字），
+  // 影像 chrome 仍用模块级 semantic 主题无关层
+  const sheetStyles = useThemeStyles(makeSheetStyles);
   const { t } = useTranslation('focus');
   const { showToast, replace, signedIn } = useApp();
   const insets = useSafeAreaInsets();
@@ -293,35 +297,35 @@ export function FocusActiveScreen() {
               anchor="top"
               topInset={insets.top}
             >
-              <Text style={styles.menuTitle}>{t('quickMenuLabel')}</Text>
+              <Text style={sheetStyles.menuTitle}>{t('quickMenuLabel')}</Text>
               <Pressable
                 accessibilityRole="switch"
                 accessibilityLabel={t('keepAwakeLabel')}
                 accessibilityState={{ checked: keepAwake }}
                 onPress={() => setKeepAwake(!keepAwake)}
                 style={({ pressed }) => [
-                  styles.menuRow,
+                  sheetStyles.menuRow,
                   pressed && styles.pressed,
                 ]}
               >
                 <AppIcon
                   name={keepAwake ? "sun" : "moon"}
                   color={
-                    keepAwake ? semantic.actionFocus : semantic.textSecondary
+                    keepAwake ? palette.actionFocus : palette.textSecondary
                   }
                   size={18}
                 />
-                <Text style={styles.menuRowLabel}>{t('keepAwakeLabel')}</Text>
+                <Text style={sheetStyles.menuRowLabel}>{t('keepAwakeLabel')}</Text>
                 <View
                   style={[
-                    styles.menuStatePill,
-                    keepAwake && styles.menuStatePillOn,
+                    sheetStyles.menuStatePill,
+                    keepAwake && sheetStyles.menuStatePillOn,
                   ]}
                 >
                   <Text
                     style={[
-                      styles.menuStateText,
-                      keepAwake && styles.menuStateTextOn,
+                      sheetStyles.menuStateText,
+                      keepAwake && sheetStyles.menuStateTextOn,
                     ]}
                   >
                     {keepAwake ? t('onState') : t('offState')}
@@ -334,26 +338,26 @@ export function FocusActiveScreen() {
                 accessibilityState={{ checked: muted }}
                 onPress={() => setMuted(!muted)}
                 style={({ pressed }) => [
-                  styles.menuRow,
+                  sheetStyles.menuRow,
                   pressed && styles.pressed,
                 ]}
               >
                 <AppIcon
                   name={muted ? "volume-off" : "volume-on"}
-                  color={muted ? semantic.actionFocus : semantic.textSecondary}
+                  color={muted ? palette.actionFocus : palette.textSecondary}
                   size={18}
                 />
-                <Text style={styles.menuRowLabel}>{t('muteLabel')}</Text>
+                <Text style={sheetStyles.menuRowLabel}>{t('muteLabel')}</Text>
                 <View
                   style={[
-                    styles.menuStatePill,
-                    muted && styles.menuStatePillOn,
+                    sheetStyles.menuStatePill,
+                    muted && sheetStyles.menuStatePillOn,
                   ]}
                 >
                   <Text
                     style={[
-                      styles.menuStateText,
-                      muted && styles.menuStateTextOn,
+                      sheetStyles.menuStateText,
+                      muted && sheetStyles.menuStateTextOn,
                     ]}
                   >
                     {muted ? t('onState') : t('offState')}
@@ -430,25 +434,25 @@ export function FocusActiveScreen() {
               reducedMotion={focus.reducedMotion}
               bottomInset={insets.bottom}
             >
-              <Text style={styles.confirmTitle}>{t('endConfirmTitle')}</Text>
-              <Text style={styles.confirmMessage}>
+              <Text style={sheetStyles.confirmTitle}>{t('endConfirmTitle')}</Text>
+              <Text style={sheetStyles.confirmMessage}>
                 {Math.round(computeEffective(session, Date.now()) / 60) > 0
                   ? t('endConfirmKept', {
                       n: Math.round(computeEffective(session, Date.now()) / 60),
                     })
                   : t('endConfirmKeptZero')}
               </Text>
-              <View style={styles.confirmActions}>
+              <View style={sheetStyles.confirmActions}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t('endConfirmStay')}
                   onPress={() => setEnding(false)}
                   style={({ pressed }) => [
-                    styles.confirmSecondary,
+                    sheetStyles.confirmSecondary,
                     pressed && styles.pressed,
                   ]}
                 >
-                  <Text style={styles.confirmSecondaryText}>
+                  <Text style={sheetStyles.confirmSecondaryText}>
                     {t('endConfirmStay')}
                   </Text>
                 </Pressable>
@@ -457,11 +461,11 @@ export function FocusActiveScreen() {
                   accessibilityLabel={t('endConfirmLeave')}
                   onPress={confirmEnd}
                   style={({ pressed }) => [
-                    styles.confirmDanger,
+                    sheetStyles.confirmDanger,
                     pressed && styles.pressed,
                   ]}
                 >
-                  <Text style={styles.confirmDangerText}>
+                  <Text style={sheetStyles.confirmDangerText}>
                     {t('endConfirmLeave')}
                   </Text>
                 </Pressable>
@@ -528,46 +532,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: semantic.borderSoft,
   },
-  // 快捷设置二级菜单：行 = 图标 + 标签 + 状态胶囊（开启态 success 着色）
-  menuTitle: {
-    ...type.title3,
-    color: semantic.textPrimary,
-    textAlign: "center",
-  },
-  menuRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.x3,
-    minHeight: 52,
-    marginTop: space.x2,
-    borderRadius: radii.control,
-    paddingHorizontal: space.x3,
-    backgroundColor: "rgba(13,27,43,0.5)",
-    borderWidth: 1,
-    borderColor: semantic.borderSoft,
-  },
-  menuRowLabel: {
-    ...type.bodyStrong,
-    color: semantic.textPrimary,
-    flex: 1,
-  },
-  menuStatePill: {
-    borderRadius: radii.round,
-    backgroundColor: semantic.surfaceInset,
-    paddingHorizontal: space.x3,
-    paddingVertical: 4,
-  },
-  menuStatePillOn: {
-    // success 柔和底（对齐 tokens warningSoft 的 0.16 透明度惯例）
-    backgroundColor: "rgba(99,191,148,0.16)",
-  },
-  menuStateText: {
-    ...type.micro,
-    color: semantic.textSecondary,
-  },
-  menuStateTextOn: {
-    color: semantic.success,
-  },
+  // 快捷设置二级菜单样式已拆到 makeSheetStyles（主题化 UI 层，随亮暗翻转）
   bottomStack: {
     position: "absolute",
     left: 0,
@@ -620,14 +585,66 @@ const styles = StyleSheet.create({
     ...type.bodyStrong,
     color: semantic.textPrimary,
   },
+  // 结束确认 sheet 样式已拆到 makeSheetStyles（主题化 UI 层，随亮暗翻转）
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
+  },
+});
+
+/** 活动屏 sheet（快捷设置 / 结束确认）是 SheetOverlay 的主题化 UI 层：
+ *  面板与内容令牌都随亮暗翻转（亮=暖纸白面板+深字）。原内容用模块级
+ *  semantic.* 固定暗值 → 亮色下浅字压浅底不可读、暗玻璃行糊在亮面板上
+ *  （3.3 修复）。压在影像上的 chrome（时钟/徽章/胶囊/右上入口）仍属
+ *  semantic 主题无关覆盖层。 */
+const makeSheetStyles = (p: ThemeColors) => StyleSheet.create({
+  menuTitle: {
+    ...type.title3,
+    color: p.textPrimary,
+    textAlign: "center",
+  },
+  menuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.x3,
+    minHeight: 52,
+    marginTop: space.x2,
+    borderRadius: radii.control,
+    paddingHorizontal: space.x3,
+    backgroundColor: p.surfaceInset,
+    borderWidth: 1,
+    borderColor: p.borderSoft,
+  },
+  menuRowLabel: {
+    ...type.bodyStrong,
+    color: p.textPrimary,
+    flex: 1,
+  },
+  menuStatePill: {
+    borderRadius: radii.round,
+    backgroundColor: p.surfaceRaised,
+    paddingHorizontal: space.x3,
+    paddingVertical: 4,
+  },
+  menuStatePillOn: {
+    // success 柔和底（对齐 tokens warningSoft 的 0.16 透明度惯例）
+    backgroundColor: "rgba(99,191,148,0.16)",
+  },
+  menuStateText: {
+    ...type.micro,
+    color: p.textSecondary,
+  },
+  menuStateTextOn: {
+    color: p.success,
+  },
   confirmTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     textAlign: "center",
   },
   confirmMessage: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     textAlign: "center",
     marginTop: space.x2,
   },
@@ -643,20 +660,20 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: space.x4,
   },
   confirmSecondaryText: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   confirmDanger: {
     flex: 1,
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.danger,
+    backgroundColor: p.danger,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: space.x5,
@@ -664,10 +681,6 @@ const styles = StyleSheet.create({
   confirmDangerText: {
     ...type.bodyStrong,
     // 危险实底按钮前景恒白（与 AppButton onAction 语义一致）
-    color: semantic.onAction,
-  },
-  pressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.98 }],
+    color: p.onAction,
   },
 });

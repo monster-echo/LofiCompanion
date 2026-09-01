@@ -16,7 +16,7 @@ import { useApp } from "../../../state/AppStore";
 import { usePreferences } from "../../../preferences/PreferencesProvider";
 import { useFocus } from "../application/FocusStore";
 import { DEFAULT_ACTIVITY, DEFAULT_DURATION } from "../domain/validate";
-import { mediaControl, mediaSurface } from "../../../design-system/derivedTokens";
+import { mediaControl } from "../../../design-system/derivedTokens";
 import { radii, space, type, type ThemeColors } from "../../../theme/tokens";
 import { useThemeStyles } from "../../../theme/useThemeStyles";
 import { useTranslation } from "react-i18next";
@@ -112,7 +112,7 @@ export function FocusHomeScreen() {
             >
               <AppIcon
                 name="chevron-left"
-                color={palette.textPrimary}
+                color={palette.onMedia}
                 size={20}
               />
             </Pressable>
@@ -127,7 +127,7 @@ export function FocusHomeScreen() {
             >
               <AppIcon
                 name="chevron-right"
-                color={palette.textPrimary}
+                color={palette.onMedia}
                 size={20}
               />
             </Pressable>
@@ -212,7 +212,8 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   greetingText: {
     ...type.title2,
-    color: p.textPrimary,
+    // 直接压在皮肤影像上（无面板）：onMedia 固定浅色，两模式不翻转
+    color: p.onMedia,
   },
   // 与问候语（top 24 / left 20）镜像；box-none 只让圆钮接点击，媒体入口不受遮挡
   skinSwitcher: {
@@ -236,7 +237,10 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     right: space.x4,
     height: 196,
     borderRadius: radii.card,
-    backgroundColor: mediaSurface,
+    // 底部结果板是 UI 面板而非媒体层：随主题翻转（暗=night.850 玻璃、亮=暖纸白），
+    // 板内文字用 textPrimary/textSecondary（原先 mediaSurface 固定暗玻璃 +
+    // 主题文字 → 亮色下深字压暗底不可读，3.3 修复）
+    backgroundColor: p.surface,
     borderWidth: 1,
     borderColor: p.borderSoft,
     paddingHorizontal: space.x5,

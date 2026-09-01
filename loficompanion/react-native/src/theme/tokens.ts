@@ -4,6 +4,10 @@ import type { TextStyle } from 'react-native';
  * doc-07 §4.1 颜色原语 —— 十六进制值只允许出现在这里。
  * 值与 docs/07-VISUAL-DESIGN-SYSTEM.md §4.1 表逐项一致。
  */
+/**
+ * 600 档 = 亮色语义加深档：暖纸白底上需更深的琥珀/草绿/珊瑚红才能达到
+ * 图形 3:1 / 文字 4.5:1 对比；暗色板仍用 300/500 档。雾族 600 为亮色次文字。
+ */
 export const primitives = {
   night: {
     950: '#06101C',
@@ -13,15 +17,15 @@ export const primitives = {
     700: '#1B3048',
   },
   rain: { 500: '#4F8FE8', 400: '#6EA6F2', 600: '#3E79C9' },
-  lamp: { 500: '#D7A85F' },
+  lamp: { 500: '#D7A85F', 600: '#B6852F' },
   paper: { 50: '#FAF8F3', 100: '#F3EFE7', 200: '#E7E1D4' },
-  mist: { 300: '#B4BECA', 500: '#7E8A99' },
-  leaf: { 500: '#63BF94' },
-  warning: { 500: '#D6A556' },
-  danger: { 500: '#D66C72' },
+  mist: { 300: '#B4BECA', 500: '#7E8A99', 600: '#5B6472' },
+  leaf: { 500: '#63BF94', 600: '#3F9E74' },
+  warning: { 500: '#D6A556', 600: '#A87F1E' },
+  danger: { 500: '#D66C72', 600: '#C2454E' },
 } as const;
 
-/** doc-07 §4.2 语义映射（暗色） */
+/** doc-07 §4.2 语义映射（暗色）。值须与 docs/07 §4.2 表一致——勿再微调 */
 export const semantic = {
   canvas: primitives.night[900],
   canvasDeep: primitives.night[950],
@@ -36,8 +40,13 @@ export const semantic = {
   actionFocus: primitives.rain[400],
   /** 彩色（主色/危险）实底按钮的前景色——与主色解耦的「其上文字」语义 */
   onAction: '#FFFFFF',
+  /** 媒体/影像之上的文字（悬于皮肤海报或其暗色玻璃上）。主题无关——
+   *  海报永远是深色构图，文字必须固定浅色，两模式相同，不随亮暗翻转 */
+  onMedia: primitives.paper[100],
+  onMediaSecondary: primitives.mist[300],
   achievement: primitives.lamp[500],
   success: primitives.leaf[500],
+  warning: primitives.warning[500],
   danger: primitives.danger[500],
   borderSoft: 'rgba(243,239,231,0.08)',
   borderStandard: 'rgba(243,239,231,0.12)',
@@ -49,29 +58,34 @@ export const semantic = {
 } as const;
 
 /**
- * doc-07 §4.2 语义映射（亮色·暖纸白）：纸面为底、墨色文字，品牌雨蓝不变。
+ * doc-07 §4.2 语义映射（亮色·暖纸白）：明亮暖纸为底、墨色文字、品牌雨蓝不变。
+ * 纸面取「提亮档」字面值（比原语 paper 族更亮——亮色纸感独立色阶）；琥珀/草绿/
+ * 珊瑚红取 600 加深档保证亮底对比；onMedia/onMediaSecondary 与暗色同值（主题无关）。
  * scrimTop/scrimBottom 与暗色一致——它们压在皮肤影像之上，属主题无关层。
  */
 export const semanticLight = {
-  canvas: primitives.paper[100],
-  canvasDeep: primitives.paper[200],
-  surface: primitives.paper[50],
+  canvas: '#F7F2E9',
+  canvasDeep: '#EFE7D8',
+  surface: '#FBF8F2',
   surfaceRaised: '#FFFFFF',
-  surfaceInset: '#E9E3D6',
-  textPrimary: primitives.night[900],
-  textSecondary: primitives.night[700],
+  surfaceInset: '#EFE7D8',
+  textPrimary: '#10161F',
+  textSecondary: primitives.mist[600],
   textMuted: primitives.mist[500],
   actionPrimary: primitives.rain[500],
   actionPressed: primitives.rain[600],
   actionFocus: primitives.rain[400],
   onAction: '#FFFFFF',
-  achievement: primitives.lamp[500],
-  success: primitives.leaf[500],
-  danger: primitives.danger[500],
-  borderSoft: 'rgba(9,21,34,0.10)',
-  borderStandard: 'rgba(9,21,34,0.16)',
+  onMedia: primitives.paper[100],
+  onMediaSecondary: primitives.mist[300],
+  achievement: primitives.lamp[600],
+  success: primitives.leaf[600],
+  warning: primitives.warning[600],
+  danger: primitives.danger[600],
+  borderSoft: 'rgba(16,22,31,0.14)',
+  borderStandard: 'rgba(16,22,31,0.20)',
   borderEmphasis: 'rgba(79,143,232,0.55)',
-  actionDisabled: 'rgba(79,143,232,0.40)',
+  actionDisabled: 'rgba(79,143,232,0.35)',
   scrimTop: 'rgba(6,16,28,0.62)',
   scrimBottom: 'rgba(6,16,28,0.88)',
 } as const;
@@ -105,7 +119,7 @@ function makeLegacy(sem: SemanticColors, softBrand: string, softSuccess: string,
     brandSoft: softBrand,
     success: sem.success,
     successSoft: softSuccess,
-    warning: primitives.warning[500],
+    warning: sem.warning,
     warningSoft: softWarning,
     error: sem.danger,
     info: sem.actionFocus,
@@ -120,8 +134,11 @@ export const colors: Readonly<Record<LegacyKey, string>> =
   makeLegacy(semantic, 'rgba(79,143,232,0.16)', 'rgba(99,191,148,0.16)', 'rgba(214,165,86,0.16)');
 
 /** 亮色旧键调色板（暖纸白） */
-export const lightColors: Readonly<Record<LegacyKey, string>> =
-  makeLegacy(semanticLight, 'rgba(79,143,232,0.12)', 'rgba(99,191,148,0.20)', 'rgba(214,165,86,0.18)');
+export const lightColors: Readonly<Record<LegacyKey, string>> = {
+  ...makeLegacy(semanticLight, 'rgba(79,143,232,0.12)', 'rgba(99,191,148,0.20)', 'rgba(214,165,86,0.18)'),
+  // 亮底信息图标色需加深（rain.500 达 3:1 图形对比），不能用 actionFocus 浅蓝
+  info: primitives.rain[500],
+};
 
 /** 兼容导出：暗色即默认 colors（既有 import darkColors 的消费方不动） */
 export const darkColors = colors;

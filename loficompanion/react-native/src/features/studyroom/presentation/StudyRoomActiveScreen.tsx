@@ -19,7 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
-import { radii, semantic, space, type } from '../../../theme/tokens';
+import { radii, semantic, space, type, type ThemeColors } from '../../../theme/tokens';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { getMusicController } from '../../music/data/expoAudioMusicController';
 import { useMusicLibrary } from '../../music/application/useMusicLibrary';
 import { useFocus } from '../../focus/application/FocusStore';
@@ -50,7 +51,10 @@ export function StudyRoomActiveScreen() {
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation('studyroom');
-  const { locale } = usePreferences();
+  const { locale, palette } = usePreferences();
+  // sheet（快捷设置）是主题化 UI 层：内容令牌走主题（亮色暖纸白面板+暗字）；
+  // 影像 chrome 仍用模块级 semantic 主题无关层
+  const sheetStyles = useThemeStyles(makeSheetStyles);
   // 减少动态是无障碍全局偏好（FocusProvider 注入），房间页与专注页同源
   const { reducedMotion } = useFocus();
   const { muted, setMuted, keepAwake, setKeepAwake } = useFocusQuickPrefs();
@@ -226,22 +230,22 @@ export function StudyRoomActiveScreen() {
               anchor="top"
               topInset={insets.top}
             >
-              <Text style={styles.menuTitle}>{t('quickMenuLabel')}</Text>
+              <Text style={sheetStyles.menuTitle}>{t('quickMenuLabel')}</Text>
               <Pressable
                 accessibilityRole="switch"
                 accessibilityLabel={t('keepAwakeLabel')}
                 accessibilityState={{ checked: keepAwake }}
                 onPress={() => setKeepAwake(!keepAwake)}
-                style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}
+                style={({ pressed }) => [sheetStyles.menuRow, pressed && styles.pressed]}
               >
                 <AppIcon
                   name={keepAwake ? 'sun' : 'moon'}
-                  color={keepAwake ? semantic.actionFocus : semantic.textSecondary}
+                  color={keepAwake ? palette.actionFocus : palette.textSecondary}
                   size={18}
                 />
-                <Text style={styles.menuRowLabel}>{t('keepAwakeLabel')}</Text>
-                <View style={[styles.menuStatePill, keepAwake && styles.menuStatePillOn]}>
-                  <Text style={[styles.menuStateText, keepAwake && styles.menuStateTextOn]}>
+                <Text style={sheetStyles.menuRowLabel}>{t('keepAwakeLabel')}</Text>
+                <View style={[sheetStyles.menuStatePill, keepAwake && sheetStyles.menuStatePillOn]}>
+                  <Text style={[sheetStyles.menuStateText, keepAwake && sheetStyles.menuStateTextOn]}>
                     {keepAwake ? t('onState') : t('offState')}
                   </Text>
                 </View>
@@ -251,16 +255,16 @@ export function StudyRoomActiveScreen() {
                 accessibilityLabel={t('muteLabel')}
                 accessibilityState={{ checked: muted }}
                 onPress={() => setMuted(!muted)}
-                style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}
+                style={({ pressed }) => [sheetStyles.menuRow, pressed && styles.pressed]}
               >
                 <AppIcon
                   name={muted ? 'volume-off' : 'volume-on'}
-                  color={muted ? semantic.actionFocus : semantic.textSecondary}
+                  color={muted ? palette.actionFocus : palette.textSecondary}
                   size={18}
                 />
-                <Text style={styles.menuRowLabel}>{t('muteLabel')}</Text>
-                <View style={[styles.menuStatePill, muted && styles.menuStatePillOn]}>
-                  <Text style={[styles.menuStateText, muted && styles.menuStateTextOn]}>
+                <Text style={sheetStyles.menuRowLabel}>{t('muteLabel')}</Text>
+                <View style={[sheetStyles.menuStatePill, muted && sheetStyles.menuStatePillOn]}>
+                  <Text style={[sheetStyles.menuStateText, muted && sheetStyles.menuStateTextOn]}>
                     {muted ? t('onState') : t('offState')}
                   </Text>
                 </View>
@@ -356,9 +360,21 @@ const styles = StyleSheet.create({
     ...type.caption,
     color: semantic.textSecondary,
   },
+  // 快捷设置二级菜单样式已拆到 makeSheetStyles（主题化 UI 层，随亮暗翻转）
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
+  },
+});
+
+/** 快捷设置 sheet 是 SheetOverlay 的主题化 UI 层：面板与内容令牌都随亮暗翻转
+ *  （亮=暖纸白面板+深字）。原内容用模块级 semantic.* 固定暗值 → 亮色下浅字
+ *  压浅底不可读、暗玻璃行糊在亮面板上（3.3 修复）。影像 chrome（房间名/在线
+ *  数/右上入口）仍属 semantic 主题无关覆盖层。 */
+const makeSheetStyles = (p: ThemeColors) => StyleSheet.create({
   menuTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     textAlign: 'center',
   },
   menuRow: {
@@ -369,18 +385,18 @@ const styles = StyleSheet.create({
     marginTop: space.x2,
     borderRadius: radii.control,
     paddingHorizontal: space.x3,
-    backgroundColor: 'rgba(13,27,43,0.5)',
+    backgroundColor: p.surfaceInset,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
   },
   menuRowLabel: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flex: 1,
   },
   menuStatePill: {
     borderRadius: radii.round,
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceRaised,
     paddingHorizontal: space.x3,
     paddingVertical: 4,
   },
@@ -389,13 +405,9 @@ const styles = StyleSheet.create({
   },
   menuStateText: {
     ...type.micro,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   menuStateTextOn: {
-    color: semantic.success,
-  },
-  pressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.98 }],
+    color: p.success,
   },
 });

@@ -54,12 +54,13 @@ export function PreferencesProvider({ children }: Readonly<{ children: ReactNode
   const locale = currentLanguage();
   const dark = mode === 'dark' || (mode === 'system' && systemScheme === 'dark');
   const textScale = normalizeTextScale(user?.settings.textScale);
-  // 颜色系统由服务端（auth.zhongbei.tech）下发：逐键覆盖内置 tokens；
-  // 联机门禁保证进入 App 前必为服务端值，缺省键兜底内置夜色。
+  // 颜色系统由服务端（auth.zhongbei.tech）下发；联机门禁保证进入 App 前必为
+  // 服务端值。服务端色板是「暗色基线」（auth 服务保存 doc-07 夜景值），只覆盖
+  // 暗色；亮色用内置暖纸白板——否则整套暗值（background #091522 / text #F3EFE7
+  // …）会污染亮底（Phase 3.3 回归）。
   const palette = useMemo<ThemeColors>(
     () => ({
-      ...(dark ? { ...colors, ...semantic } : { ...lightColors, ...semanticLight }),
-      ...config.theme,
+      ...(dark ? { ...colors, ...semantic, ...config.theme } : { ...lightColors, ...semanticLight }),
     }),
     [dark, config.theme],
   );
