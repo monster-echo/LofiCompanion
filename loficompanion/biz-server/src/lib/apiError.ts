@@ -9,6 +9,8 @@ export class ApiError extends Error {
     readonly code: string,
     message: string,
     readonly retryable = false,
+    /** 限速类错误（如弹幕冷却）回给客户端的重试等待秒数；透传进 {error} 信封。 */
+    readonly retryAfterSeconds?: number,
   ) {
     super(message);
   }

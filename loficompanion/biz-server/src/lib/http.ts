@@ -27,7 +27,15 @@ export function handleError(error: unknown) {
   }
   if (error instanceof ApiError) {
     return NextResponse.json({
-      error: { code: error.code, message: error.message, traceId, retryable: error.retryable },
+      error: {
+        code: error.code,
+        message: error.message,
+        traceId,
+        retryable: error.retryable,
+        ...(error.retryAfterSeconds !== undefined
+          ? { retryAfterSeconds: error.retryAfterSeconds }
+          : {}),
+      },
     }, { status: error.status });
   }
   console.error('[biz] unhandled error', traceId, error);
