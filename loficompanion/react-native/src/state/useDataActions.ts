@@ -12,6 +12,7 @@ import {
   UserSettings,
 } from '../domain/models';
 import { MockPaymentProvider } from '../payment/mockPaymentProvider';
+import { i18n } from '../i18n/core';
 import type { PurchaseState } from './AppStore';
 
 type Run = <T>(operation: () => Promise<T>) => Promise<T>;
@@ -99,7 +100,7 @@ export function useDataActions(
         } else {
           setPurchaseState({
             kind: 'error',
-            message: error instanceof Error ? error.message : '购买失败',
+            message: error instanceof Error ? error.message : i18n.t('errors:purchaseFailed'),
           });
         }
         return false;

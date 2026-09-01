@@ -7,6 +7,7 @@ import {
   saveSessionToken,
 } from '../data/storage';
 import { AppUser } from '../domain/models';
+import { i18n } from '../i18n/core';
 
 export type Credentials = Readonly<{
   email: string;
@@ -53,7 +54,7 @@ export function useAccountActions(input: Input) {
             credentials.consentVersion ?? '',
           )
           : apiClient.signIn(credentials.email, credentials.password));
-        await acceptSession(result, create ? '账号创建成功' : '登录成功');
+        await acceptSession(result, create ? i18n.t('errors:signUpSuccess') : i18n.t('errors:signInSuccess'));
         return true;
       } catch {
         return false;
@@ -63,7 +64,7 @@ export function useAccountActions(input: Input) {
       try {
         await input.run(apiClient.signOut);
       } catch {
-        input.showToast('服务端会话暂未撤销，本机凭据已清除', 'error');
+        input.showToast(i18n.t('errors:credentialsCleared'), 'error');
       }
       await clearAuthStorage();
       input.setUser(null);
@@ -73,7 +74,7 @@ export function useAccountActions(input: Input) {
       try {
         await input.run(apiClient.signOutAll);
       } catch {
-        input.showToast('服务端会话暂未撤销，本机凭据已清除', 'error');
+        input.showToast(i18n.t('errors:credentialsCleared'), 'error');
       }
       await clearAuthStorage();
       await clearNonEssentialStorage();
@@ -86,7 +87,7 @@ export function useAccountActions(input: Input) {
       socialSignIn: async (credentials: SocialCredentials) => {
         try {
           const result = await input.run(() => apiClient.socialSignIn(credentials));
-          await acceptSession(result, '登录成功');
+          await acceptSession(result, i18n.t('errors:signInSuccess'));
           return true;
         } catch { return false; }
       },
@@ -99,7 +100,7 @@ export function useAccountActions(input: Input) {
       verifyPhoneCode: async (phone: string, code: string) => {
         try {
           const result = await input.run(() => apiClient.verifyPhoneCode(phone, code));
-          await acceptSession(result, '手机号登录成功');
+          await acceptSession(result, i18n.t('errors:phoneSignInSuccess'));
           return true;
         } catch { return false; }
       },

@@ -19,6 +19,7 @@ import {
 import { parseOrderStatus, type CreateOrderResult, type MembershipCurrent } from '../payment/paymentModels';
 import { getPlatformHeader } from './runtimePlatform';
 import { currentLanguage } from '../i18n/core';
+import type { errors as errorStrings } from '../i18n/locales/zh-CN/errors';
 
 type Envelope<T> = Readonly<{ data: T }>;
 type ErrorPayload = Readonly<{
@@ -49,6 +50,8 @@ export class ApiClientError extends Error {
     readonly retryable: boolean,
     readonly retryAfterSeconds?: number,
     readonly fieldErrors?: Readonly<Record<string, readonly string[]>>,
+    /** 客户端合成消息的 i18n 键（errors 命名空间）；服务端原样消息不设此键 */
+    readonly messageKey?: keyof typeof errorStrings,
   ) {
     super(message);
   }
@@ -572,11 +575,13 @@ async function sendRequest<T>(
   }
   const body = await parseResponse<T>(response);
   if (!response.ok || 'error' in body) {
-    const error: ErrorPayload = 'error' in body ? body.error : {
+    // 非 error 信封（裸 HTTP 错误）时客户端合成消息，带 messageKey 供 UI 本地化
+    const error: ErrorPayload & { messageKey?: keyof typeof errorStrings } = 'error' in body ? body.error : {
       code: 'HTTP_ERROR',
       message: response.status >= 500 ? '服务暂时不可用，请稍后重试' : '服务请求失败',
       retryable: response.status >= 500,
       traceId: 'local',
+      messageKey: response.status >= 500 ? 'serverUnavailable' : 'requestFailed',
     };
     // 401 仅在「已登录会话失效」时触发过期回调；auth 端点（登录/注册/验证码
     // 等）的 401 是凭证错误，走表单内联错误展示，不能切页/清输入。
@@ -590,6 +595,7 @@ async function sendRequest<T>(
       error.retryable,
       error.retryAfterSeconds,
       error.fieldErrors,
+      'messageKey' in error ? error.messageKey : undefined,
     );
   }
   return body.data;
@@ -640,7 +646,7 @@ async function parseResponse<T>(response: Response): Promise<Envelope<T> | Error
     return JSON.parse(text) as Envelope<T> | ErrorEnvelope;
   } catch {
     if (response.status >= 500) throw serviceUnavailableError(response.status);
-    throw new ApiClientError('INVALID_RESPONSE', '服务返回了无法识别的数据', response.status, false);
+    throw new ApiClientError('INVALID_RESPONSE', '服务返回了无法识别的数据', response.status, false, undefined, undefined, 'badResponse');
   }
 }
 
@@ -650,6 +656,9 @@ function serviceUnavailableError(status = 0) {
     '无法连接服务器，请检查网络后重试',
     status,
     true,
+    undefined,
+    undefined,
+    'networkUnreachable',
   );
 }
 

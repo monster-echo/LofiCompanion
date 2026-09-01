@@ -16,6 +16,7 @@ import {
 import { AppRoute } from '../navigation/routes';
 import { EntrySource } from '../navigation/useEntryIntents';
 import { guardRoute } from '../navigation/routeGuards';
+import { i18n } from '../i18n/core';
 import { telemetry } from '../telemetry/Telemetry';
 import { defaultProviderPolicy, defaultProviders } from '../auth/authDefaults';
 import { DataActions, useDataActions } from './useDataActions';
@@ -164,7 +165,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
       return result;
     } catch (error) {
       if (!(error instanceof ApiClientError)) setOnline(false);
-      const message = error instanceof Error ? error.message : '操作失败';
+      const message = error instanceof Error ? error.message : i18n.t('errors:operationFailed');
       // 用户可见错误必须进遥测（app_error）——catch 分支不上报则线上查不到。
       telemetry.report(error instanceof Error ? error : new Error(message));
       setLastAuthError(message);
@@ -180,7 +181,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   ) => {
     const decision = guardRoute(route, { signedIn: user !== null, features: config.features });
     if (decision.pending) setPendingRoute(decision.pending);
-    if (decision.unavailable) feedback.showToast('当前 App 未启用此功能', 'info');
+    if (decision.unavailable) feedback.showToast(i18n.t('errors:featureDisabled'), 'info');
     navigateRoute(decision.route, params);
   }, [config.features, feedback, user]);
   const replace = useCallback((route: AppRoute) => {
@@ -201,7 +202,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     if (decision.pending) setPendingRoute(decision.pending);
     if (!navigationRef.isReady()) return;
     if (decision.unavailable) {
-      feedback.showToast('目标内容不可用，已返回首页', 'info');
+      feedback.showToast(i18n.t('errors:contentUnavailable'), 'info');
       resetToRoutes(['home']);
       return;
     }

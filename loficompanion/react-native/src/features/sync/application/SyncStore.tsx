@@ -4,6 +4,7 @@ import React, {
 import { AppState } from 'react-native';
 import { apiClient } from '../../../data/apiClient';
 import { useApp } from '../../../state/AppStore';
+import { i18n } from '../../../i18n/core';
 import {
   afterMigrationSuccess, afterOffline, afterSyncFailure,
   initialSyncState, shouldMigrate, toMigrationPayload,
@@ -69,7 +70,7 @@ export function SyncProvider(props: { children: React.ReactNode }) {
         setState((prev) => ({ ...prev, status: 'synced' }));
       }
     } catch (error) {
-      setState((prev) => afterSyncFailure(prev, error instanceof Error ? error.message : '同步失败'));
+      setState((prev) => afterSyncFailure(prev, error instanceof Error ? error.message : i18n.t('errors:syncFailed')));
     }
   }, [user]);
 

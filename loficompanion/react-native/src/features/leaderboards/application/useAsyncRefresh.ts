@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiClientError } from '../../../data/apiClient';
+import { i18n } from '../../../i18n/core';
 
 export type LoadState<T> =
   | Readonly<{ status: 'loading' }>
@@ -8,7 +9,10 @@ export type LoadState<T> =
 
 export function errorMessageOf(error: unknown): { message: string; code: string | null } {
   if (error instanceof ApiClientError) return { message: error.message, code: error.code };
-  return { message: error instanceof Error ? error.message : '加载失败', code: null };
+  if (error instanceof ApiClientError && error.messageKey) {
+    return { message: i18n.t(`errors:${error.messageKey}`), code: error.code };
+  }
+  return { message: error instanceof Error ? error.message : i18n.t('errors:loadFailed'), code: null };
 }
 
 /**

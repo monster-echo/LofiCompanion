@@ -1,0 +1,17 @@
+// 错误/提示域文案（zh-CN 为权威源；状态/数据层 toast 与客户端合成错误）。
+export const errors = {
+  operationFailed: '操作失败',
+  featureDisabled: '当前 App 未启用此功能',
+  contentUnavailable: '目标内容不可用，已返回首页',
+  signInSuccess: '登录成功',
+  signUpSuccess: '账号创建成功',
+  phoneSignInSuccess: '手机号登录成功',
+  credentialsCleared: '服务端会话暂未撤销，本机凭据已清除',
+  purchaseFailed: '购买失败',
+  syncFailed: '同步失败',
+  loadFailed: '加载失败',
+  serverUnavailable: '服务暂时不可用，请稍后重试',
+  requestFailed: '服务请求失败',
+  badResponse: '服务返回了无法识别的数据',
+  networkUnreachable: '无法连接服务器，请检查网络后重试',
+} as const;
