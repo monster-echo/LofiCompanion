@@ -9,7 +9,7 @@ import { ACHIEVEMENT_DEFS } from '../../achievements/domain/rules';
 import { effectiveSeconds as computeEffective } from '../domain/engine';
 import { useFocus } from '../application/FocusStore';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
-import { FOCUS_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 
 /**
  * S06 完成结算（doc-08 §7）。完成态媒体占顶部约 56%；结果 sheet 从约 47%
@@ -18,6 +18,8 @@ import { FOCUS_STRINGS as STR } from './strings';
  */
 export function FocusCompleteScreen() {
   const focus = useFocus();
+  const { t } = useTranslation('focus');
+  const { t: tAchievements } = useTranslation('achievements');
   const { replace } = useApp();
   const insets = useSafeAreaInsets();
   // 仅按「挂载时」判定深导航：后续 acknowledge 不触发已入栈的旧实例跳转
@@ -52,7 +54,7 @@ export function FocusCompleteScreen() {
         reducedMotion={focus.reducedMotion}
         style={styles.media}
       />
-      <Text style={styles.title}>{STR.completeTitle}</Text>
+      <Text style={styles.title}>{t('completeTitle')}</Text>
 
       <StudyResultSheet
         visible
@@ -64,10 +66,12 @@ export function FocusCompleteScreen() {
         weekMinutes={completion.weekMinutes}
         weekTarget={focus.week.targetMinutes}
         newAchievement={
-          grantDef ? { name: grantDef.name, rewardItemId: grantDef.rewardItemId } : undefined
+          grantDef
+            ? { name: tAchievements(`rule.${grantDef.ruleKey}.name`), rewardItemId: grantDef.rewardItemId }
+            : undefined
         }
-        primaryAction={{ label: STR.againAction, onPress: again }}
-        secondaryAction={{ label: STR.finishToday, onPress: finishToday }}
+        primaryAction={{ label: t('againAction'), onPress: again }}
+        secondaryAction={{ label: t('finishToday'), onPress: finishToday }}
         reducedMotion={focus.reducedMotion}
         // Modal 不继承外层 SafeAreaView：CTA 需要 安全区 + 12
         bottomInset={insets.bottom}

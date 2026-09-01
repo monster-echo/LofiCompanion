@@ -5,7 +5,7 @@ import { useApp } from '../../../state/AppStore';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import { useStudyRoom, useStudyRoomState } from '../application/StudyRoomStore';
 import { DANMAKU_MAX_CHARS_CLIENT } from '../domain/validate';
-import { STUDY_ROOM_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 
 /**
  * 弹幕输入条：访客整条显示「登录后加入弹幕」（点击走 auth.signIn，
@@ -20,6 +20,7 @@ export function DanmakuInputBar({
   const controller = useStudyRoom();
   const state = useStudyRoomState();
   const { signedIn, navigate } = useApp();
+  const { t } = useTranslation('studyroom');
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState('');
   const [remainingSeconds, setRemainingSeconds] = useState(0);
@@ -62,16 +63,16 @@ export function DanmakuInputBar({
             style={styles.input}
             value={draft}
             onChangeText={setDraft}
-            placeholder={STR.inputPlaceholder}
+            placeholder={t('inputPlaceholder')}
             placeholderTextColor={semantic.textMuted}
             maxLength={DANMAKU_MAX_CHARS_CLIENT}
             returnKeyType="send"
             onSubmitEditing={send}
-            accessibilityLabel={STR.inputPlaceholder}
+            accessibilityLabel={t('inputPlaceholder')}
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.send}
+            accessibilityLabel={t('send')}
             onPress={send}
             disabled={remainingSeconds > 0 || draft.trim().length === 0}
             style={({ pressed }) => [
@@ -81,18 +82,18 @@ export function DanmakuInputBar({
             ]}
           >
             <Text style={styles.sendText}>
-              {remainingSeconds > 0 ? `${remainingSeconds}s` : STR.send}
+              {remainingSeconds > 0 ? `${remainingSeconds}s` : t('send')}
             </Text>
           </Pressable>
         </View>
       ) : (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.signInToChat}
+          accessibilityLabel={t('signInToChat')}
           onPress={() => navigate('auth.signIn')}
           style={({ pressed }) => [styles.guestBar, pressed && styles.pressed]}
         >
-          <Text style={styles.guestText}>{STR.signInToChat}</Text>
+          <Text style={styles.guestText}>{t('signInToChat')}</Text>
         </Pressable>
       )}
     </Animated.View>

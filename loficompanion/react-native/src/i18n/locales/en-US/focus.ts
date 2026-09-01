@@ -1,0 +1,60 @@
+// 专注域文案（en-US）。语气规范 doc-08 §22：温和具体、无负担性语言。
+export const focus = {
+  // S02 今日首页
+  greeting: 'Study with me tonight?',
+  boardEmpty: 'Start your first session to set up your room',
+  startFocus: 'Start focusing',
+  backToFocus: 'Back to focus',
+  todayMinutes: '{{n}} minutes today',
+  doneSessions: '{{n}} sessions done',
+  chooseActivity: 'Choose activity & length',
+  // S03 创建 sheet
+  setupTitle: 'What will you work on?',
+  customLabel: 'Custom',
+  customUnit: 'min',
+  customPlaceholder: '5–180',
+  customError: 'Enter a whole number of minutes between 5 and 180',
+  beginFocus: 'Start focusing',
+  invalidSession: "That activity or length doesn't look right — adjust and try again",
+  sessionRunning: 'A session is already running',
+  musicLabel: 'Background music',
+  musicGuestHint: 'Sign in to unlock the full playlist',
+  nowPlaying: 'Now playing {{title}}',
+  // S04 专注中
+  quickMenuLabel: 'Quick settings',
+  keepAwakeLabel: 'Keep screen awake',
+  muteLabel: 'Mute',
+  onState: 'On',
+  offState: 'Off',
+  paused: 'Paused',
+  pauseAction: 'Pause',
+  resumeAction: 'Resume',
+  endAction: 'End',
+  endConfirmTitle: 'End this session early?',
+  endConfirmStay: 'Keep going a little longer',
+  endConfirmLeave: 'End session',
+  endConfirmKept: "The {{n}} minutes you focused are saved — the rest won't count.",
+  endConfirmKeptZero: "This session is under a minute, so it won't be counted.",
+  keptMinutes: '{{n}} minutes saved',
+  keptNothing: "Session ended — under a minute, so it wasn't counted",
+  // S06 完成结算
+  completeTitle: 'Session complete',
+  againAction: 'Another session',
+  finishToday: 'Finish for today',
+  // 活动类型 → 展示名
+  activity: {
+    homework: 'Homework',
+    reading: 'Reading',
+    coding: 'Coding',
+    vocab: 'Vocabulary',
+    free: 'Free focus',
+  },
+  // 活动类型 → 专注中陪伴状态
+  status: {
+    homework: 'Homework time',
+    reading: 'Reading time',
+    coding: 'Coding time',
+    vocab: 'Vocab time',
+    free: 'Focus time',
+  },
+} as const;

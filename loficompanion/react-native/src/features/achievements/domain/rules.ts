@@ -18,8 +18,8 @@ export interface CompletedSession {
 
 export interface AchievementDef {
   ruleKey: AchievementRuleKey;
-  name: string;
-  description: string;
+  // 名称/描述文案在 i18n 资源（locales/*/achievements.ts 的 rule 段），
+  // presentation 以 `rule.${ruleKey}.name|description` 取用——domain 不携带 UI 文案
   rewardItemId: RoomItemId;
   ruleVersion: 1;
 }
@@ -36,29 +36,21 @@ const DAY_MS = 86_400_000;
 export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
   {
     ruleKey: 'first_focus',
-    name: '第一次专注',
-    description: '完成第一次专注',
     rewardItemId: 'bookmark',
     ruleVersion: 1,
   },
   {
     ruleKey: 'streak_7',
-    name: '连续七天',
-    description: '连续 7 天每天至少完成一次专注',
     rewardItemId: 'lamp',
     ruleVersion: 1,
   },
   {
     ruleKey: 'rainy_10h',
-    name: '雨夜十小时',
-    description: '累计有效专注满 10 小时',
     rewardItemId: 'plant',
     ruleVersion: 1,
   },
   {
     ruleKey: 'sessions_100',
-    name: '百轮学习',
-    description: '累计完成 100 次专注',
     rewardItemId: 'group_photo',
     ruleVersion: 1,
   },

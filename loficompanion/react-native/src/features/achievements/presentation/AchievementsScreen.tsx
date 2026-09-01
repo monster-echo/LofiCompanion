@@ -14,7 +14,7 @@ import {
   streakDays,
   totalEffectiveSeconds,
 } from '../domain/insights';
-import { ACHIEVEMENT_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 
 /**
@@ -25,6 +25,7 @@ import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSu
  */
 export function AchievementsScreen() {
   const focus = useFocus();
+  const { t } = useTranslation('achievements');
   const { navigate, replace } = useApp();
   const insets = useSafeAreaInsets();
 
@@ -34,10 +35,10 @@ export function AchievementsScreen() {
   const empty = entries.length === 0;
 
   const metrics: readonly { label: string; value: string; unit: string }[] = [
-    { label: STR.metricTotal, value: formatHours(totalEffectiveSeconds(entries)), unit: STR.unitHours },
-    { label: STR.metricRounds, value: String(entries.length), unit: STR.unitRounds },
-    { label: STR.metricStreak, value: String(streakDays(entries, now)), unit: STR.unitDays },
-    { label: STR.metricWeek, value: String(focus.week.minutes), unit: STR.unitMinutes },
+    { label: t('metricTotal'), value: formatHours(totalEffectiveSeconds(entries)), unit: t('unitHours') },
+    { label: t('metricRounds'), value: String(entries.length), unit: t('unitRounds') },
+    { label: t('metricStreak'), value: String(streakDays(entries, now)), unit: t('unitDays') },
+    { label: t('metricWeek'), value: String(focus.week.minutes), unit: t('unitMinutes') },
   ];
 
   return (
@@ -78,12 +79,12 @@ export function AchievementsScreen() {
 
             {/* S07 → S08/S09 入口行 */}
             <View style={styles.links}>
-              <LinkRow label={STR.historyLink} icon="check-circle" onPress={() => navigate('history.week')} />
-              <LinkRow label={STR.roomLink} icon="home" onPress={() => navigate('room.home')} />
+              <LinkRow label={t('historyLink')} icon="check-circle" onPress={() => navigate('history.week')} />
+              <LinkRow label={t('roomLink')} icon="home" onPress={() => navigate('room.home')} />
             </View>
 
             {/* 我的成就：2 列网格覆盖全部 4 条定义，解锁 = granted 含 ruleKey */}
-            <Text style={styles.sectionTitle}>{STR.myAchievements}</Text>
+            <Text style={styles.sectionTitle}>{t('myAchievements')}</Text>
             <View style={styles.grid}>
               {ACHIEVEMENT_DEFS.map((def) => {
                 const unlockedAt = grantedAt.get(def.ruleKey);
@@ -91,6 +92,8 @@ export function AchievementsScreen() {
                   <View key={def.ruleKey} style={styles.gridCell}>
                     <AchievementTile
                       def={def}
+                      name={t(`rule.${def.ruleKey}.name`)}
+                      description={t(`rule.${def.ruleKey}.description`)}
                       unlocked={unlockedAt !== undefined}
                       unlockedAt={unlockedAt}
                     />
@@ -116,6 +119,7 @@ function EmptyState({
   reducedMotion: boolean;
   onStart: () => void;
 }>) {
+  const { t } = useTranslation('achievements');
   const firstDef = ACHIEVEMENT_DEFS[0];
   return (
     <View style={styles.empty}>
@@ -126,17 +130,17 @@ function EmptyState({
           reducedMotion={reducedMotion}
           style={StyleSheet.absoluteFill}
         />
-        <Text style={styles.emptyMediaCaption}>{`${STR.emptyRoomCaption} · ${manifest.name}`}</Text>
+        <Text style={styles.emptyMediaCaption}>{`${t('emptyRoomCaption')} · ${manifest.name}`}</Text>
       </View>
-      <Text style={styles.emptyHint}>{STR.emptyHint}</Text>
-      <Text style={styles.emptyCondition}>{`${firstDef.name} · ${firstDef.description}`}</Text>
+      <Text style={styles.emptyHint}>{t('emptyHint')}</Text>
+      <Text style={styles.emptyCondition}>{`${t(`rule.${firstDef.ruleKey}.name`)} · ${t(`rule.${firstDef.ruleKey}.description`)}`}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={STR.startFirstRound}
+        accessibilityLabel={t('startFirstRound')}
         onPress={onStart}
         style={({ pressed }) => [styles.emptyCta, pressed && styles.pressed]}
       >
-        <Text style={styles.emptyCtaText}>{STR.startFirstRound}</Text>
+        <Text style={styles.emptyCtaText}>{t('startFirstRound')}</Text>
       </Pressable>
     </View>
   );

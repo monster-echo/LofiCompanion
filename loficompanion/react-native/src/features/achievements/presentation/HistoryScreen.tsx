@@ -5,14 +5,13 @@ import { WeeklyProgressCard } from '../../../design-system/WeeklyProgressCard';
 import { useApp } from '../../../state/AppStore';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
-import { ACTIVITY_LABELS } from '../../focus/presentation/strings';
+import { useTranslation } from 'react-i18next';
 import {
   completedEntries,
   entryMinutes,
   weekActivityMinutes,
   weekDayMinutes,
 } from '../domain/insights';
-import { ACHIEVEMENT_STRINGS as STR } from './strings';
 
 /**
  * S08 学习记录（doc-08 §9）。Push 页：首卡本周专注 + 七日柱图（缺失日为 0），
@@ -21,6 +20,8 @@ import { ACHIEVEMENT_STRINGS as STR } from './strings';
  */
 export function HistoryScreen() {
   const focus = useFocus();
+  const { t } = useTranslation('achievements');
+  const { t: tFocus } = useTranslation('focus');
   const { back, navigate } = useApp();
 
   const entries = completedEntries(focus.history);
@@ -34,15 +35,15 @@ export function HistoryScreen() {
       <View style={styles.screen}>
         <Header onBack={back} />
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>{STR.historyEmpty}</Text>
-          <Text style={styles.emptyHint}>{STR.historyEmptyHint}</Text>
+          <Text style={styles.emptyTitle}>{t('historyEmpty')}</Text>
+          <Text style={styles.emptyHint}>{t('historyEmptyHint')}</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.startFirstRound}
+            accessibilityLabel={t('startFirstRound')}
             onPress={() => navigate('home')}
             style={({ pressed }) => [styles.emptyCta, pressed && styles.pressed]}
           >
-            <Text style={styles.emptyCtaText}>{STR.startFirstRound}</Text>
+            <Text style={styles.emptyCtaText}>{t('startFirstRound')}</Text>
           </Pressable>
         </View>
       </View>
@@ -65,11 +66,11 @@ export function HistoryScreen() {
 
         {/* 科目分布：行高 36，标签 48 宽 + 弹性条 + 右对齐分钟 */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>{STR.activityBreakdown}</Text>
+          <Text style={styles.cardTitle}>{t('activityBreakdown')}</Text>
           {slices.map((slice, index) => (
             <View key={slice.activity} style={styles.sliceRow}>
               <Text style={styles.sliceLabel} numberOfLines={1}>
-                {ACTIVITY_LABELS[slice.activity]}
+                {tFocus(`activity.${slice.activity}`)}
               </Text>
               <View style={styles.sliceTrack}>
                 <View
@@ -83,14 +84,14 @@ export function HistoryScreen() {
                   ]}
                 />
               </View>
-              <Text style={styles.sliceValue}>{STR.minutesValue(slice.minutes)}</Text>
+              <Text style={styles.sliceValue}>{t('minutesValue', { n: slice.minutes })}</Text>
             </View>
           ))}
         </View>
 
         {/* 学习记录时间线：行高 ≥52，日期 52 宽，任务名最多两行，分钟右对齐 */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>{STR.timelineTitle}</Text>
+          <Text style={styles.cardTitle}>{t('timelineTitle')}</Text>
           {entries.map((entry, index) => (
             <View
               key={entry.id}
@@ -98,9 +99,9 @@ export function HistoryScreen() {
             >
               <Text style={styles.timelineDate}>{formatDay(entry.completedAtUtc)}</Text>
               <Text style={styles.timelineActivity} numberOfLines={2}>
-                {ACTIVITY_LABELS[entry.activity]}
+                {tFocus(`activity.${entry.activity}`)}
               </Text>
-              <Text style={styles.timelineMinutes}>{STR.timelineMinutes(entryMinutes(entry))}</Text>
+              <Text style={styles.timelineMinutes}>{t('timelineMinutes', { n: entryMinutes(entry) })}</Text>
             </View>
           ))}
         </View>
@@ -111,19 +112,20 @@ export function HistoryScreen() {
 
 /** App bar 56：左返回 44×44，标题居中，右 88×40 周期选择器（P0-A 展示位） */
 function Header({ onBack }: Readonly<{ onBack: () => void }>) {
+  const { t } = useTranslation('achievements');
   return (
     <View style={styles.header}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={STR.backLabel}
+        accessibilityLabel={t('backLabel')}
         onPress={onBack}
         style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
       >
         <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
       </Pressable>
-      <Text style={styles.headerTitle}>{STR.historyTitle}</Text>
+      <Text style={styles.headerTitle}>{t('historyTitle')}</Text>
       <View style={styles.periodChip}>
-        <Text style={styles.periodChipText}>{STR.periodThisWeek}</Text>
+        <Text style={styles.periodChipText}>{t('periodThisWeek')}</Text>
         <AppIcon name="chevron-down" color={semantic.textMuted} size={16} />
       </View>
     </View>

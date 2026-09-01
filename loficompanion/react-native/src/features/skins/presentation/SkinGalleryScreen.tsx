@@ -19,10 +19,9 @@ import { useApp } from '../../../state/AppStore';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
 import { formatPrice } from '../../store/domain/storeCatalog';
-import { STORE_STRINGS as STORE } from '../../store/presentation/strings';
 import { findSkinManifestByIdOrSlug } from '../domain/registry';
 import type { SkinManifest } from '../domain/types';
-import { SKIN_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 
 /**
  * S01 陪伴皮肤选择（doc-08 §2）。本屏唯一焦点：被选中的大幅皮肤预览。
@@ -34,6 +33,8 @@ import { SKIN_STRINGS as STR } from './strings';
 export function SkinGalleryScreen() {
   const focus = useFocus();
   const { back, navigate } = useApp();
+  const { t } = useTranslation('skins');
+  const { t: tStore } = useTranslation('store');
   const { width: windowWidth } = useWindowDimensions();
   // 358 基准宽；窄屏由调用方收窄，几何比例不变（doc-07 §3）
   const cardWidth = Math.min(SKIN_PREVIEW_CARD_WIDTH, windowWidth - space.x4 * 2);
@@ -78,11 +79,11 @@ export function SkinGalleryScreen() {
     back();
   };
   const ctaLabel =
-    selectedManifest && !selectedOwned ? STR.unlockCta : STR.applySkin;
+    selectedManifest && !selectedOwned ? t('unlockCta') : t('applySkin');
 
   const trailingLabelOf = (manifest: SkinManifest): string | undefined => {
     if (isOwned(manifest)) return undefined;
-    if (manifest.accessType === 'premium') return STR.plusBadge;
+    if (manifest.accessType === 'premium') return t('plusBadge');
     const product = productsBySlug[manifest.slug];
     if (!product) return undefined; // 目录不可达：不显示胶囊，更不虚构价格
     return formatPrice(product.priceMinor, product.currency);
@@ -100,7 +101,7 @@ export function SkinGalleryScreen() {
         >
           <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
         </Pressable>
-        <Text style={styles.headerTitle}>{STR.galleryTitle}</Text>
+        <Text style={styles.headerTitle}>{t('galleryTitle')}</Text>
       </View>
 
       <ScrollView
@@ -118,22 +119,20 @@ export function SkinGalleryScreen() {
           />
         ))}
         <Text style={styles.countCaption}>
-          {STR.freeCount(
-            focus.skins.filter((manifest) => manifest.accessType === 'free').length,
-          )}
+          {t('freeCount', { n: focus.skins.filter((manifest) => manifest.accessType === 'free').length })}
         </Text>
 
         {/* 更多皮肤商店入口（P1-A S14）：轻量插入行，不改既有选择流程 */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STORE.storeEntry}
+          accessibilityLabel={tStore('storeEntry')}
           onPress={() => navigate('store.home')}
           style={({ pressed }) => [styles.storeEntry, pressed && styles.pressed]}
         >
           <AppIcon name="palette" color={semantic.actionFocus} size={20} />
           <View style={styles.storeEntryTexts}>
-            <Text style={styles.storeEntryTitle}>{STORE.storeEntry}</Text>
-            <Text style={styles.storeEntryHint}>{STORE.storeEntryHint}</Text>
+            <Text style={styles.storeEntryTitle}>{tStore('storeEntry')}</Text>
+            <Text style={styles.storeEntryHint}>{tStore('storeEntryHint')}</Text>
           </View>
           <AppIcon name="chevron-right" color={semantic.textMuted} size={18} />
         </Pressable>

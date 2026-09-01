@@ -11,7 +11,7 @@ import { useFocus } from '../../focus/application/FocusStore';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { useAsyncRefresh } from '../application/useAsyncRefresh';
 import { previousWeekStartMs, weekIdOf } from '../domain/model';
-import { LEADERBOARD_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 
 /**
  * S13 周结算（doc-08 §14）：完成房间媒体占顶部 58%（completed 态）；结果
@@ -20,6 +20,7 @@ import { LEADERBOARD_STRINGS as STR } from './strings';
  * 「下周继续」。名次只陈述结果，不使用羞耻文案（doc-08 §22）。
  */
 export function WeeklySettlementScreen() {
+  const { t } = useTranslation('leaderboards');
   const { params } = useRoute<RouteProp<RootParamList, 'weekly.settlement'>>();
   const groupId = params?.groupId ?? '';
   const { user, navigate, back } = useApp();
@@ -28,7 +29,7 @@ export function WeeklySettlementScreen() {
   // 周结算查上一周：周末后首次查询惰性生成不可变快照（服务端保证幂等）
   const weekId = weekIdOf(previousWeekStartMs(Date.now()));
   const loaded = useAsyncRefresh(async () => {
-    if (!groupId) throw new Error(STR.groupUnavailable);
+    if (!groupId) throw new Error(t('groupUnavailable'));
     return await apiClient.groupLeaderboard(groupId, weekId);
   }, [groupId, weekId]);
 
@@ -52,7 +53,7 @@ export function WeeklySettlementScreen() {
         />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.backLabel}
+          accessibilityLabel={t('backLabel')}
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
@@ -69,37 +70,37 @@ export function WeeklySettlementScreen() {
             <Text style={styles.pendingText}>{loaded.state.message}</Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={STR.retryAction}
+              accessibilityLabel={t('retryAction')}
               onPress={loaded.reload}
               style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}
             >
-              <Text style={styles.secondaryCtaText}>{STR.retryAction}</Text>
+              <Text style={styles.secondaryCtaText}>{t('retryAction')}</Text>
             </Pressable>
           </>
         ) : !settled ? (
-          <Text style={styles.pendingText}>{STR.settlementPending}</Text>
+          <Text style={styles.pendingText}>{t('settlementPending')}</Text>
         ) : (
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetContent}>
             <View style={styles.sheetHead}>
-              <Text style={styles.sheetTitle}>{STR.settlementTitle}</Text>
+              <Text style={styles.sheetTitle}>{t('settlementTitle')}</Text>
               <Text style={styles.sheetWeek}>{weekId}</Text>
             </View>
 
             <View style={styles.resultRow}>
-              <Text style={styles.resultLabel}>{STR.settlementRankLabel}</Text>
+              <Text style={styles.resultLabel}>{t('settlementRankLabel')}</Text>
               <Text style={styles.resultValue}>
-                {STR.settlementRankValue(me?.rank ?? view?.rankings.length ?? 0)}
+                {t('settlementRankValue', { rank: me?.rank ?? view?.rankings.length ?? 0 })}
               </Text>
             </View>
             <View style={styles.resultRow}>
-              <Text style={styles.resultLabel}>{STR.settlementTogether}</Text>
+              <Text style={styles.resultLabel}>{t('settlementTogether')}</Text>
               <Text style={styles.resultValue}>
-                {STR.settlementTogetherValue(totalMinutes)}
+                {t('settlementTogetherValue', { minutes: totalMinutes })}
               </Text>
             </View>
             <View style={styles.resultRow}>
               <Text style={styles.resultLabel}>
-                {view ? STR.settlementGoal(view.weeklyGoalMinutes) : ''}
+                {view ? t('settlementGoal', { goal: view.weeklyGoalMinutes }) : ''}
               </Text>
               <Text
                 style={[
@@ -107,14 +108,14 @@ export function WeeklySettlementScreen() {
                   { color: view?.goalMet ? semantic.success : semantic.textPrimary },
                 ]}
               >
-                {view?.goalMet ? STR.settlementGoalMet : STR.settlementGoalRemain(remainMinutes)}
+                {view?.goalMet ? t('settlementGoalMet') : t('settlementGoalRemain', { minutes: remainMinutes })}
               </Text>
             </View>
 
             {view?.goalMet ? (
               <View style={styles.rewardRow}>
                 <AppIcon name="group" color={semantic.achievement} size={20} />
-                <Text style={styles.rewardText} numberOfLines={1}>{STR.settlementReward}</Text>
+                <Text style={styles.rewardText} numberOfLines={1}>{t('settlementReward')}</Text>
               </View>
             ) : null}
           </ScrollView>
@@ -124,19 +125,19 @@ export function WeeklySettlementScreen() {
         <View style={styles.ctaArea}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.settlementViewRoom}
+            accessibilityLabel={t('settlementViewRoom')}
             onPress={() => navigate('room.home')}
             style={({ pressed }) => [styles.primaryCta, pressed && styles.pressed]}
           >
-            <Text style={styles.primaryCtaText}>{STR.settlementViewRoom}</Text>
+            <Text style={styles.primaryCtaText}>{t('settlementViewRoom')}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.settlementNextWeek}
+            accessibilityLabel={t('settlementNextWeek')}
             onPress={back}
             style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}
           >
-            <Text style={styles.secondaryCtaText}>{STR.settlementNextWeek}</Text>
+            <Text style={styles.secondaryCtaText}>{t('settlementNextWeek')}</Text>
           </Pressable>
         </View>
       </View>

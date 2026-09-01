@@ -14,7 +14,7 @@ import {
   validateSessionInput,
 } from '../domain/validate';
 import { SheetOverlay } from './SheetOverlay';
-import { ACTIVITY_OPTIONS, FOCUS_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 
 /**
  * S03 创建专注（doc-08 §4）。本屏唯一焦点：这一次要做什么。
@@ -23,6 +23,7 @@ import { ACTIVITY_OPTIONS, FOCUS_STRINGS as STR } from './strings';
  */
 export function FocusSetupSheet() {
   const focus = useFocus();
+  const { t } = useTranslation('focus');
   const { back, showToast, signedIn } = useApp();
   const music = useMusicLibrary(signedIn);
   const [activity, setActivity] = useState<ActivityType>(DEFAULT_ACTIVITY);
@@ -41,7 +42,7 @@ export function FocusSetupSheet() {
     }
     const parsed = Number.parseInt(trimmed, 10);
     if (validateCustomDuration(parsed) === null) {
-      setFormError(STR.customError);
+      setFormError(t('customError'));
       return;
     }
     setMinutes(parsed);
@@ -55,7 +56,7 @@ export function FocusSetupSheet() {
 
   const begin = () => {
     if (!validateSessionInput(activity, minutes)) {
-      setFormError(STR.customError);
+      setFormError(t('customError'));
       return;
     }
     const result = focus.actions.startSession(activity, minutes, Date.now());
@@ -64,34 +65,34 @@ export function FocusSetupSheet() {
       return;
     }
     if (result.reason === 'alreadyActive') {
-      showToast(STR.sessionRunning, 'info');
+      showToast(t('sessionRunning'), 'info');
       replaceRoute('focus.active');
       return;
     }
-    setFormError(STR.invalidSession);
+    setFormError(t('invalidSession'));
   };
 
   return (
     <SheetOverlay onClose={back} closeLabel="关闭" reducedMotion={focus.reducedMotion}>
-      <Text style={styles.title}>{STR.setupTitle}</Text>
+      <Text style={styles.title}>{t('setupTitle')}</Text>
 
       {/* 活动单选：两行内排列 */}
       <View style={styles.chipWrap}>
-        {ACTIVITY_OPTIONS.map((option) => {
-          const selected = activity === option.type;
+        {(['homework', 'reading', 'coding', 'vocab', 'free'] as const).map((option) => {
+          const selected = activity === option;
           return (
             <Pressable
-              key={option.type}
+              key={option}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               onPress={() => {
-                setActivity(option.type);
+                setActivity(option);
                 setFormError(null);
               }}
               style={[styles.chip, selected && styles.chipSelected]}
             >
               <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                {option.label}
+                {t(`activity.${option}`)}
               </Text>
             </Pressable>
           );
@@ -119,25 +120,25 @@ export function FocusSetupSheet() {
         })}
       </View>
       <View style={styles.customRow}>
-        <Text style={styles.customLabel}>{STR.customLabel}</Text>
+        <Text style={styles.customLabel}>{t('customLabel')}</Text>
         <TextInput
-          accessibilityLabel={`${STR.customLabel}${STR.customUnit}`}
+          accessibilityLabel={`${t('customLabel')}${t('customUnit')}`}
           value={customText}
           onChangeText={onCustomChange}
           keyboardType="number-pad"
-          placeholder={STR.customPlaceholder}
+          placeholder={t('customPlaceholder')}
           placeholderTextColor={semantic.textMuted}
           style={styles.customInput}
           maxLength={3}
         />
-        <Text style={styles.customUnit}>{STR.customUnit}</Text>
+        <Text style={styles.customUnit}>{t('customUnit')}</Text>
       </View>
 
       {/* 背景音乐选曲：胶囊横向滚动；访客仅内置两首并给出登录提示。
           选择即生效（控制器记录，开始专注后自动播放） */}
       <View style={styles.musicRow}>
-        <Text style={styles.musicLabel}>{STR.musicLabel}</Text>
-        {!signedIn ? <Text style={styles.musicHint}>{STR.musicGuestHint}</Text> : null}
+        <Text style={styles.musicLabel}>{t('musicLabel')}</Text>
+        {!signedIn ? <Text style={styles.musicHint}>{t('musicGuestHint')}</Text> : null}
       </View>
       <ScrollView
         horizontal
@@ -151,7 +152,7 @@ export function FocusSetupSheet() {
               key={track.id}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              accessibilityLabel={`${STR.musicLabel} ${track.title}`}
+              accessibilityLabel={`${t('musicLabel')} ${track.title}`}
               onPress={() => music.selectTrack(track)}
               style={[styles.chip, selected && styles.chipSelected]}
             >
@@ -170,11 +171,11 @@ export function FocusSetupSheet() {
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={STR.beginFocus}
+        accessibilityLabel={t('beginFocus')}
         onPress={begin}
         style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
       >
-        <Text style={styles.ctaText}>{STR.beginFocus}</Text>
+        <Text style={styles.ctaText}>{t('beginFocus')}</Text>
       </Pressable>
     </SheetOverlay>
   );

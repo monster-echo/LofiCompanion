@@ -1,9 +1,7 @@
-/**
- * 排行榜域 zh-CN 文案常量（doc-08 §11–§14、§22：只陈述数据，不制造社交压力，
- * 无任务正文；时间与数字随屏内 locale 格式化）。
- */
-export const LEADERBOARD_STRINGS = {
-  // —— 登录壳（未登录保留，doc-08 §11 P0-A 形态）——
+// 排行榜域文案（zh-CN 为权威源；doc-08 §11–§14、§22：只陈述数据，不制造社交压力，
+// 无任务正文；时间与数字随屏内 locale 格式化）。
+export const leaderboards = {
+  // 登录壳（未登录保留，doc-08 §11 P0-A 形态）
   screenTitle: '学习排行榜',
   signInInvite: '登录后和好友一起坚持',
   ruleCompletedOnly: '完成一轮才计入',
@@ -12,13 +10,13 @@ export const LEADERBOARD_STRINGS = {
   signInAction: '登录 / 注册',
   p0bNote: 'P0-B 接入好友与小组',
 
-  // —— S10 榜单（已登录）——
+  // S10 榜单（已登录）
   helpLabel: '排行榜规则与隐私',
   hintCompletedOnly: '仅展示完成的专注',
   segmentFriends: '好友',
   segmentGroup: '小组',
-  weekContext: (weekId: string) => `统计周期：本周 · ${weekId}`,
-  minutesValue: (minutes: number) => `${minutes} 分钟`,
+  weekContext: '统计周期：本周 · {{weekId}}',
+  minutesValue: '{{minutes}} 分钟',
   meBadge: '我',
   youOptedOutHint: '已退出榜单',
   youOptedOutAction: '去开启',
@@ -31,7 +29,7 @@ export const LEADERBOARD_STRINGS = {
   inviteInputLabel: '输入好友邀请码',
   inviteInputPlaceholder: '8 位邀请码',
   acceptInvite: '添加',
-  acceptSuccess: (nickname: string) => `已添加好友 ${nickname}`,
+  acceptSuccess: '已添加好友 {{nickname}}',
   noGroupTitle: '加入一个学习小组',
   noGroupHint: '和成员共享每周目标，互相看见专注中的彼此',
   createGroupLabel: '创建小组',
@@ -40,25 +38,25 @@ export const LEADERBOARD_STRINGS = {
   joinGroupLabel: '已有小组？',
   joinGroupPlaceholder: '输入小组加入码',
   joinGroupAction: '加入',
-  groupCreated: (name: string) => `已创建「${name}」`,
-  groupJoined: (name: string) => `已加入「${name}」`,
-  groupGoal: (minutes: number, goal: number) => `本周共同 ${minutes} / 目标 ${goal} 分钟`,
+  groupCreated: '已创建「{{name}}」',
+  groupJoined: '已加入「{{name}}」',
+  groupGoal: '本周共同 {{minutes}} / 目标 {{goal}} 分钟',
   goalMetBadge: '已达成',
   viewGroup: '查看小组',
   refreshLabel: '刷新榜单',
 
-  // —— S11 小组详情 ——
+  // S11 小组详情
   backLabel: '返回',
-  onlineFocusing: (count: number) => `${count} 人正在专注`,
+  onlineFocusing: '{{count}} 人正在专注',
   onlineNone: '现在没有人在专注',
   membersLabel: '小组成员',
-  moreMembers: (count: number) => `+${count}`,
+  moreMembers: '+{{count}}',
   sharedGoalCard: '共同目标',
-  sharedGoalValue: (minutes: number) => `本周共同 ${minutes} 分钟`,
-  sharedGoalTarget: (goal: number) => `目标 ${goal} 分钟`,
+  sharedGoalValue: '本周共同 {{minutes}} 分钟',
+  sharedGoalTarget: '目标 {{goal}} 分钟',
   myContributionCard: '我的贡献',
-  myContributionValue: (minutes: number) => `本周贡献 ${minutes} 分钟`,
-  myContributionRank: (rank: number) => `组内第 ${rank} 名`,
+  myContributionValue: '本周贡献 {{minutes}} 分钟',
+  myContributionRank: '组内第 {{rank}} 名',
   joinCodeCard: '小组加入码',
   joinCodeHint: '把加入码告诉朋友，对方输入即可入组',
   copyJoinCode: '复制加入码',
@@ -67,11 +65,11 @@ export const LEADERBOARD_STRINGS = {
   groupUnavailable: '小组不存在或你已不在组内',
   clearGroupRef: '清除记录并重新加入',
 
-  // —— S12 规则与隐私 ——
+  // S12 规则与隐私
   rulesTitle: '排行规则与隐私',
   currentRankCard: '当前名次',
-  currentRankValue: (rank: number) => `第 ${rank} 名`,
-  currentRankMinutes: (minutes: number) => `本周 ${minutes} 分钟`,
+  currentRankValue: '第 {{rank}} 名',
+  currentRankMinutes: '本周 {{minutes}} 分钟',
   rankHiddenWhenOptedOut: '已退出榜单，重新开启后恢复显示',
   publicNickname: '公开昵称',
   publicNicknameHint: '关闭后你仍参与排名，昵称显示为「已隐藏」',
@@ -89,15 +87,15 @@ export const LEADERBOARD_STRINGS = {
     + '退出排行榜后你会从所有榜单中消失，自己的记录不受影响。'
     + '每周结束后生成不可变结算快照，此后本周修改不再改变上周榜单。',
 
-  // —— S13 周结算 ——
+  // S13 周结算
   settlementTitle: '上周结算',
   settlementRankLabel: '你的名次',
-  settlementRankValue: (rank: number) => `第 ${rank} 名`,
+  settlementRankValue: '第 {{rank}} 名',
   settlementTogether: '小组共同专注',
-  settlementTogetherValue: (minutes: number) => `${minutes} 分钟`,
-  settlementGoal: (goal: number) => `共同目标 ${goal} 分钟`,
+  settlementTogetherValue: '{{minutes}} 分钟',
+  settlementGoal: '共同目标 {{goal}} 分钟',
   settlementGoalMet: '目标已达成',
-  settlementGoalRemain: (minutes: number) => `距离目标还差 ${minutes} 分钟`,
+  settlementGoalRemain: '距离目标还差 {{minutes}} 分钟',
   settlementReward: '获得：周目标合影',
   settlementViewRoom: '查看房间',
   settlementNextWeek: '下周继续',

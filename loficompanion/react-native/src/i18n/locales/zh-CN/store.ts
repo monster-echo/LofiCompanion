@@ -1,16 +1,13 @@
-/**
- * 皮肤商店 zh-CN 文案常量（doc-08 §15/§16 S14/S15，P1-A Task 3）。
- * 价格文案一律由服务端数据格式化，这里不出现任何具体价格。
- */
-
-export const STORE_STRINGS = {
+// 皮肤商店文案（zh-CN 为权威源；doc-08 §15/§16 S14/S15）。
+// 价格文案一律由服务端数据格式化，这里不出现任何具体价格。
+export const store = {
   appBarTitle: '陪伴皮肤',
   ownedEntry: '已拥有',
   browsingAll: '全部皮肤',
   inUse: '正在使用',
   inUseBadge: '使用中',
   ownedBadge: '已拥有',
-  stateCount: (n: number) => `${n} 个状态`,
+  stateCount: '{{n}} 个状态',
   sectionFree: '免费',
   sectionPaid: '永久购买',
   sectionPremium: 'Plus 精选',
@@ -19,13 +16,13 @@ export const STORE_STRINGS = {
   retry: '重新加载',
   storeEntry: '更多皮肤商店',
   storeEntryHint: '浏览免费与付费皮肤',
-  // —— S15 详情 ——
+  // S15 详情
   officialCreator: '官方出品',
   audioTrack: '环境白噪音（以上线资源为准）',
   offlineSize: '离线包约 100 MB（估算，以上线包为准）',
   commercialNote: '仅供个人学习陪伴使用，不可商用或二次分发',
   priceLoading: '价格加载中…',
-  unlockForever: (price: string) => `${price} 永久解锁`,
+  unlockForever: '{{price}} 永久解锁',
   joinPlus: '加入 Plus',
   ownedUse: '已拥有 · 立即使用',
   processing: '处理中…',

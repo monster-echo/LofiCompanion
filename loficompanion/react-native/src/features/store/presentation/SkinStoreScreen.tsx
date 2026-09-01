@@ -19,7 +19,7 @@ import {
   buildStoreSections,
   type StoreSkinCard,
 } from '../domain/storeCatalog';
-import { STORE_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 import { storePoster } from './storePosters';
 
 /**
@@ -56,6 +56,7 @@ const imageFill = {
 
 export function SkinStoreScreen() {
   const { back, navigate, user } = useApp();
+  const { t } = useTranslation('store');
   const focus = useFocus();
   const signedIn = user !== null;
   const { width: windowWidth } = useWindowDimensions();
@@ -124,16 +125,16 @@ export function SkinStoreScreen() {
         >
           <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
         </Pressable>
-        <Text style={styles.headerTitle}>{STR.appBarTitle}</Text>
+        <Text style={styles.headerTitle}>{t('appBarTitle')}</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={ownedOnly ? STR.browsingAll : STR.ownedEntry}
+          accessibilityLabel={ownedOnly ? t('browsingAll') : t('ownedEntry')}
           accessibilityState={{ selected: ownedOnly }}
           onPress={() => setOwnedOnly((value) => !value)}
           style={({ pressed }) => [styles.ownedEntry, pressed && styles.pressed]}
         >
           <Text style={[styles.ownedEntryText, ownedOnly && styles.ownedEntryActive]}>
-            {ownedOnly ? STR.browsingAll : STR.ownedEntry}
+            {ownedOnly ? t('browsingAll') : t('ownedEntry')}
           </Text>
         </Pressable>
       </View>
@@ -141,14 +142,14 @@ export function SkinStoreScreen() {
       {state.status === 'error' ? (
         <View style={styles.stateArea}>
           <AppIcon name="alert" color={colors.warning} size={28} />
-          <Text style={styles.stateText}>{STR.loadFailed}</Text>
+          <Text style={styles.stateText}>{t('loadFailed')}</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.retry}
+            accessibilityLabel={t('retry')}
             onPress={reload}
             style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
           >
-            <Text style={styles.retryText}>{STR.retry}</Text>
+            <Text style={styles.retryText}>{t('retry')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -167,21 +168,21 @@ export function SkinStoreScreen() {
           ) : (
             <>
               <Section
-                title={STR.sectionFree}
+                title={t('sectionFree')}
                 cards={visibleSections.free}
                 windowWidth={windowWidth}
                 onPressCard={onPressCard}
               />
               {!PAID_SECTION_HIDDEN && (
                 <Section
-                  title={STR.sectionPaid}
+                  title={t('sectionPaid')}
                   cards={visibleSections.paid}
                   windowWidth={windowWidth}
                   onPressCard={onPressCard}
                 />
               )}
               <Section
-                title={STR.sectionPremium}
+                title={t('sectionPremium')}
                 cards={visibleSections.premium}
                 windowWidth={windowWidth}
                 onPressCard={onPressCard}
@@ -200,11 +201,12 @@ function CurrentSkinBanner({
   name,
   width,
 }: Readonly<{ slug: string; name: string; width: number }>) {
+  const { t } = useTranslation('store');
   const poster = storePoster(slug, 'ready');
   return (
     <View
       style={[styles.banner, { width }]}
-      accessibilityLabel={`当前皮肤 ${name}，${STR.inUse}`}
+      accessibilityLabel={`当前皮肤 ${name}，${t('inUse')}`}
       accessibilityRole="text"
     >
       {poster ? (
@@ -216,7 +218,7 @@ function CurrentSkinBanner({
       <View style={styles.bannerRow} pointerEvents="none">
         <Text style={styles.bannerName} numberOfLines={1}>{name}</Text>
         <View style={styles.inUseBadge}>
-          <Text style={styles.inUseBadgeText}>{STR.inUse}</Text>
+          <Text style={styles.inUseBadgeText}>{t('inUse')}</Text>
         </View>
       </View>
     </View>
@@ -234,6 +236,7 @@ function Section({
   windowWidth: number;
   onPressCard: (card: StoreSkinCard) => void;
 }>) {
+  const { t } = useTranslation('store');
   if (cards.length === 0) return null;
   return (
     <View style={styles.section}>
@@ -262,15 +265,16 @@ function StoreCard({
   width,
   onPress,
 }: Readonly<{ card: StoreSkinCard; width: number; onPress: () => void }>) {
+  const { t } = useTranslation('store');
   const poster = storePoster(card.slug, 'ready');
   const priceText = card.accessType === 'free'
     ? '免费'
-    : card.priceLabel ?? STR.plusLabel;
+    : card.priceLabel ?? t('plusLabel');
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`皮肤 ${card.name}，${STR.stateCount(card.stateCount)}，${
-        card.owned ? STR.ownedBadge : priceText
+      accessibilityLabel={`皮肤 ${card.name}，${t('stateCount', { n: card.stateCount })}，${
+        card.owned ? t('ownedBadge') : priceText
       }`}
       onPress={onPress}
       style={({ pressed }) => [
@@ -291,18 +295,18 @@ function StoreCard({
         {/* 使用中 / 已拥有 徽标（doc-08 §15 状态） */}
         {card.inUse ? (
           <View style={[styles.cornerBadge, styles.inUseCorner]}>
-            <Text style={styles.inUseBadgeText}>{STR.inUseBadge}</Text>
+            <Text style={styles.inUseBadgeText}>{t('inUseBadge')}</Text>
           </View>
         ) : card.owned ? (
           <View style={[styles.cornerBadge, styles.ownedCorner]}>
             <AppIcon name="check" color={semantic.canvasDeep} size={12} />
-            <Text style={styles.ownedCornerText}>{STR.ownedBadge}</Text>
+            <Text style={styles.ownedCornerText}>{t('ownedBadge')}</Text>
           </View>
         ) : null}
       </View>
       <View style={styles.cardInfo}>
         <Text style={styles.cardName} numberOfLines={1}>{card.name}</Text>
-        <Text style={styles.cardStates}>{STR.stateCount(card.stateCount)}</Text>
+        <Text style={styles.cardStates}>{t('stateCount', { n: card.stateCount })}</Text>
         <View
           style={[
             styles.pricePill,

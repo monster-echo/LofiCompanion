@@ -93,12 +93,12 @@ describe('成就规则', () => {
   });
 
   it('收藏物映射固定：四种规则对应四个房间收藏物', () => {
-    expect(ACHIEVEMENT_DEFS.map((d) => [d.ruleKey, d.rewardItemId, d.name, d.ruleVersion]))
+    expect(ACHIEVEMENT_DEFS.map((d) => [d.ruleKey, d.rewardItemId, d.ruleVersion]))
       .toEqual([
-        ['first_focus', 'bookmark', '第一次专注', 1],
-        ['streak_7', 'lamp', '连续七天', 1],
-        ['rainy_10h', 'plant', '雨夜十小时', 1],
-        ['sessions_100', 'group_photo', '百轮学习', 1],
+        ['first_focus', 'bookmark', 1],
+        ['streak_7', 'lamp', 1],
+        ['rainy_10h', 'plant', 1],
+        ['sessions_100', 'group_photo', 1],
       ]);
     for (const def of ACHIEVEMENT_DEFS) {
       expect(rewardFor(def.ruleKey)).toBe(def.rewardItemId);

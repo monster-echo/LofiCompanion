@@ -7,8 +7,8 @@ import { mediaControl } from '../../../design-system/derivedTokens';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
+import { useTranslation } from 'react-i18next';
 import { ACHIEVEMENT_DEFS, type RoomItemId } from '../domain/rules';
-import { ACHIEVEMENT_STRINGS as STR, ROOM_ITEM_NAMES } from './strings';
 import { getMusicController } from '../../music/data/expoAudioMusicController';
 
 /**
@@ -44,6 +44,7 @@ function hotspotAnchorStyle(spot: { x: number; y: number }) {
 
 export function RoomScreen() {
   const focus = useFocus();
+  const { t } = useTranslation('achievements');
   const { back } = useApp();
   const { width: windowWidth } = useWindowDimensions();
   // 同一时间只开一个 callout；再次点击同一热点收起
@@ -92,19 +93,19 @@ export function RoomScreen() {
                     spot.y < 0.5 ? styles.calloutBelow : styles.calloutAbove,
                   ]}
                   accessibilityRole="text"
-                  accessibilityLabel={`${ROOM_ITEM_NAMES[item.itemId]}，${STR.calloutSource(def?.name ?? '')}`}
+                  accessibilityLabel={`${t(`item.${item.itemId}`)}，${t('calloutSource', { name: def ? t(`rule.${def.ruleKey}.name`) : '' })}`}
                 >
                   <Text style={styles.calloutName} numberOfLines={1}>
-                    {ROOM_ITEM_NAMES[item.itemId]}
+                    {t(`item.${item.itemId}`)}
                   </Text>
                   <Text style={styles.calloutSource} numberOfLines={1}>
-                    {STR.calloutSource(def?.name ?? '')}
+                    {t('calloutSource', { name: def ? t(`rule.${def.ruleKey}.name`) : '' })}
                   </Text>
                 </View>
               ) : null}
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={ROOM_ITEM_NAMES[item.itemId]}
+                accessibilityLabel={t(`item.${item.itemId}`)}
                 accessibilityState={{ selected: open }}
                 onPress={() => setOpenItemId(open ? null : item.itemId)}
                 style={styles.hotspot}
@@ -116,20 +117,20 @@ export function RoomScreen() {
 
       {/* 底部：说明 + 布置房间（P0-B） */}
       <View style={styles.bottom}>
-        <Text style={styles.bottomTitle}>{STR.roomTitle}</Text>
-        <Text style={styles.bottomCaption}>{STR.roomCaption}</Text>
+        <Text style={styles.bottomTitle}>{t('roomTitle')}</Text>
+        <Text style={styles.bottomCaption}>{t('roomCaption')}</Text>
         <View style={styles.arrangeRow}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.arrangeAction}
+            accessibilityLabel={t('arrangeAction')}
             disabled
             accessibilityState={{ disabled: true }}
             style={styles.arrangeButton}
           >
-            <Text style={styles.arrangeButtonText}>{STR.arrangeAction}</Text>
+            <Text style={styles.arrangeButtonText}>{t('arrangeAction')}</Text>
           </Pressable>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{STR.arrangeComingSoon}</Text>
+            <Text style={styles.badgeText}>{t('arrangeComingSoon')}</Text>
           </View>
         </View>
       </View>
@@ -137,7 +138,7 @@ export function RoomScreen() {
       {/* 返回：悬浮于媒体左上（44×44，媒体控件底） */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={STR.backLabel}
+        accessibilityLabel={t('backLabel')}
         onPress={back}
         style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
       >

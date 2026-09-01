@@ -15,7 +15,7 @@ import { useApp } from '../../../state/AppStore';
 import { colors, radii, semantic, space, type } from '../../../theme/tokens';
 import { useAsyncRefresh } from '../application/useAsyncRefresh';
 import { avatarInitial, goalProgress, rankAccent } from '../domain/model';
-import { LEADERBOARD_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 
 /**
  * S10 学习排行榜（doc-08 §11，P0-C 真实榜单，登录态 Tab 根页；未登录走
@@ -26,6 +26,7 @@ import { LEADERBOARD_STRINGS as STR } from './strings';
 type Segment = 'friends' | 'group';
 
 export function LeaderboardHomeScreen() {
+  const { t } = useTranslation('leaderboards');
   const { user, navigate, showToast } = useApp();
   const [segment, setSegment] = useState<Segment>('friends');
   // undefined = 本地引用读取中；null = 未加入（显示建组/加入入口）
@@ -91,7 +92,7 @@ export function LeaderboardHomeScreen() {
     try {
       const result = await apiClient.acceptInvite(code);
       setInviteInput('');
-      showToast(STR.acceptSuccess(result.friend.nickname), 'success');
+      showToast(t('acceptSuccess', { nickname: result.friend.nickname }), 'success');
       await friends.reload();
     } catch (error) {
       showToast(error instanceof Error ? error.message : '添加失败', 'error');
@@ -120,7 +121,7 @@ export function LeaderboardHomeScreen() {
     try {
       const { group: created } = await apiClient.createGroup(name);
       setGroupName('');
-      await adoptGroup(created, STR.groupCreated(created.name));
+      await adoptGroup(created, t('groupCreated', { name: created.name }));
     } catch (error) {
       showToast(error instanceof Error ? error.message : '创建失败', 'error');
     } finally {
@@ -137,7 +138,7 @@ export function LeaderboardHomeScreen() {
     try {
       const { group: joined } = await apiClient.joinGroup(code);
       setJoinCode('');
-      await adoptGroup(joined, STR.groupJoined(joined.name));
+      await adoptGroup(joined, t('groupJoined', { name: joined.name }));
     } catch (error) {
       showToast(error instanceof Error ? error.message : '加入失败', 'error');
     } finally {
@@ -149,10 +150,10 @@ export function LeaderboardHomeScreen() {
     <View style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.headerSlot} />
-        <Text style={styles.headerTitle}>{STR.screenTitle}</Text>
+        <Text style={styles.headerTitle}>{t('screenTitle')}</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.helpLabel}
+          accessibilityLabel={t('helpLabel')}
           onPress={() => navigate('leaderboard.rules')}
           style={({ pressed }) => [styles.helpButton, pressed && styles.pressed]}
         >
@@ -160,18 +161,18 @@ export function LeaderboardHomeScreen() {
         </Pressable>
       </View>
       <Text style={styles.weekCaption}>
-        {STR.weekContext(friendsView?.weekId ?? '')}
+        {t('weekContext', { weekId: friendsView?.weekId ?? '' })}
       </Text>
 
       {/* 分段控件「好友 / 小组」，高 40（doc-08 §11） */}
       <View style={styles.segment}>
         <SegmentButton
-          label={STR.segmentFriends}
+          label={t('segmentFriends')}
           active={segment === 'friends'}
           onPress={() => setSegment('friends')}
         />
         <SegmentButton
-          label={STR.segmentGroup}
+          label={t('segmentGroup')}
           active={segment === 'group'}
           onPress={() => setSegment('group')}
         />
@@ -180,7 +181,7 @@ export function LeaderboardHomeScreen() {
       {/* 规则提示行，高 32：锁图标 + 仅展示完成的专注 */}
       <View style={styles.hintRow}>
         <AppIcon name="lock" color={semantic.textMuted} size={14} />
-        <Text style={styles.hintText}>{STR.hintCompletedOnly}</Text>
+        <Text style={styles.hintText}>{t('hintCompletedOnly')}</Text>
       </View>
 
       <View style={styles.listArea}>
@@ -208,7 +209,7 @@ export function LeaderboardHomeScreen() {
                 acceptBusy={acceptBusy}
                 onInviteInputChange={setInviteInput}
                 onAcceptInvite={() => void acceptInvite()}
-                onShareCode={(code) => shareCode(code, STR.myInviteCode)}
+                onShareCode={(code) => shareCode(code, t('myInviteCode'))}
               />
             ) : null}
             {friends.state.status === 'ready' && !noFriends
@@ -276,6 +277,7 @@ function SegmentButton({ label, active, onPress }: Readonly<{
   active: boolean;
   onPress: () => void;
 }>) {
+  const { t } = useTranslation('leaderboards');
   return (
     <Pressable
       accessibilityRole="button"
@@ -295,6 +297,7 @@ function SegmentButton({ label, active, onPress }: Readonly<{
 
 /** 榜单行：高 76 = 名次区 40 + 头像 44 + 昵称 + 分钟右对齐 tabular */
 function RankRow({ entry }: Readonly<{ entry: LeaderboardRankingRemote }>) {
+  const { t } = useTranslation('leaderboards');
   const accent = rankAccent(entry.rank);
   return (
     <View style={styles.row}>
@@ -322,7 +325,7 @@ function RankRow({ entry }: Readonly<{ entry: LeaderboardRankingRemote }>) {
         </View>
       )}
       <Text style={styles.nickname} numberOfLines={1}>{entry.nickname}</Text>
-      <Text style={styles.minutes}>{STR.minutesValue(entry.minutes)}</Text>
+      <Text style={styles.minutes}>{t('minutesValue', { minutes: entry.minutes })}</Text>
     </View>
   );
 }
@@ -331,6 +334,7 @@ function SelfCard({ entry, onRules }: Readonly<{
   entry: LeaderboardRankingRemote;
   onRules: () => void;
 }>) {
+  const { t } = useTranslation('leaderboards');
   return (
     <View style={[styles.selfCard, entry.youOptedOut && styles.selfCardOptedOut]}>
       <View style={styles.selfLeft}>
@@ -344,23 +348,23 @@ function SelfCard({ entry, onRules }: Readonly<{
         <View style={styles.selfMeta}>
           <View style={styles.selfNameRow}>
             <Text style={styles.selfName} numberOfLines={1}>{entry.nickname}</Text>
-            <Text style={styles.meBadge}>{STR.meBadge}</Text>
-            <Text style={styles.selfRank}>{STR.currentRankValue(entry.rank)}</Text>
+            <Text style={styles.meBadge}>{t('meBadge')}</Text>
+            <Text style={styles.selfRank}>{t('currentRankValue', { rank: entry.rank })}</Text>
           </View>
           {entry.youOptedOut ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={STR.youOptedOutHint}
+              accessibilityLabel={t('youOptedOutHint')}
               onPress={onRules}
               style={({ pressed }) => [styles.optedRow, pressed && styles.pressed]}
             >
-              <Text style={styles.optedText}>{STR.youOptedOutHint}</Text>
-              <Text style={styles.optedAction}>{STR.youOptedOutAction}</Text>
+              <Text style={styles.optedText}>{t('youOptedOutHint')}</Text>
+              <Text style={styles.optedAction}>{t('youOptedOutAction')}</Text>
             </Pressable>
           ) : null}
         </View>
       </View>
-      <Text style={styles.selfMinutes}>{STR.minutesValue(entry.minutes)}</Text>
+      <Text style={styles.selfMinutes}>{t('minutesValue', { minutes: entry.minutes })}</Text>
     </View>
   );
 }
@@ -373,42 +377,43 @@ function InviteEntry({ inviteCode, inviteInput, acceptBusy, onInviteInputChange,
   onAcceptInvite: () => void;
   onShareCode: (code: string) => void;
 }>) {
+  const { t } = useTranslation('leaderboards');
   return (
     <View style={styles.emptyWrap}>
       <View style={styles.emptyHead}>
-        <Text style={styles.emptyTitle}>{STR.emptyFriendsTitle}</Text>
-        <Text style={styles.emptyHint}>{STR.emptyFriendsHint}</Text>
+        <Text style={styles.emptyTitle}>{t('emptyFriendsTitle')}</Text>
+        <Text style={styles.emptyHint}>{t('emptyFriendsHint')}</Text>
       </View>
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>{STR.myInviteCode}</Text>
+        <Text style={styles.cardLabel}>{t('myInviteCode')}</Text>
         <Text selectable style={styles.inviteCode}>{inviteCode ?? '········'}</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.copyInvite}
+          accessibilityLabel={t('copyInvite')}
           disabled={!inviteCode}
           onPress={() => inviteCode && onShareCode(inviteCode)}
           style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
         >
-          <Text style={styles.secondaryButtonText}>{STR.copyInvite}</Text>
+          <Text style={styles.secondaryButtonText}>{t('copyInvite')}</Text>
         </Pressable>
       </View>
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>{STR.inviteInputLabel}</Text>
+        <Text style={styles.cardLabel}>{t('inviteInputLabel')}</Text>
         <View style={styles.acceptRow}>
           <TextInput
-            accessibilityLabel={STR.inviteInputLabel}
+            accessibilityLabel={t('inviteInputLabel')}
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={8}
             onChangeText={onInviteInputChange}
-            placeholder={STR.inviteInputPlaceholder}
+            placeholder={t('inviteInputPlaceholder')}
             placeholderTextColor={semantic.textMuted}
             style={styles.input}
             value={inviteInput}
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.acceptInvite}
+            accessibilityLabel={t('acceptInvite')}
             disabled={acceptBusy || inviteInput.trim() === ''}
             onPress={onAcceptInvite}
             style={({ pressed }) => [
@@ -417,7 +422,7 @@ function InviteEntry({ inviteCode, inviteInput, acceptBusy, onInviteInputChange,
               pressed && styles.pressed,
             ]}
           >
-            <Text style={styles.acceptButtonText}>{STR.acceptInvite}</Text>
+            <Text style={styles.acceptButtonText}>{t('acceptInvite')}</Text>
           </Pressable>
         </View>
       </View>
@@ -434,50 +439,51 @@ function NoGroupEntry({ groupName, joinCode, busy, onGroupNameChange, onJoinCode
   onCreateGroup: () => void;
   onJoinGroup: () => void;
 }>) {
+  const { t } = useTranslation('leaderboards');
   return (
     <View style={styles.emptyWrap}>
       <View style={styles.emptyHead}>
-        <Text style={styles.emptyTitle}>{STR.noGroupTitle}</Text>
-        <Text style={styles.emptyHint}>{STR.noGroupHint}</Text>
+        <Text style={styles.emptyTitle}>{t('noGroupTitle')}</Text>
+        <Text style={styles.emptyHint}>{t('noGroupHint')}</Text>
       </View>
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>{STR.createGroupLabel}</Text>
+        <Text style={styles.cardLabel}>{t('createGroupLabel')}</Text>
         <TextInput
-          accessibilityLabel={STR.createGroupLabel}
+          accessibilityLabel={t('createGroupLabel')}
           maxLength={24}
           onChangeText={onGroupNameChange}
-          placeholder={STR.createGroupNamePlaceholder}
+          placeholder={t('createGroupNamePlaceholder')}
           placeholderTextColor={semantic.textMuted}
           style={styles.input}
           value={groupName}
         />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.createGroupAction}
+          accessibilityLabel={t('createGroupAction')}
           disabled={busy}
           onPress={onCreateGroup}
           style={({ pressed }) => [styles.primaryButton, busy && styles.buttonDisabled, pressed && styles.pressed]}
         >
-          <Text style={styles.primaryButtonText}>{STR.createGroupAction}</Text>
+          <Text style={styles.primaryButtonText}>{t('createGroupAction')}</Text>
         </Pressable>
       </View>
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>{STR.joinGroupLabel}</Text>
+        <Text style={styles.cardLabel}>{t('joinGroupLabel')}</Text>
         <View style={styles.acceptRow}>
           <TextInput
-            accessibilityLabel={STR.joinGroupAction}
+            accessibilityLabel={t('joinGroupAction')}
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={8}
             onChangeText={onJoinCodeChange}
-            placeholder={STR.joinGroupPlaceholder}
+            placeholder={t('joinGroupPlaceholder')}
             placeholderTextColor={semantic.textMuted}
             style={styles.input}
             value={joinCode}
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.joinGroupAction}
+            accessibilityLabel={t('joinGroupAction')}
             disabled={busy || joinCode.trim() === ''}
             onPress={onJoinGroup}
             style={({ pressed }) => [
@@ -486,7 +492,7 @@ function NoGroupEntry({ groupName, joinCode, busy, onGroupNameChange, onJoinCode
               pressed && styles.pressed,
             ]}
           >
-            <Text style={styles.acceptButtonText}>{STR.joinGroupAction}</Text>
+            <Text style={styles.acceptButtonText}>{t('joinGroupAction')}</Text>
           </Pressable>
         </View>
       </View>
@@ -500,6 +506,7 @@ function GroupBoard({ myGroup, view, onViewGroup }: Readonly<{
   view: GroupLeaderboardViewRemote;
   onViewGroup: () => void;
 }>) {
+  const { t } = useTranslation('leaderboards');
   const ratio = goalProgress(Math.floor(view.groupTotalSeconds / 60), view.weeklyGoalMinutes);
   return (
     <View>
@@ -507,21 +514,21 @@ function GroupBoard({ myGroup, view, onViewGroup }: Readonly<{
         <View style={styles.groupHeadRow}>
           <AppIcon name="group" color={semantic.actionPrimary} size={20} />
           <Text style={styles.groupName} numberOfLines={1}>{myGroup.groupName}</Text>
-          {view.goalMet ? <Text style={styles.goalMetBadge}>{STR.goalMetBadge}</Text> : null}
+          {view.goalMet ? <Text style={styles.goalMetBadge}>{t('goalMetBadge')}</Text> : null}
         </View>
         <Text style={styles.groupGoalText}>
-          {STR.groupGoal(Math.floor(view.groupTotalSeconds / 60), view.weeklyGoalMinutes)}
+          {t('groupGoal', { minutes: Math.floor(view.groupTotalSeconds / 60), goal: view.weeklyGoalMinutes })}
         </Text>
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { width: `${Math.round(ratio * 100)}%` }]} />
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.viewGroup}
+          accessibilityLabel={t('viewGroup')}
           onPress={onViewGroup}
           style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
         >
-          <Text style={styles.secondaryButtonText}>{STR.viewGroup}</Text>
+          <Text style={styles.secondaryButtonText}>{t('viewGroup')}</Text>
         </Pressable>
       </View>
       {view.rankings.map((entry) => <RankRow key={entry.userId} entry={entry} />)}
@@ -530,6 +537,7 @@ function GroupBoard({ myGroup, view, onViewGroup }: Readonly<{
 }
 
 function LoadingHint() {
+  const { t } = useTranslation('leaderboards');
   return (
     <View style={styles.stateWrap}>
       <Text style={styles.stateText}>正在加载…</Text>
@@ -538,17 +546,18 @@ function LoadingHint() {
 }
 
 function ErrorState({ message, onRetry }: Readonly<{ message: string; onRetry: () => void }>) {
+  const { t } = useTranslation('leaderboards');
   return (
     <View style={styles.stateWrap}>
-      <Text style={styles.stateTitle}>{STR.loadFailed}</Text>
+      <Text style={styles.stateTitle}>{t('loadFailed')}</Text>
       <Text style={styles.stateText}>{message}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={STR.retryAction}
+        accessibilityLabel={t('retryAction')}
         onPress={onRetry}
         style={({ pressed }) => [styles.secondaryButton, styles.stateRetry, pressed && styles.pressed]}
       >
-        <Text style={styles.secondaryButtonText}>{STR.retryAction}</Text>
+        <Text style={styles.secondaryButtonText}>{t('retryAction')}</Text>
       </Pressable>
     </View>
   );
@@ -561,26 +570,27 @@ function GroupErrorState({ message, code, onRetry, onClearRef }: Readonly<{
   onRetry: () => void;
   onClearRef: () => void;
 }>) {
+  const { t } = useTranslation('leaderboards');
   const stale = code === 'GROUP_FORBIDDEN' || code === 'GROUP_NOT_FOUND';
   return (
     <View style={styles.stateWrap}>
-      <Text style={styles.stateText}>{stale ? STR.groupUnavailable : message}</Text>
+      <Text style={styles.stateText}>{stale ? t('groupUnavailable') : message}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={STR.retryAction}
+        accessibilityLabel={t('retryAction')}
         onPress={onRetry}
         style={({ pressed }) => [styles.secondaryButton, styles.stateRetry, pressed && styles.pressed]}
       >
-        <Text style={styles.secondaryButtonText}>{STR.retryAction}</Text>
+        <Text style={styles.secondaryButtonText}>{t('retryAction')}</Text>
       </Pressable>
       {stale ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.clearGroupRef}
+          accessibilityLabel={t('clearGroupRef')}
           onPress={onClearRef}
           style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
         >
-          <Text style={styles.secondaryButtonText}>{STR.clearGroupRef}</Text>
+          <Text style={styles.secondaryButtonText}>{t('clearGroupRef')}</Text>
         </Pressable>
       ) : null}
     </View>

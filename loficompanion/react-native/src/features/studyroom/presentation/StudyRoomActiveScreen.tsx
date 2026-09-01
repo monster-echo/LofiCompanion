@@ -15,8 +15,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import { getMusicController } from '../../music/data/expoAudioMusicController';
 import { useMusicLibrary } from '../../music/application/useMusicLibrary';
@@ -25,10 +27,9 @@ import { useFocusQuickPrefs } from '../../focus/presentation/focusQuickPrefs';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { SheetOverlay } from '../../focus/presentation/SheetOverlay';
 import { useStudyRoom, useStudyRoomState } from '../application/StudyRoomStore';
-import { roomForId, type StudyRoomId } from '../domain/rooms';
+import { roomForId, roomName, type StudyRoomId } from '../domain/rooms';
 import { DanmakuLayer } from './DanmakuLayer';
 import { DanmakuInputBar } from './DanmakuInputBar';
-import { STUDY_ROOM_STRINGS as STR } from './strings';
 
 /**
  * S-自习室房间页（概念对齐 S04 专注中）：RN Modal 独立窗口层 100% 全屏，
@@ -48,6 +49,8 @@ export function StudyRoomActiveScreen() {
   const { back, showToast, signedIn } = useApp();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation('studyroom');
+  const { locale } = usePreferences();
   // 减少动态是无障碍全局偏好（FocusProvider 注入），房间页与专注页同源
   const { reducedMotion } = useFocus();
   const { muted, setMuted, keepAwake, setKeepAwake } = useFocusQuickPrefs();
@@ -62,6 +65,7 @@ export function StudyRoomActiveScreen() {
   // 路由参数 roomId → 房间定义（未知 id 落回默认房间）
   const roomId = (route.params as { roomId?: string } | undefined)?.roomId;
   const room = roomForId(roomId ?? '');
+  const roomDisplayName = roomName(room, locale);
 
   // 进房 = 建连（弹幕/presence）+ 音乐在场（ambient：无需专注会话）；退出全部释放
   useFocusEffect(
@@ -149,12 +153,12 @@ export function StudyRoomActiveScreen() {
     consumedRejectAt.current = lastReject.at;
     const message =
       lastReject.reason === 'blocked'
-        ? STR.rejectedBlocked
+        ? t('rejectedBlocked')
         : lastReject.reason === 'too_long'
-          ? STR.rejectedTooLong
+          ? t('rejectedTooLong')
           : lastReject.reason === 'cooldown'
-            ? STR.cooldownHint(lastReject.retryAfterSeconds ?? 3)
-            : STR.sendFailed;
+            ? t('cooldownHint', { s: lastReject.retryAfterSeconds ?? 3 })
+            : t('sendFailed');
     showToast(message, 'info');
   }, [lastReject, showToast]);
 
@@ -184,17 +188,17 @@ export function StudyRoomActiveScreen() {
           <Animated.View style={[styles.topLeft, { top: insets.top + 8, opacity: chrome }]}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={STR.exitRoom}
+              accessibilityLabel={t('exitRoom')}
               onPress={back}
               style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
             >
               <AppIcon name="chevron-left" color={semantic.textPrimary} size={20} />
             </Pressable>
             <View style={styles.titleBlock}>
-              <Text style={styles.roomName}>{room.name}</Text>
+              <Text style={styles.roomName}>{roomDisplayName}</Text>
               <View style={styles.onlineRow}>
                 <View style={styles.dot} />
-                <Text style={styles.onlineText}>{STR.onlineNow(state.onlineCount)}</Text>
+                <Text style={styles.onlineText}>{t('onlineNow', { n: state.onlineCount })}</Text>
               </View>
             </View>
           </Animated.View>
@@ -203,7 +207,7 @@ export function StudyRoomActiveScreen() {
           <Animated.View style={[styles.topRight, { top: insets.top + 8, opacity: chrome }]}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={STR.quickMenuLabel}
+              accessibilityLabel={t('quickMenuLabel')}
               onPress={() => {
                 wake();
                 setQuickMenu(true);
@@ -217,15 +221,15 @@ export function StudyRoomActiveScreen() {
           {quickMenu ? (
             <SheetOverlay
               onClose={() => setQuickMenu(false)}
-              closeLabel={STR.closeLabel}
+              closeLabel={t('closeLabel')}
               reducedMotion={reducedMotion}
               anchor="top"
               topInset={insets.top}
             >
-              <Text style={styles.menuTitle}>{STR.quickMenuLabel}</Text>
+              <Text style={styles.menuTitle}>{t('quickMenuLabel')}</Text>
               <Pressable
                 accessibilityRole="switch"
-                accessibilityLabel={STR.keepAwakeLabel}
+                accessibilityLabel={t('keepAwakeLabel')}
                 accessibilityState={{ checked: keepAwake }}
                 onPress={() => setKeepAwake(!keepAwake)}
                 style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}
@@ -235,16 +239,16 @@ export function StudyRoomActiveScreen() {
                   color={keepAwake ? semantic.actionFocus : semantic.textSecondary}
                   size={18}
                 />
-                <Text style={styles.menuRowLabel}>{STR.keepAwakeLabel}</Text>
+                <Text style={styles.menuRowLabel}>{t('keepAwakeLabel')}</Text>
                 <View style={[styles.menuStatePill, keepAwake && styles.menuStatePillOn]}>
                   <Text style={[styles.menuStateText, keepAwake && styles.menuStateTextOn]}>
-                    {keepAwake ? STR.onState : STR.offState}
+                    {keepAwake ? t('onState') : t('offState')}
                   </Text>
                 </View>
               </Pressable>
               <Pressable
                 accessibilityRole="switch"
-                accessibilityLabel={STR.muteLabel}
+                accessibilityLabel={t('muteLabel')}
                 accessibilityState={{ checked: muted }}
                 onPress={() => setMuted(!muted)}
                 style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}
@@ -254,10 +258,10 @@ export function StudyRoomActiveScreen() {
                   color={muted ? semantic.actionFocus : semantic.textSecondary}
                   size={18}
                 />
-                <Text style={styles.menuRowLabel}>{STR.muteLabel}</Text>
+                <Text style={styles.menuRowLabel}>{t('muteLabel')}</Text>
                 <View style={[styles.menuStatePill, muted && styles.menuStatePillOn]}>
                   <Text style={[styles.menuStateText, muted && styles.menuStateTextOn]}>
-                    {muted ? STR.onState : STR.offState}
+                    {muted ? t('onState') : t('offState')}
                   </Text>
                 </View>
               </Pressable>
@@ -268,7 +272,7 @@ export function StudyRoomActiveScreen() {
           {offline ? (
             <View style={[styles.statusChip, { top: insets.top + 68 }]} pointerEvents="none">
               <Text style={styles.statusText}>
-                {state.status === 'connecting' ? STR.connecting : STR.reconnecting}
+                {state.status === 'connecting' ? t('connecting') : t('reconnecting')}
               </Text>
             </View>
           ) : null}

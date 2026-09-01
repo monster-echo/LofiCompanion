@@ -17,8 +17,7 @@ import { useFocus } from "../application/FocusStore";
 import { DEFAULT_ACTIVITY, DEFAULT_DURATION } from "../domain/validate";
 import { mediaControl, mediaSurface } from "../../../design-system/derivedTokens";
 import { radii, semantic, space, type } from "../../../theme/tokens";
-import { ACTIVITY_LABELS, FOCUS_STRINGS as STR } from "./strings";
-import { SKIN_STRINGS as SKIN } from "../../skins/presentation/strings";
+import { useTranslation } from "react-i18next";
 
 /**
  * S02 今日陪伴首页（doc-08 §3）。本屏唯一焦点：角色媒体 +「开始专注」。
@@ -29,6 +28,8 @@ import { SKIN_STRINGS as SKIN } from "../../skins/presentation/strings";
 export function FocusHomeScreen() {
   const focus = useFocus();
   const { navigate, showToast } = useApp();
+  const { t: tSkin } = useTranslation('skins');
+  const { t } = useTranslation('focus');
   const insets = useSafeAreaInsets();
   const active = focus.activeSession;
   const firstRun = focus.today.minutes === 0 && focus.today.sessions === 0;
@@ -62,18 +63,18 @@ export function FocusHomeScreen() {
       return;
     }
     if (result.reason === "alreadyActive") {
-      showToast(STR.sessionRunning, "info");
+      showToast(t('sessionRunning'), "info");
       navigate("focus.active");
       return;
     }
-    showToast(STR.invalidSession, "error");
+    showToast(t('invalidSession'), "error");
   };
 
   const primaryLabel = active
-    ? `${STR.backToFocus} · ${formatTimerSeconds(focus.remainingSeconds)}`
-    : STR.startFocus;
+    ? `${t('backToFocus')} · ${formatTimerSeconds(focus.remainingSeconds)}`
+    : t('startFocus');
 
-  const selectorLabel = `${ACTIVITY_LABELS[DEFAULT_ACTIVITY]} · ${DEFAULT_DURATION} 分钟`;
+  const selectorLabel = `${t(`activity.${DEFAULT_ACTIVITY}`)} · ${DEFAULT_DURATION} ${t('customUnit')}`;
 
   return (
     <View style={styles.screen}>
@@ -81,7 +82,7 @@ export function FocusHomeScreen() {
         {/* 点击画面进入主题选择（doc-08 §3 顶部入口随原生 Tab 收敛后移除） */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={SKIN.skinEntry}
+          accessibilityLabel={tSkin('skinEntry')}
           onPress={() => navigate("skins.gallery")}
           style={StyleSheet.absoluteFill}
         >
@@ -98,7 +99,7 @@ export function FocusHomeScreen() {
           <View style={styles.skinSwitcher} pointerEvents="box-none">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={SKIN.prevSkin}
+              accessibilityLabel={tSkin('prevSkin')}
               onPress={() => cycleSkin(-1)}
               style={({ pressed }) => [
                 styles.skinSwitchButton,
@@ -113,7 +114,7 @@ export function FocusHomeScreen() {
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={SKIN.nextSkin}
+              accessibilityLabel={tSkin('nextSkin')}
               onPress={() => cycleSkin(1)}
               style={({ pressed }) => [
                 styles.skinSwitchButton,
@@ -131,7 +132,7 @@ export function FocusHomeScreen() {
 
         {/* 问候（安全区下 72、左 20） */}
         <View style={styles.greeting} pointerEvents="none">
-          <Text style={styles.greetingText}>{STR.greeting}</Text>
+          <Text style={styles.greetingText}>{t('greeting')}</Text>
         </View>
 
         {/* 底部结果板（高约 196、左右 16、悬浮 Tab 之上）：
@@ -144,21 +145,21 @@ export function FocusHomeScreen() {
           ]}
         >
           {firstRun ? (
-            <Text style={styles.boardEmpty}>{STR.boardEmpty}</Text>
+            <Text style={styles.boardEmpty}>{t('boardEmpty')}</Text>
           ) : (
             <View style={styles.statsRow}>
               <Text style={styles.statMain}>
-                {STR.todayMinutes(focus.today.minutes)}
+                {t('todayMinutes', { n: focus.today.minutes })}
               </Text>
               <Text style={styles.statSub}>
-                {STR.doneSessions(focus.today.sessions)}
+                {t('doneSessions', { n: focus.today.sessions })}
               </Text>
             </View>
           )}
           <View style={styles.boardActions}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={active ? STR.backToFocus : STR.startFocus}
+              accessibilityLabel={active ? t('backToFocus') : t('startFocus')}
               onPress={active ? () => navigate("focus.active") : startFocus}
               style={({ pressed }) => [
                 styles.primaryCta,
@@ -169,7 +170,7 @@ export function FocusHomeScreen() {
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={STR.chooseActivity}
+              accessibilityLabel={t('chooseActivity')}
               onPress={() => navigate("focus.setup")}
               style={({ pressed }) => [
                 styles.selector,

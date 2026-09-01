@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+  const { t } = useTranslation('store');import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
@@ -29,7 +30,7 @@ import {
   newSkinOrderIdempotencyKey,
   resolveRecovery,
 } from '../domain/storeCatalog';
-import { STORE_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 import {
   DETAIL_PREVIEW_STATES,
   PREVIEW_STATE_LABELS,
@@ -115,7 +116,7 @@ export function SkinDetailScreen() {
     try { orderId = await pendingOrders.load(skinSlug); } catch { return; }
     if (!orderId) return;
     setCtaPhase('recovering');
-    showToast(STR.recoveryFound, 'info');
+    showToast(t('recoveryFound'), 'info');
     for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt += 1) {
       await sleep(POLL_INTERVAL_MS);
       if (!mountedRef.current) return;
@@ -127,13 +128,13 @@ export function SkinDetailScreen() {
           setOwnedKeys((keys) => keys.includes(order.entitlementKey)
             ? keys
             : [...keys, order.entitlementKey]);
-          showToast(STR.recoveryDone, 'success');
+          showToast(t('recoveryDone'), 'success');
           setCtaPhase('idle');
           return;
         }
         if (verdict === 'failed') {
           await pendingOrders.clear(skinSlug);
-          showToast(STR.purchaseFailed, 'error');
+          showToast(t('purchaseFailed'), 'error');
           setCtaPhase('idle');
           return;
         }
@@ -141,7 +142,7 @@ export function SkinDetailScreen() {
     }
     // 轮询到上限仍非终态：保留本地记录，下次进入继续恢复
     if (mountedRef.current) {
-      showToast(STR.recoveryStuck, 'info');
+      showToast(t('recoveryStuck'), 'info');
       setCtaPhase('idle');
     }
   }, [showToast, signedIn, skinSlug]);
@@ -166,14 +167,14 @@ export function SkinDetailScreen() {
         setOwnedKeys((keys) => keys.includes(target.entitlementKey)
           ? keys
           : [...keys, target.entitlementKey]);
-        showToast(STR.purchaseSuccess, 'success');
+        showToast(t('purchaseSuccess'), 'success');
       } else {
         await pendingOrders.clear(skinSlug);
-        showToast(STR.purchaseFailed, 'error');
+        showToast(t('purchaseFailed'), 'error');
       }
     } catch {
       // 中断：本地记录保留，下次进入本页自动恢复终态（CTA 期间已防重复点击）
-      showToast(STR.recoveryStuck, 'info');
+      showToast(t('recoveryStuck'), 'info');
     } finally {
       setCtaPhase('idle');
     }
@@ -196,9 +197,9 @@ export function SkinDetailScreen() {
         return [...merged];
       });
       const recovered = product !== null && entitlements.includes(product.entitlementKey);
-      showToast(recovered ? STR.restoreDone : STR.restoreNone, 'info');
+      showToast(recovered ? t('restoreDone') : t('restoreNone'), 'info');
     } catch {
-      showToast(STR.loadFailed, 'error');
+      showToast(t('loadFailed'), 'error');
     }
   }, [navigate, product, showToast, signedIn]);
 
@@ -217,7 +218,7 @@ export function SkinDetailScreen() {
     focus.actions.refreshSkins(signedIn);
     // 拉取是异步的：给一轮事件循环后重试（P0 简化，不引入 loading 态）
     setTimeout(() => {
-      if (!apply()) showToast(STR.manifestPending, 'info');
+      if (!apply()) showToast(t('manifestPending'), 'info');
     }, 1500);
   }, [back, focus.actions, showToast, skinSlug, signedIn]);
 
@@ -238,7 +239,7 @@ export function SkinDetailScreen() {
         >
           <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
         </Pressable>
-        <Text style={styles.headerTitle}>{STR.appBarTitle}</Text>
+        <Text style={styles.headerTitle}>{t('appBarTitle')}</Text>
       </View>
 
       {state.status === 'error' ? (
@@ -247,11 +248,11 @@ export function SkinDetailScreen() {
           <Text style={styles.stateText}>{state.message}</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.retry}
+            accessibilityLabel={t('retry')}
             onPress={reload}
             style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
           >
-            <Text style={styles.retryText}>{STR.retry}</Text>
+            <Text style={styles.retryText}>{t('retry')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -320,12 +321,12 @@ export function SkinDetailScreen() {
             </View>
             <View style={styles.creatorRow}>
               <AppIcon name="crown" color={colors.membershipGold} size={16} />
-              <Text style={styles.creatorText}>{STR.officialCreator}</Text>
+              <Text style={styles.creatorText}>{t('officialCreator')}</Text>
             </View>
-            <InfoRow label="包含状态" value={STR.stateCount(6)} />
-            <InfoRow label="音轨" value={STR.audioTrack} />
-            <InfoRow label="离线大小" value={STR.offlineSize} />
-            <Text style={styles.commercialNote}>{STR.commercialNote}</Text>
+            <InfoRow label="包含状态" value={t('stateCount', { n: 6 })} />
+            <InfoRow label="音轨" value={t('audioTrack')} />
+            <InfoRow label="离线大小" value={t('offlineSize')} />
+            <Text style={styles.commercialNote}>{t('commercialNote')}</Text>
           </View>
         </ScrollView>
       )}
@@ -333,43 +334,43 @@ export function SkinDetailScreen() {
       {/* 底部主 CTA：价格加载中骨架不可点；pending 防重复点击 */}
       <View style={styles.ctaArea}>
         {!productReady ? (
-          <View style={styles.ctaSkeleton} accessibilityLabel={STR.priceLoading}>
-            <Text style={styles.ctaSkeletonText}>{STR.priceLoading}</Text>
+          <View style={styles.ctaSkeleton} accessibilityLabel={t('priceLoading')}>
+            <Text style={styles.ctaSkeletonText}>{t('priceLoading')}</Text>
           </View>
         ) : busy ? (
-          <View style={styles.ctaSkeleton} accessibilityLabel={STR.processing}>
-            <Text style={styles.ctaSkeletonText}>{STR.processing}</Text>
+          <View style={styles.ctaSkeleton} accessibilityLabel={t('processing')}>
+            <Text style={styles.ctaSkeletonText}>{t('processing')}</Text>
           </View>
         ) : owned ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.ownedUse}
+            accessibilityLabel={t('ownedUse')}
             onPress={useOwnedSkin}
             style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
           >
             <AppIcon name="check" color={semantic.canvasDeep} size={18} />
-            <Text style={styles.ctaText}>{STR.ownedUse}</Text>
+            <Text style={styles.ctaText}>{t('ownedUse')}</Text>
           </Pressable>
         ) : product.accessType === 'premium' ? (
           // 偏离记录：Plus 订阅流未上线（模板 membership 页为演示态）——
           // 点击只给「即将上线」反馈，不发起购买（docs/08 §16 主 CTA 语义保留）
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.joinPlus}
-            onPress={() => showToast(STR.plusComingSoon, 'info')}
+            accessibilityLabel={t('joinPlus')}
+            onPress={() => showToast(t('plusComingSoon'), 'info')}
             style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
           >
             <AppIcon name="crown" color={semantic.canvasDeep} size={18} />
-            <Text style={styles.ctaText}>{STR.joinPlus}</Text>
+            <Text style={styles.ctaText}>{t('joinPlus')}</Text>
           </Pressable>
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={priceLabel ? STR.unlockForever(priceLabel) : ''}
+            accessibilityLabel={priceLabel ? t('unlockForever', priceLabel) : ''}
             onPress={() => {
               if (!signedIn) {
                 // docs/08 §15：未登录可浏览，购买时进入登录
-                showToast(STR.signInRequired, 'info');
+                showToast(t('signInRequired'), 'info');
                 navigate('auth.signIn');
                 return;
               }
@@ -378,7 +379,7 @@ export function SkinDetailScreen() {
             style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
           >
             <Text style={styles.ctaText}>
-              {priceLabel ? STR.unlockForever(priceLabel) : STR.priceLoading}
+              {priceLabel ? t('unlockForever', { price: priceLabel }) : t('priceLoading')}
             </Text>
           </Pressable>
         )}
@@ -387,27 +388,27 @@ export function SkinDetailScreen() {
       {/* 购买确认 sheet：商品 / 价格 / 永久属性 + 恢复购买入口（doc-08 §16/§21） */}
       {sheetOpen && product ? (
         <SheetOverlay onClose={() => setSheetOpen(false)}>
-          <Text style={styles.sheetTitle}>{STR.confirmTitle}</Text>
+          <Text style={styles.sheetTitle}>{t('confirmTitle')}</Text>
           <View style={styles.sheetRows}>
             <InfoRow label="商品" value={product.skinName} />
             <InfoRow label="价格" value={priceLabel ?? ''} />
-            <InfoRow label="属性" value={STR.confirmPermanent} />
+            <InfoRow label="属性" value={t('confirmPermanent')} />
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.confirmPay}
+            accessibilityLabel={t('confirmPay')}
             onPress={() => void confirmPurchase(product)}
             style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
           >
-            <Text style={styles.ctaText}>{STR.confirmPay}</Text>
+            <Text style={styles.ctaText}>{t('confirmPay')}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.restorePurchases}
+            accessibilityLabel={t('restorePurchases')}
             onPress={() => void restorePurchases()}
             style={({ pressed }) => [styles.sheetRestore, pressed && styles.pressed]}
           >
-            <Text style={styles.sheetRestoreText}>{STR.restorePurchases}</Text>
+            <Text style={styles.sheetRestoreText}>{t('restorePurchases')}</Text>
           </Pressable>
         </SheetOverlay>
       ) : null}

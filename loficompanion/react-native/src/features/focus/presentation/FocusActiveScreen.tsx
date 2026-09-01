@@ -25,7 +25,7 @@ import { effectiveSeconds as computeEffective } from "../domain/engine";
 import { formatTimerSeconds } from "../../../design-system/FocusTimerRing";
 import { ImmersiveMediaSurface } from "../../skins/presentation/ImmersiveMediaSurface";
 import { SheetOverlay } from "./SheetOverlay";
-import { ACTIVITY_STATUS, FOCUS_STRINGS as STR } from "./strings";
+import { useTranslation } from 'react-i18next';
 import { useFocusQuickPrefs } from "./focusQuickPrefs";
 import { useMusicLibrary } from "../../music/application/useMusicLibrary";
 import { getMusicController } from "../../music/data/expoAudioMusicController";
@@ -53,6 +53,7 @@ const FLOATING_TAB_FLOOR = 92;
 
 export function FocusActiveScreen() {
   const focus = useFocus();
+  const { t } = useTranslation('focus');
   const { showToast, replace, signedIn } = useApp();
   const insets = useSafeAreaInsets();
   const [ending, setEnding] = useState(false);
@@ -178,7 +179,7 @@ export function FocusActiveScreen() {
       ? {
           key: "pause",
           icon: "play",
-          label: STR.resumeAction,
+          label: t('resumeAction'),
           onPress: () => {
             wake();
             focus.actions.resume(Date.now());
@@ -187,7 +188,7 @@ export function FocusActiveScreen() {
       : {
           key: "pause",
           icon: "pause",
-          label: STR.pauseAction,
+          label: t('pauseAction'),
           onPress: () => {
             wake();
             focus.actions.pause(Date.now());
@@ -196,7 +197,7 @@ export function FocusActiveScreen() {
     {
       key: "end",
       icon: "stop",
-      label: STR.endAction,
+      label: t('endAction'),
       disabled: ending, // doc-08 §5 ending：结束禁用，确认 sheet 出现
       onPress: () => {
         wake();
@@ -210,7 +211,7 @@ export function FocusActiveScreen() {
     setEnding(false);
     focus.actions.abandon(Date.now());
     showToast(
-      keptMinutes > 0 ? STR.keptMinutes(keptMinutes) : STR.keptNothing,
+      keptMinutes > 0 ? t('keptMinutes', { n: keptMinutes }) : t('keptNothing'),
       "info",
     );
     replace("home");
@@ -250,7 +251,7 @@ export function FocusActiveScreen() {
             <View style={styles.statusRow}>
               <View style={styles.statusDot} />
               <Text style={styles.statusText}>
-                {ACTIVITY_STATUS[session.activity]}
+                {t(`status.${session.activity}`)}
               </Text>
             </View>
           </Animated.View>
@@ -264,7 +265,7 @@ export function FocusActiveScreen() {
           >
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={STR.quickMenuLabel}
+              accessibilityLabel={t('quickMenuLabel')}
               onPress={() => {
                 wake();
                 setQuickMenu(true);
@@ -283,15 +284,15 @@ export function FocusActiveScreen() {
           {quickMenu ? (
             <SheetOverlay
               onClose={() => setQuickMenu(false)}
-              closeLabel={STR.quickMenuLabel}
+              closeLabel={t('quickMenuLabel')}
               reducedMotion={focus.reducedMotion}
               anchor="top"
               topInset={insets.top}
             >
-              <Text style={styles.menuTitle}>{STR.quickMenuLabel}</Text>
+              <Text style={styles.menuTitle}>{t('quickMenuLabel')}</Text>
               <Pressable
                 accessibilityRole="switch"
-                accessibilityLabel={STR.keepAwakeLabel}
+                accessibilityLabel={t('keepAwakeLabel')}
                 accessibilityState={{ checked: keepAwake }}
                 onPress={() => setKeepAwake(!keepAwake)}
                 style={({ pressed }) => [
@@ -306,7 +307,7 @@ export function FocusActiveScreen() {
                   }
                   size={18}
                 />
-                <Text style={styles.menuRowLabel}>{STR.keepAwakeLabel}</Text>
+                <Text style={styles.menuRowLabel}>{t('keepAwakeLabel')}</Text>
                 <View
                   style={[
                     styles.menuStatePill,
@@ -319,13 +320,13 @@ export function FocusActiveScreen() {
                       keepAwake && styles.menuStateTextOn,
                     ]}
                   >
-                    {keepAwake ? STR.onState : STR.offState}
+                    {keepAwake ? t('onState') : t('offState')}
                   </Text>
                 </View>
               </Pressable>
               <Pressable
                 accessibilityRole="switch"
-                accessibilityLabel={STR.muteLabel}
+                accessibilityLabel={t('muteLabel')}
                 accessibilityState={{ checked: muted }}
                 onPress={() => setMuted(!muted)}
                 style={({ pressed }) => [
@@ -338,7 +339,7 @@ export function FocusActiveScreen() {
                   color={muted ? semantic.actionFocus : semantic.textSecondary}
                   size={18}
                 />
-                <Text style={styles.menuRowLabel}>{STR.muteLabel}</Text>
+                <Text style={styles.menuRowLabel}>{t('muteLabel')}</Text>
                 <View
                   style={[
                     styles.menuStatePill,
@@ -351,7 +352,7 @@ export function FocusActiveScreen() {
                       muted && styles.menuStateTextOn,
                     ]}
                   >
-                    {muted ? STR.onState : STR.offState}
+                    {muted ? t('onState') : t('offState')}
                   </Text>
                 </View>
               </Pressable>
@@ -380,7 +381,7 @@ export function FocusActiveScreen() {
                 {formatTimerSeconds(focus.remainingSeconds)}
               </Text>
               {paused ? (
-                <Text style={styles.pausedHint}>{STR.paused}</Text>
+                <Text style={styles.pausedHint}>{t('paused')}</Text>
               ) : null}
             </View>
 
@@ -388,7 +389,7 @@ export function FocusActiveScreen() {
               {/* 正在播字幕：静音时隐藏（弱化态随 chrome 一并隐去，只留时钟） */}
               {!muted && music.selectedTrack ? (
                 <Text style={styles.nowPlayingText}>
-                  {STR.nowPlaying(music.selectedTrack.title)}
+                  {t('nowPlaying', { title: music.selectedTrack.title })}
                 </Text>
               ) : null}
               <View style={styles.pillRow}>
@@ -421,22 +422,22 @@ export function FocusActiveScreen() {
           {ending ? (
             <SheetOverlay
               onClose={() => setEnding(false)}
-              closeLabel={STR.endConfirmStay}
+              closeLabel={t('endConfirmStay')}
               reducedMotion={focus.reducedMotion}
               bottomInset={insets.bottom}
             >
-              <Text style={styles.confirmTitle}>{STR.endConfirmTitle}</Text>
+              <Text style={styles.confirmTitle}>{t('endConfirmTitle')}</Text>
               <Text style={styles.confirmMessage}>
                 {Math.round(computeEffective(session, Date.now()) / 60) > 0
-                  ? STR.endConfirmKept(
-                      Math.round(computeEffective(session, Date.now()) / 60),
-                    )
-                  : STR.endConfirmKeptZero}
+                  ? t('endConfirmKept', {
+                      n: Math.round(computeEffective(session, Date.now()) / 60),
+                    })
+                  : t('endConfirmKeptZero')}
               </Text>
               <View style={styles.confirmActions}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={STR.endConfirmStay}
+                  accessibilityLabel={t('endConfirmStay')}
                   onPress={() => setEnding(false)}
                   style={({ pressed }) => [
                     styles.confirmSecondary,
@@ -444,12 +445,12 @@ export function FocusActiveScreen() {
                   ]}
                 >
                   <Text style={styles.confirmSecondaryText}>
-                    {STR.endConfirmStay}
+                    {t('endConfirmStay')}
                   </Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={STR.endConfirmLeave}
+                  accessibilityLabel={t('endConfirmLeave')}
                   onPress={confirmEnd}
                   style={({ pressed }) => [
                     styles.confirmDanger,
@@ -457,7 +458,7 @@ export function FocusActiveScreen() {
                   ]}
                 >
                   <Text style={styles.confirmDangerText}>
-                    {STR.endConfirmLeave}
+                    {t('endConfirmLeave')}
                   </Text>
                 </Pressable>
               </View>

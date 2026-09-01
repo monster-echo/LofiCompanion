@@ -11,7 +11,7 @@ import { useFocus } from '../../focus/application/FocusStore';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { useAsyncRefresh } from '../application/useAsyncRefresh';
 import { avatarInitial, goalProgress, weekIdOf, previousWeekStartMs } from '../domain/model';
-import { LEADERBOARD_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 
 /**
  * S11 雨夜自习室 / 小组详情（doc-08 §12）：房间氛围媒体占上半屏（顶部渐暗、
@@ -24,6 +24,7 @@ import { LEADERBOARD_STRINGS as STR } from './strings';
 const MAX_AVATARS = 6;
 
 export function GroupDetailScreen() {
+  const { t } = useTranslation('leaderboards');
   const { params } = useRoute<RouteProp<RootParamList, 'groups.detail'>>();
   const groupId = params?.groupId ?? '';
   const { user, navigate, back } = useApp();
@@ -52,11 +53,11 @@ export function GroupDetailScreen() {
         <Text style={styles.stateTitle}>{loaded.state.message}</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.retryAction}
+          accessibilityLabel={t('retryAction')}
           onPress={loaded.reload}
           style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
         >
-          <Text style={styles.retryText}>{STR.retryAction}</Text>
+          <Text style={styles.retryText}>{t('retryAction')}</Text>
         </Pressable>
       </StateShell>
     );
@@ -72,7 +73,7 @@ export function GroupDetailScreen() {
 
   const shareJoinCode = () => {
     void Share.share({
-      message: `${STR.joinCodeCard}（${detail.group.name}）：${detail.group.joinCode}`,
+      message: `${t('joinCodeCard')}（${detail.group.name}）：${detail.group.joinCode}`,
     });
   };
 
@@ -98,7 +99,7 @@ export function GroupDetailScreen() {
           <View style={styles.onlineRow}>
             {detail.onlineCount > 0 ? <View style={styles.onlineDot} /> : null}
             <Text style={styles.onlineText}>
-              {detail.onlineCount > 0 ? STR.onlineFocusing(detail.onlineCount) : STR.onlineNone}
+              {detail.onlineCount > 0 ? t('onlineFocusing', { count: detail.onlineCount }) : t('onlineNone')}
             </Text>
           </View>
           <View style={styles.avatarsRow}>
@@ -120,7 +121,7 @@ export function GroupDetailScreen() {
             ))}
             {overflow > 0 ? (
               <View style={[styles.memberAvatar, styles.overflowChip]}>
-                <Text style={styles.overflowText}>{STR.moreMembers(overflow)}</Text>
+                <Text style={styles.overflowText}>{t('moreMembers', { count: overflow })}</Text>
               </View>
             ) : null}
           </View>
@@ -128,9 +129,9 @@ export function GroupDetailScreen() {
 
         {/* 共同目标卡（24 内边距）：本周共同 X / 目标 Y + 6dp 进度条 */}
         <View style={styles.goalCard}>
-          <Text style={styles.goalLabel}>{STR.sharedGoalCard}</Text>
-          <Text style={styles.goalValue}>{STR.sharedGoalValue(detail.thisWeekMinutes)}</Text>
-          <Text style={styles.goalTarget}>{STR.sharedGoalTarget(detail.group.weeklyGoalMinutes)}</Text>
+          <Text style={styles.goalLabel}>{t('sharedGoalCard')}</Text>
+          <Text style={styles.goalValue}>{t('sharedGoalValue', { minutes: detail.thisWeekMinutes })}</Text>
+          <Text style={styles.goalTarget}>{t('sharedGoalTarget', { goal: detail.group.weeklyGoalMinutes })}</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${Math.round(ratio * 100)}%` }]} />
           </View>
@@ -138,10 +139,10 @@ export function GroupDetailScreen() {
 
         {/* 我的贡献卡（16 内边距） */}
         <View style={styles.contributionCard}>
-          <Text style={styles.contributionLabel}>{STR.myContributionCard}</Text>
+          <Text style={styles.contributionLabel}>{t('myContributionCard')}</Text>
           <Text style={styles.contributionValue}>
-            {STR.myContributionValue(me?.minutes ?? 0)}
-            {me ? ` · ${STR.myContributionRank(me.rank)}` : ''}
+            {t('myContributionValue', { minutes: me?.minutes ?? 0 })}
+            {me ? ` · ${t('myContributionRank', { rank: me.rank })}` : ''}
           </Text>
         </View>
 
@@ -149,18 +150,18 @@ export function GroupDetailScreen() {
         {isOwner ? (
           <View style={styles.joinCodeCard}>
             <View style={styles.joinCodeHead}>
-              <Text style={styles.contributionLabel}>{STR.joinCodeCard}</Text>
+              <Text style={styles.contributionLabel}>{t('joinCodeCard')}</Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={STR.copyJoinCode}
+                accessibilityLabel={t('copyJoinCode')}
                 onPress={shareJoinCode}
                 style={({ pressed }) => [styles.copyButton, pressed && styles.pressed]}
               >
-                <Text style={styles.copyText}>{STR.copyJoinCode}</Text>
+                <Text style={styles.copyText}>{t('copyJoinCode')}</Text>
               </Pressable>
             </View>
             <Text selectable style={styles.joinCode}>{detail.group.joinCode}</Text>
-            <Text style={styles.joinCodeHint}>{STR.joinCodeHint}</Text>
+            <Text style={styles.joinCodeHint}>{t('joinCodeHint')}</Text>
           </View>
         ) : null}
 
@@ -168,12 +169,12 @@ export function GroupDetailScreen() {
         {lastWeekSettled ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={STR.lastWeekSettlement}
+            accessibilityLabel={t('lastWeekSettlement')}
             onPress={() => navigate('weekly.settlement', { groupId })}
             style={({ pressed }) => [styles.settlementRow, pressed && styles.pressed]}
           >
             <AppIcon name="image" color={semantic.achievement} size={20} />
-            <Text style={styles.settlementText}>{STR.lastWeekSettlement}</Text>
+            <Text style={styles.settlementText}>{t('lastWeekSettlement')}</Text>
             <AppIcon name="chevron-right" color={semantic.textMuted} size={18} />
           </Pressable>
         ) : null}
@@ -183,7 +184,7 @@ export function GroupDetailScreen() {
       <View style={styles.appBar} pointerEvents="box-none">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.backLabel}
+          accessibilityLabel={t('backLabel')}
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
@@ -197,11 +198,11 @@ export function GroupDetailScreen() {
       <View style={styles.ctaBar}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.startTogether}
+          accessibilityLabel={t('startTogether')}
           onPress={() => navigate('focus.setup')}
           style={({ pressed }) => [styles.primaryCta, pressed && styles.pressed]}
         >
-          <Text style={styles.primaryCtaText}>{STR.startTogether}</Text>
+          <Text style={styles.primaryCtaText}>{t('startTogether')}</Text>
         </Pressable>
       </View>
     </View>
@@ -209,9 +210,10 @@ export function GroupDetailScreen() {
 }
 
 function MissingGroup({ onBack }: Readonly<{ onBack: () => void }>) {
+  const { t } = useTranslation('leaderboards');
   return (
     <StateShell onBack={onBack} title="">
-      <Text style={styles.stateText}>{STR.groupUnavailable}</Text>
+      <Text style={styles.stateText}>{t('groupUnavailable')}</Text>
     </StateShell>
   );
 }
@@ -221,12 +223,13 @@ function StateShell({ onBack, title, children }: Readonly<{
   title: string;
   children: React.ReactNode;
 }>) {
+  const { t } = useTranslation('leaderboards');
   return (
     <View style={styles.screen}>
       <View style={styles.appBar}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.backLabel}
+          accessibilityLabel={t('backLabel')}
           onPress={onBack}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >

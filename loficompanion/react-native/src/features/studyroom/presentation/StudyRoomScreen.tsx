@@ -10,15 +10,16 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../../../state/AppStore';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
 import { stateAsset } from '../../skins/domain/resolve';
 import { fetchRoomCounts } from '../data/roomsClient';
-import { STUDY_ROOMS, type StudyRoomDef } from '../domain/rooms';
+import { STUDY_ROOMS, roomName, type StudyRoomDef } from '../domain/rooms';
 import { resolveStudyRoomWsUrl, studyRoomHttpBaseOf } from '../domain/wsUrl';
-import { STUDY_ROOM_STRINGS as STR } from './strings';
 
 /**
  * S-自习室 Tab 根页：公开自习室列表（先选房、后进入）。房间 = 内置皮肤
@@ -31,6 +32,8 @@ const COUNTS_POLL_MS = 15_000;
 
 export function StudyRoomScreen() {
   const { navigate } = useApp();
+  const { locale } = usePreferences();
+  const { t } = useTranslation('studyroom');
   const insets = useSafeAreaInsets();
   const { state, refreshing, refresh } = useAsyncRefresh(() => fetchRoomCounts(httpBase()), []);
 
@@ -62,18 +65,19 @@ export function StudyRoomScreen() {
           />
         }
       >
-        <Text style={styles.title}>{STR.roomTitle}</Text>
-        <Text style={styles.subtitle}>{STR.listSubtitle}</Text>
-        {countsUnavailable ? <Text style={styles.countsHint}>{STR.countsUnavailable}</Text> : null}
+        <Text style={styles.title}>{t('roomTitle')}</Text>
+        <Text style={styles.subtitle}>{t('listSubtitle')}</Text>
+        {countsUnavailable ? <Text style={styles.countsHint}>{t('countsUnavailable')}</Text> : null}
         <View style={styles.cards}>
           {STUDY_ROOMS.map((room) => {
             const count = countFor(room);
+            const name = roomName(room, locale);
             return (
               <Pressable
                 key={room.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${STR.enterRoom(room.name)}，${
-                  count === null ? '' : STR.onlineNow(count)
+                accessibilityLabel={`${t('enterRoom', { name })}，${
+                  count === null ? '' : t('onlineNow', { n: count })
                 }`}
                 onPress={() => navigate('studyroom.active', { roomId: room.id })}
                 style={({ pressed }) => [styles.card, pressed && styles.pressed]}
@@ -86,16 +90,16 @@ export function StudyRoomScreen() {
                 />
                 <View style={styles.cardScrim} />
                 <View style={styles.cardBody}>
-                  <Text style={styles.cardName}>{room.name}</Text>
+                  <Text style={styles.cardName}>{name}</Text>
                   <View style={styles.cardFooter}>
                     <View style={styles.onlineRow}>
                       <View style={styles.dot} />
                       <Text style={styles.onlineText}>
-                        {count === null ? ' ' : STR.onlineNow(count)}
+                        {count === null ? ' ' : t('onlineNow', { n: count })}
                       </Text>
                     </View>
                     <View style={styles.enterPill}>
-                      <Text style={styles.enterText}>{STR.enterRoom(room.name)}</Text>
+                      <Text style={styles.enterText}>{t('enterRoom', { name })}</Text>
                       <AppIcon name="chevron-right" color={semantic.textPrimary} size={14} />
                     </View>
                   </View>

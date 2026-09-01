@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppIcon, IconName } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
 import { colors, radii, semantic, space, type } from '../../../theme/tokens';
-import { LEADERBOARD_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 
 /**
  * S10 学习排行榜（doc-08 §11，P0-A 仅登录引导壳）。Tab 根页：居中群体图标
@@ -11,25 +11,26 @@ import { LEADERBOARD_STRINGS as STR } from './strings';
  * 榜单/好友/小组数据与周结算属 P0-B，不伪造任何榜单内容。
  */
 export function LeaderboardSignInScreen() {
+  const { t } = useTranslation('leaderboards');
   const { navigate } = useApp();
 
   const rules: readonly { icon: IconName; text: string }[] = [
-    { icon: 'check-circle', text: STR.ruleCompletedOnly },
-    { icon: 'clock', text: STR.ruleDailyCap },
-    { icon: 'stop', text: STR.ruleNoAbandon },
+    { icon: 'check-circle', text: t('ruleCompletedOnly') },
+    { icon: 'clock', text: t('ruleDailyCap') },
+    { icon: 'stop', text: t('ruleNoAbandon') },
   ];
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{STR.screenTitle}</Text>
+        <Text style={styles.headerTitle}>{t('screenTitle')}</Text>
       </View>
 
       <View style={styles.body}>
         <View style={styles.heroIcon}>
           <AppIcon name="group" color={semantic.actionPrimary} size={32} />
         </View>
-        <Text style={styles.heroTitle}>{STR.signInInvite}</Text>
+        <Text style={styles.heroTitle}>{t('signInInvite')}</Text>
 
         <View style={styles.rules}>
           {rules.map((rule) => (
@@ -42,13 +43,13 @@ export function LeaderboardSignInScreen() {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.signInAction}
+          accessibilityLabel={t('signInAction')}
           onPress={() => navigate('auth.signIn')}
           style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
         >
-          <Text style={styles.ctaText}>{STR.signInAction}</Text>
+          <Text style={styles.ctaText}>{t('signInAction')}</Text>
         </Pressable>
-        <Text style={styles.upcoming}>{STR.p0bNote}</Text>
+        <Text style={styles.upcoming}>{t('p0bNote')}</Text>
       </View>
 
     </View>

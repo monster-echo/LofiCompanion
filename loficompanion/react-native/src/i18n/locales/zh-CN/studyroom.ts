@@ -1,14 +1,10 @@
-/**
- * 自习室 zh-CN 文案常量（per-feature strings 惯例，对齐 focus/presentation/strings.ts；
- * P0-A 仅中文）。语气对齐 doc-08 §22：温和具体，无负担性语言。
- */
-
-export const STUDY_ROOM_STRINGS = {
-  // Tab 列表页：先选房，后进入
+// 自习室域文案（zh-CN 为权威源；自 features/studyroom/presentation/strings.ts 迁入）。
+export const studyroom = {
+  // 列表页
   roomTitle: '自习室',
   listSubtitle: '挑一间房，和正在学习的人坐在一起',
-  onlineNow: (n: number) => `${n} 人在自习`,
-  enterRoom: (name: string) => `进入${name}`,
+  onlineNow: '{{n}} 人在自习',
+  enterRoom: '进入{{name}}',
   countsUnavailable: '在线人数暂时看不了，稍后再试',
   retry: '重试',
   // 房间页
@@ -21,13 +17,13 @@ export const STUDY_ROOM_STRINGS = {
   connecting: '连接中…',
   reconnecting: '重连中…',
   closeLabel: '关闭',
-  // 输入条（点击屏幕浮现，5s 无操作自动弱化）
+  // 输入条
   inputPlaceholder: '说点什么，为彼此加油…',
   signInToChat: '登录后加入弹幕',
   send: '发送',
   // 发送反馈
   rejectedBlocked: '这条弹幕未能发出，换句鼓励的话试试',
   rejectedTooLong: '弹幕最多 42 个字',
-  cooldownHint: (s: number) => `休息一下，${s}s 后再发`,
+  cooldownHint: '休息一下，{{s}}s 后再发',
   sendFailed: '弹幕发送失败，请稍后再试',
 } as const;

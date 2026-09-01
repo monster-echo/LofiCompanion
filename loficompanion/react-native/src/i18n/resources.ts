@@ -1,7 +1,19 @@
+import { achievements as enAchievements } from './locales/en-US/achievements';
+import { leaderboards as enLeaderboards } from './locales/en-US/leaderboards';
 import { common as enCommon } from './locales/en-US/common';
+import { focus as enFocus } from './locales/en-US/focus';
 import { settings as enSettings } from './locales/en-US/settings';
+import { skins as enSkins } from './locales/en-US/skins';
+import { store as enStore } from './locales/en-US/store';
+import { studyroom as enStudyroom } from './locales/en-US/studyroom';
+import { achievements as zhAchievements } from './locales/zh-CN/achievements';
+import { leaderboards as zhLeaderboards } from './locales/zh-CN/leaderboards';
 import { common as zhCommon } from './locales/zh-CN/common';
+import { focus as zhFocus } from './locales/zh-CN/focus';
 import { settings as zhSettings } from './locales/zh-CN/settings';
+import { skins as zhSkins } from './locales/zh-CN/skins';
+import { store as zhStore } from './locales/zh-CN/store';
+import { studyroom as zhStudyroom } from './locales/zh-CN/studyroom';
 
 // 命名空间集中注册（i18next 资源要求单一类型根）：命名空间粒度沿用
 // per-feature 习惯。zh-CN 为权威形状（t() 键类型由此导出，en-US 键集
@@ -11,9 +23,21 @@ export const resources = {
   'zh-CN': {
     common: zhCommon,
     settings: zhSettings,
+    studyroom: zhStudyroom,
+    skins: zhSkins,
+    store: zhStore,
+    focus: zhFocus,
+    achievements: zhAchievements,
+    leaderboards: zhLeaderboards,
   },
   'en-US': {
     common: enCommon,
     settings: enSettings,
+    studyroom: enStudyroom,
+    skins: enSkins,
+    store: enStore,
+    focus: enFocus,
+    achievements: enAchievements,
+    leaderboards: enLeaderboards,
   },
 } as const;

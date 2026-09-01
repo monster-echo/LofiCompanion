@@ -2,11 +2,16 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import type { AchievementDef, RoomItemId } from '../features/achievements/domain/rules';
+import { useTranslation } from 'react-i18next';
+import { currentLanguage } from '../i18n/core';
 import { radii, semantic, space, type } from '../theme/tokens';
 import { AppIcon, IconName } from './AppIcon';
 
 type AchievementTileProps = Readonly<{
   def: AchievementDef;
+  /** 成就名/描述（i18n 解析后传入，tile 保持无 locale 依赖） */
+  name: string;
+  description: string;
   unlocked: boolean;
   /** 解锁时间（epoch ms），解锁卡右下角以 caption 展示 */
   unlockedAt?: number;
@@ -35,7 +40,7 @@ let gradientSeq = 0;
 
 function formatUnlockDate(epochMs: number): string {
   try {
-    return new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric' }).format(
+    return new Intl.DateTimeFormat(currentLanguage(), { month: 'long', day: 'numeric' }).format(
       new Date(epochMs),
     );
   } catch {
@@ -48,7 +53,8 @@ function formatUnlockDate(epochMs: number): string {
  * Task 11 立绘到位前用「图标先行」占位：解锁=渐变块+收藏物图标；
  * 锁定=降饱和/降不透明度块 + 居中 SVG 锁图标。
  */
-export function AchievementTile({ def, unlocked, unlockedAt }: AchievementTileProps) {
+export function AchievementTile({ def, name, description, unlocked, unlockedAt }: AchievementTileProps) {
+  const { t } = useTranslation('achievements');
   const gradientId = React.useMemo(() => {
     gradientSeq += 1;
     return `achievement-art-${gradientSeq}`;
@@ -60,8 +66,8 @@ export function AchievementTile({ def, unlocked, unlockedAt }: AchievementTilePr
       style={styles.card}
       accessibilityLabel={
         unlocked
-          ? `成就 ${def.name}，已解锁${unlockedAt ? `，${formatUnlockDate(unlockedAt)}` : ''}`
-          : `成就 ${def.name}，未解锁，${def.description}`
+          ? t('tileUnlockedA11y', { name, date: unlockedAt ? formatUnlockDate(unlockedAt) : '' })
+          : t('tileLockedA11y', { name, description })
       }
     >
       <View style={styles.art}>
@@ -88,10 +94,10 @@ export function AchievementTile({ def, unlocked, unlockedAt }: AchievementTilePr
       </View>
       <View style={styles.textZone}>
         <Text style={[styles.name, !unlocked && styles.nameLocked]} numberOfLines={1}>
-          {def.name}
+          {name}
         </Text>
         <Text style={[styles.description, !unlocked && styles.nameLocked]} numberOfLines={1}>
-          {unlocked && unlockedAt ? formatUnlockDate(unlockedAt) : def.description}
+          {unlocked && unlockedAt ? formatUnlockDate(unlockedAt) : description}
         </Text>
       </View>
     </View>

@@ -6,7 +6,7 @@ import { AppIcon, type IconName } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import { useAsyncRefresh } from '../application/useAsyncRefresh';
-import { LEADERBOARD_STRINGS as STR } from './strings';
+import { useTranslation } from 'react-i18next';
 
 /**
  * S12 排行规则与隐私（doc-08 §13）：顶部当前名次卡（P0 只显示当前名次与分钟，
@@ -14,6 +14,7 @@ import { LEADERBOARD_STRINGS as STR } from './strings';
  * 可访问 Switch（退出走 Confirm 二次确认，明确后果）；规则说明正文可展开。
  */
 export function LeaderboardRulesScreen() {
+  const { t } = useTranslation('leaderboards');
   const { user, back, showToast, showConfirm } = useApp();
   const privacy = useAsyncRefresh(() => apiClient.getLeaderboardPrivacy(), []);
   const board = useAsyncRefresh(() => apiClient.friendsLeaderboard(), []);
@@ -38,7 +39,7 @@ export function LeaderboardRulesScreen() {
     try {
       const saved = await apiClient.updateLeaderboardPrivacy(patch);
       setSettings(saved);
-      showToast(patch.optedOut === true ? STR.youOptedOutHint : STR.savedToast, 'success');
+      showToast(patch.optedOut === true ? t('youOptedOutHint') : t('savedToast'), 'success');
       void board.reload();
     } catch (error) {
       setSettings(previous); // 回滚
@@ -50,9 +51,9 @@ export function LeaderboardRulesScreen() {
     if (!next) {
       // 退出榜单有明确后果 → Confirm 二次确认（doc-08 §21）
       showConfirm({
-        title: STR.optOutConfirmTitle,
-        message: STR.optOutConfirmMessage,
-        confirmLabel: STR.optOutConfirmLabel,
+        title: t('optOutConfirmTitle'),
+        message: t('optOutConfirmMessage'),
+        confirmLabel: t('optOutConfirmLabel'),
         onConfirm: () => void apply({ optedOut: true }),
       });
       return;
@@ -61,9 +62,9 @@ export function LeaderboardRulesScreen() {
   };
 
   const rules: readonly { icon: IconName; text: string }[] = [
-    { icon: 'check-circle', text: STR.ruleCompletedOnly },
-    { icon: 'clock', text: STR.ruleDailyCap },
-    { icon: 'stop', text: STR.ruleNoAbandon },
+    { icon: 'check-circle', text: t('ruleCompletedOnly') },
+    { icon: 'clock', text: t('ruleDailyCap') },
+    { icon: 'stop', text: t('ruleNoAbandon') },
   ];
 
   const optedOut = settings?.optedOut ?? false;
@@ -74,13 +75,13 @@ export function LeaderboardRulesScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={STR.backLabel}
+          accessibilityLabel={t('backLabel')}
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
           <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
         </Pressable>
-        <Text style={styles.headerTitle}>{STR.rulesTitle}</Text>
+        <Text style={styles.headerTitle}>{t('rulesTitle')}</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -104,26 +105,26 @@ export function LeaderboardRulesScreen() {
               </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={STR.retryAction}
+                accessibilityLabel={t('retryAction')}
                 onPress={() => {
                   privacy.reload();
                   board.reload();
                 }}
                 style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
               >
-                <Text style={styles.retryText}>{STR.retryAction}</Text>
+                <Text style={styles.retryText}>{t('retryAction')}</Text>
               </Pressable>
             </>
           ) : optedOut ? (
-            <Text style={styles.rankHidden}>{STR.rankHiddenWhenOptedOut}</Text>
+            <Text style={styles.rankHidden}>{t('rankHiddenWhenOptedOut')}</Text>
           ) : (
             <>
-              <Text style={styles.rankLabel}>{STR.currentRankCard}</Text>
+              <Text style={styles.rankLabel}>{t('currentRankCard')}</Text>
               <Text style={styles.rankValue}>
-                {STR.currentRankValue(selfEntry?.rank ?? 0)}
+                {t('currentRankValue', { rank: selfEntry?.rank ?? 0 })}
               </Text>
               <Text style={styles.rankMinutes}>
-                {STR.currentRankMinutes(selfEntry?.minutes ?? 0)}
+                {t('currentRankMinutes', { minutes: selfEntry?.minutes ?? 0 })}
               </Text>
             </>
           )}
@@ -143,8 +144,8 @@ export function LeaderboardRulesScreen() {
         <View style={styles.privacyCard}>
           <View style={styles.switchRow}>
             <View style={styles.switchText}>
-              <Text style={styles.switchLabel}>{STR.publicNickname}</Text>
-              <Text style={styles.switchHint}>{STR.publicNicknameHint}</Text>
+              <Text style={styles.switchLabel}>{t('publicNickname')}</Text>
+              <Text style={styles.switchHint}>{t('publicNicknameHint')}</Text>
             </View>
             <Switch
               value={publicDisplay && !optedOut}
@@ -154,8 +155,8 @@ export function LeaderboardRulesScreen() {
           </View>
           <View style={styles.switchRow}>
             <View style={styles.switchText}>
-              <Text style={styles.switchLabel}>{STR.joinLeaderboard}</Text>
-              <Text style={styles.switchHint}>{STR.joinLeaderboardHint}</Text>
+              <Text style={styles.switchLabel}>{t('joinLeaderboard')}</Text>
+              <Text style={styles.switchHint}>{t('joinLeaderboardHint')}</Text>
             </View>
             <Switch
               value={settings ? !optedOut : false}
@@ -169,18 +170,18 @@ export function LeaderboardRulesScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ expanded: rulesOpen }}
-          accessibilityLabel={STR.rulesBodyTitle}
+          accessibilityLabel={t('rulesBodyTitle')}
           onPress={() => setRulesOpen((open) => !open)}
           style={({ pressed }) => [styles.bodyToggle, pressed && styles.pressed]}
         >
-          <Text style={styles.bodyToggleText}>{STR.rulesBodyTitle}</Text>
+          <Text style={styles.bodyToggleText}>{t('rulesBodyTitle')}</Text>
           <View style={rulesOpen ? styles.chevronOpen : undefined}>
             <AppIcon name="chevron-down" color={semantic.textMuted} size={18} />
           </View>
         </Pressable>
         {rulesOpen ? (
           <View style={styles.rulesBodyCard}>
-            <Text style={styles.rulesBodyText}>{STR.rulesBody}</Text>
+            <Text style={styles.rulesBodyText}>{t('rulesBody')}</Text>
           </View>
         ) : null}
       </ScrollView>
