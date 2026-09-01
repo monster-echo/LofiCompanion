@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { radii, semantic, space, type } from '../theme/tokens';
+import { useTranslation } from 'react-i18next';
 
 type WeeklyProgressCardProps = Readonly<{
   weekMinutes: number;
@@ -15,7 +16,6 @@ type WeeklyProgressCardProps = Readonly<{
 const CHART_HEIGHT = 160;
 const BAR_WIDTH = 12;
 const BAR_RADIUS = 3;
-const DAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'] as const;
 
 /** 周一为一周首日：JS getDay 0=周日 → 下标 6 */
 export function currentWeekDayIndex(now: Date): number {
@@ -33,6 +33,8 @@ export function WeeklyProgressCard({
   days,
   todayIndex = currentWeekDayIndex(new Date()),
 }: WeeklyProgressCardProps) {
+  const { t } = useTranslation('common');
+  const dayLabels = [0, 1, 2, 3, 4, 5, 6].map((i) => t(`dayShort${i}` as 'dayShort0'));
   const [chartWidth, setChartWidth] = useState(0);
   const values = normalizeDays(days);
   const peak = Math.max(targetMinutes, ...values, 1);
@@ -92,12 +94,12 @@ export function WeeklyProgressCard({
           : null}
       </View>
       <View style={styles.axis}>
-        {DAY_LABELS.map((label, index) => (
+        {dayLabels.map((label, index) => (
           <Text
             key={label}
             style={[
               styles.axisLabel,
-              { width: slotWidth > 0 ? slotWidth : `${100 / DAY_LABELS.length}%` },
+              { width: slotWidth > 0 ? slotWidth : `${100 / 7}%` },
               index === todayIndex && styles.axisLabelToday,
             ]}
           >

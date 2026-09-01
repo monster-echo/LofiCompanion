@@ -4,6 +4,8 @@ import { AppButton, AppCard, ListRow, PageHeader } from '../design-system/compon
 import { CouponView, ReferralView, UsageSummary } from '../domain/models';
 import { useApp } from '../state/AppStore';
 import { styles } from '../theme/styles';
+import { useTranslation } from 'react-i18next';
+import { i18n } from '../i18n/core';
 
 type ViewState<T> =
   | Readonly<{ status: 'loading' }>
@@ -13,32 +15,34 @@ type ViewState<T> =
 
 export function StatisticsScreen() {
   const { loadUsage } = useApp();
+  const { t } = useTranslation('profile');
   const [state, setState] = useState<ViewState<UsageSummary>>({ status: 'loading' });
   useEffect(() => { void load(loadUsage, setState, (value) => value.screens.length === 0); }, [loadUsage]);
   return (
     <View style={styles.page}>
-      <PageHeader title="使用统计" />
+      <PageHeader title={t('rowStatistics')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <StateMessage state={state} retry={() => void load(loadUsage, setState, () => false)} />
         {state.status === 'success' ? <UsageContent usage={state.data} /> : null}
-        {state.status === 'empty' ? <Text style={styles.secondary}>开始使用后，这里会显示匿名聚合数据。</Text> : null}
+        {state.status === 'empty' ? <Text style={styles.secondary}>{t('statisticsEmpty')}</Text> : null}
       </ScrollView>
     </View>
   );
 }
 
 function UsageContent({ usage }: Readonly<{ usage: UsageSummary }>) {
+  const { t } = useTranslation('profile');
   return (
     <>
       <AppCard>
-        <ListRow label="会话次数" value={String(usage.sessions)} />
-        <ListRow label="页面浏览" value={String(usage.screenViews)} />
-        <ListRow label="活跃时长" value={`${usage.activeMinutes} 分钟`} />
+        <ListRow label={t('statSessions')} value={String(usage.sessions)} />
+        <ListRow label={t('statScreenViews')} value={String(usage.screenViews)} />
+        <ListRow label={t('statActiveMinutes')} value={t('statMinutes', { n: usage.activeMinutes })} />
       </AppCard>
       {usage.screens.map((screen) => (
         <AppCard key={screen.screenId}>
-          <ListRow label={screen.screenId} value={`${screen.views} 次`} />
-          <Text style={styles.caption}>停留 {Math.round(screen.durationMs / 1000)} 秒</Text>
+          <ListRow label={screen.screenId} value={t('timesCount', { n: screen.views })} />
+          <Text style={styles.caption}>{t('durationSeconds', { n: Math.round(screen.durationMs / 1000) })}</Text>
         </AppCard>
       ))}
     </>
@@ -47,14 +51,15 @@ function UsageContent({ usage }: Readonly<{ usage: UsageSummary }>) {
 
 export function CouponsScreen() {
   const { loadCoupons } = useApp();
+  const { t } = useTranslation('profile');
   const [state, setState] = useState<ViewState<readonly CouponView[]>>({ status: 'loading' });
   useEffect(() => { void load(loadCoupons, setState, (items) => items.length === 0); }, [loadCoupons]);
   return (
     <View style={styles.page}>
-      <PageHeader title="优惠券" />
+      <PageHeader title={t('rowCoupons')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <StateMessage state={state} retry={() => void load(loadCoupons, setState, (items) => !items.length)} />
-        {state.status === 'empty' ? <Text style={styles.secondary}>当前账户暂无可用优惠券。</Text> : null}
+        {state.status === 'empty' ? <Text style={styles.secondary}>{t('couponsEmpty')}</Text> : null}
         {state.status === 'success' ? state.data.map((coupon) => <CouponCard key={coupon.id} coupon={coupon} />) : null}
       </ScrollView>
     </View>
@@ -62,12 +67,13 @@ export function CouponsScreen() {
 }
 
 function CouponCard({ coupon }: Readonly<{ coupon: CouponView }>) {
-  const status = coupon.usedAt ? '已使用' : coupon.expiresAt && Date.parse(coupon.expiresAt) < Date.now() ? '已过期' : '可使用';
+  const { t } = useTranslation('profile');
+  const status = coupon.usedAt ? t('couponUsed') : coupon.expiresAt && Date.parse(coupon.expiresAt) < Date.now() ? t('couponExpired') : t('couponActive');
   return (
     <AppCard>
       <Text style={styles.heading}>{coupon.title}</Text>
       <Text style={styles.body}>{coupon.discountLabel}</Text>
-      <ListRow label="券码" value={coupon.code} />
+      <ListRow label={t('couponCode')} value={coupon.code} />
       <Text style={styles.caption}>{status}</Text>
     </AppCard>
   );
@@ -75,22 +81,23 @@ function CouponCard({ coupon }: Readonly<{ coupon: CouponView }>) {
 
 export function InviteScreen() {
   const { loadReferral } = useApp();
+  const { t } = useTranslation('profile');
   const [state, setState] = useState<ViewState<ReferralView>>({ status: 'loading' });
   useEffect(() => { void load(loadReferral, setState, () => false); }, [loadReferral]);
   const share = async (referral: ReferralView) => {
-    await Share.share({ message: `使用邀请码 ${referral.code} 加入：${referral.shareUrl}` });
+    await Share.share({ message: t('shareInvite', { code: referral.code, url: referral.shareUrl }) });
   };
   return (
     <View style={styles.page}>
-      <PageHeader title="邀请好友" />
+      <PageHeader title={t('rowInvite')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <StateMessage state={state} retry={() => void load(loadReferral, setState, () => false)} />
         {state.status === 'success' ? (
           <AppCard>
-            <Text style={styles.sectionLabel}>我的邀请码</Text>
+            <Text style={styles.sectionLabel}>{t('myInviteCode')}</Text>
             <Text selectable style={styles.title}>{state.data.code}</Text>
-            <Text style={styles.secondary}>已邀请 {state.data.invited} 位好友</Text>
-            <AppButton label="分享邀请" icon="gift" onPress={() => void share(state.data)} />
+            <Text style={styles.secondary}>{t('invitedCount', { n: state.data.invited })}</Text>
+            <AppButton label={t('shareInviteAction')} icon="gift" onPress={() => void share(state.data)} />
           </AppCard>
         ) : null}
       </ScrollView>
@@ -99,12 +106,13 @@ export function InviteScreen() {
 }
 
 function StateMessage<T>({ state, retry }: Readonly<{ state: ViewState<T>; retry: () => void }>) {
-  if (state.status === 'loading') return <Text style={styles.secondary}>正在加载…</Text>;
+  const { t } = useTranslation('profile');
+  if (state.status === 'loading') return <Text style={styles.secondary}>{t('loading')}</Text>;
   if (state.status !== 'error') return null;
   return (
     <AppCard>
       <Text style={styles.secondary}>{state.message}</Text>
-      <AppButton label="重试" icon="alert" onPress={retry} variant="secondary" />
+      <AppButton label={t('retry')} icon="alert" onPress={retry} variant="secondary" />
     </AppCard>
   );
 }
@@ -119,6 +127,6 @@ async function load<T>(
     const value = await operation();
     update(empty(value) ? { status: 'empty' } : { status: 'success', data: value });
   } catch (error) {
-    update({ status: 'error', message: error instanceof Error ? error.message : '加载失败' });
+    update({ status: 'error', message: error instanceof Error ? error.message : i18n.t('profile:loadFailed') });
   }
 }

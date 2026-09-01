@@ -26,7 +26,11 @@ export function PreferenceScreen({ kind, title }: Readonly<{
     }
   };
   const pageTitle = kind === 'appearance' ? text('appearance')
-    : kind === 'language' ? text('language') : title;
+    : kind === 'language' ? text('language')
+    : kind === 'notifications' ? text('notifications')
+    : kind === 'general' ? text('general')
+    : kind === 'privacy' ? text('privacy')
+    : title;
   return (
     <View style={styles.page}>
       <PageHeader title={pageTitle} />

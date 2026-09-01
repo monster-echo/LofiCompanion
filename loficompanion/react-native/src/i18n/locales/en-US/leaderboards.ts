@@ -43,6 +43,9 @@ export const leaderboards = {
   goalMetBadge: 'Goal met',
   viewGroup: 'View group',
   refreshLabel: 'Refresh leaderboard',
+  shareCode: '{{label}}: {{code}} — enter it in LofiCompanion to join',
+  acceptFailed: "Couldn't add friend",
+  groupNameRequired: 'Give your group a name first',
 
   // S11 小组详情
   backLabel: 'Back',

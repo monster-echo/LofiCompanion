@@ -41,6 +41,7 @@ export const auth = {
   consentSuffix:
     ', and authorize us to process my information as described there to provide account, focus sync, leaderboard and support services.',
   otherWays: 'Other ways to sign in',
+  signInWith: 'Sign in with {{label}}',
   labelPhoneShort: 'Phone',
   githubFailed: 'GitHub authorization failed — try again',
   googleFailed: 'Google authorization failed — try again',

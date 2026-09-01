@@ -4,6 +4,7 @@ import { AppCard } from '../design-system/components';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
+import { useTranslation } from 'react-i18next';
 
 export function ProfileIdentityCard({
   displayName,
@@ -22,6 +23,7 @@ export function ProfileIdentityCard({
   onAvatarPress?: () => void;
 }>) {
   const { palette } = usePreferences();
+  const { t } = useTranslation('profile');
   const avatar = (
     <ProfileAvatar
       avatarUrl={avatarUrl}
@@ -33,13 +35,13 @@ export function ProfileIdentityCard({
       <View style={identityStyles.container}>
         {onAvatarPress ? (
           <Pressable
-            accessibilityLabel="更换头像"
+            accessibilityLabel={t('changeAvatarAlt')}
             accessibilityRole="button"
             onPress={onAvatarPress}
             style={identityStyles.avatarAction}
           >
             {avatar}
-            <Text style={[identityStyles.avatarHint, { color: palette.brand }]}>点击更换</Text>
+            <Text style={[identityStyles.avatarHint, { color: palette.brand }]}>{t('changeAvatarHint')}</Text>
           </Pressable>
         ) : avatar}
         <View style={identityStyles.copy}>
@@ -53,7 +55,7 @@ export function ProfileIdentityCard({
             { backgroundColor: palette.surfaceMuted, color: palette.textSecondary },
           ]}
         >
-          {bio || '这个人还没有填写简介。'}
+          {bio || t('bioEmpty')}
         </Text>
       </View>
     </AppCard>
@@ -65,10 +67,11 @@ function ProfileAvatar({
   label,
 }: Readonly<{ avatarUrl?: string | null; label: string }>) {
   const { palette } = usePreferences();
+  const { t } = useTranslation('profile');
   if (avatarUrl) {
     return (
       <Image
-        accessibilityLabel="用户头像"
+        accessibilityLabel={t('avatarAlt')}
         source={{ uri: avatarUrl }}
         style={identityStyles.avatar}
       />

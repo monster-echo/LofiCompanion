@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { colors, radii, spacing } from '../theme/tokens';
+import { i18n } from '../i18n/core';
 
 export type AuthProviderName = 'apple' | 'google' | 'github' | 'phone';
 
@@ -23,7 +24,7 @@ export function AuthProviderIcon({
   return (
     <View style={providerStyles.item}>
       <Pressable
-        accessibilityLabel={`${label}登录`}
+        accessibilityLabel={i18n.t('auth:signInWith', { label })}
         accessibilityRole="button"
         disabled={!enabled}
         onPress={onPress}

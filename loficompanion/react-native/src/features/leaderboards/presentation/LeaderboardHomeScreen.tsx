@@ -79,7 +79,7 @@ export function LeaderboardHomeScreen() {
   const refreshing = friends.refreshing || group.refreshing;
 
   const shareCode = (code: string, label: string) => {
-    void Share.share({ message: `${label}：${code}（在 LofiCompanion 输入即可加入）` });
+    void Share.share({ message: t('shareCode', { label, code }) });
   };
 
   // —— 好友邀请码兑入 ——
@@ -95,7 +95,7 @@ export function LeaderboardHomeScreen() {
       showToast(t('acceptSuccess', { nickname: result.friend.nickname }), 'success');
       await friends.reload();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : '添加失败', 'error');
+      showToast(error instanceof Error ? error.message : t('acceptFailed'), 'error');
     } finally {
       setAcceptBusy(false);
     }
@@ -114,7 +114,7 @@ export function LeaderboardHomeScreen() {
   const createGroup = async () => {
     const name = groupName.trim();
     if (!name || groupBusy) {
-      if (!name) showToast('先给小组起个名字', 'info');
+      if (!name) showToast(t('groupNameRequired'), 'info');
       return;
     }
     setGroupBusy(true);

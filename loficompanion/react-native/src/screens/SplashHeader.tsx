@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { colors, radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
 
@@ -16,10 +17,11 @@ export function SplashHeader({
   onSkip,
   surfaceColor,
 }: SplashHeaderProps) {
+  const { t } = useTranslation('launch');
   return (
     <View style={headerStyles.header}>
       <View
-        accessibilityLabel={`倒计时 ${countdown}`}
+        accessibilityLabel={t('promoCountdownA11y', { n: countdown })}
         accessibilityLiveRegion="polite"
         style={[headerStyles.countdown, { backgroundColor: surfaceColor }]}
       >
@@ -27,12 +29,12 @@ export function SplashHeader({
       </View>
       {canSkip ? (
         <Pressable
-          accessibilityLabel="跳过宣传页"
+          accessibilityLabel={t('skipPromo')}
           accessibilityRole="button"
           onPress={onSkip}
           style={headerStyles.skip}
         >
-          <Text style={styles.secondary}>跳过</Text>
+          <Text style={styles.secondary}>{t('skip')}</Text>
         </Pressable>
       ) : null}
     </View>

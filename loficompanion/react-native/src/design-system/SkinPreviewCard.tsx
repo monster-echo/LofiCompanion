@@ -6,6 +6,7 @@ import { usePreferences } from '../preferences/PreferencesProvider';
 import { skinDisplayName } from '../features/skins/domain/registry';
 import { radii, semantic, space, type } from "../theme/tokens";
 import { AppIcon } from "./AppIcon";
+import { useTranslation } from 'react-i18next';
 
 type SkinPreviewCardProps = Readonly<{
   manifest: SkinManifest;
@@ -36,13 +37,14 @@ export function SkinPreviewCard({
   width = SKIN_PREVIEW_CARD_WIDTH,
 }: SkinPreviewCardProps) {
   const { locale } = usePreferences();
+  const { t } = useTranslation('skins');
   const displayName = skinDisplayName(manifest, locale);
   const poster = stateAsset(manifest, "ready").poster;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`选择皮肤 ${displayName}`}
+      accessibilityLabel={t('previewA11y', { name: displayName })}
       accessibilityState={{ selected, disabled: disabled === true }}
       disabled={disabled}
       onPress={onPress}

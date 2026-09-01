@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { colors, radii, spacing } from '../theme/tokens';
 import { AppIcon } from './AppIcon';
+import { useTranslation } from 'react-i18next';
 
 type SelectOption<T extends string | number> = Readonly<{ value: T; label: string }>;
 
@@ -18,6 +19,7 @@ export function SelectField<T extends string | number>({
   onChange: (value: T) => void;
 }>) {
   const { palette } = usePreferences();
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
   return (
@@ -34,7 +36,7 @@ export function SelectField<T extends string | number>({
           }]}
         >
           <Text style={[selectStyles.value, { color: palette.text }]}>
-            {selected?.label ?? '请选择'}
+            {selected?.label ?? t('pleaseSelect')}
           </Text>
           <AppIcon name="chevron-right" color={palette.textSecondary} size={18} />
         </Pressable>

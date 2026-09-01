@@ -8,6 +8,7 @@ import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { colors, radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
+import { useTranslation } from 'react-i18next';
 
 const cropSize = 280;
 const zoomStep = 0.25;
@@ -27,6 +28,7 @@ export function AvatarCropEditor({
 }>) {
   const { palette } = usePreferences();
   const { user, showToast } = useApp();
+  const { t } = useTranslation('profile');
   const [zoom, setZoom] = useState(initialZoom);
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
   const [processing, setProcessing] = useState(false);
@@ -76,7 +78,7 @@ export function AvatarCropEditor({
         [{ crop }, { resize: { width: 512, height: 512 } }],
         { base64: true, compress: 0.78, format: SaveFormat.JPEG },
       );
-      if (!result.base64) throw new Error('裁剪失败');
+      if (!result.base64) throw new Error(t('cropFailed'));
       // base64 → OSS：presigned PUT 直传，avatarUrl 存对象 URL（不再 data URL）。
       const { apiClient } = await import('../data/apiClient');
       const url = await apiClient.uploadAvatarToStorage(
@@ -84,7 +86,7 @@ export function AvatarCropEditor({
       );
       onConfirm(url);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : '头像上传失败', 'error');
+      showToast(error instanceof Error ? error.message : t('avatarUploadFailed'), 'error');
     } finally {
       setProcessing(false);
     }
@@ -94,15 +96,15 @@ export function AvatarCropEditor({
     <Modal animationType="fade" transparent visible>
       <View style={editorStyles.backdrop}>
         <View style={[editorStyles.sheet, { backgroundColor: palette.surface }]}>
-          <Text style={styles.heading}>移动和裁剪头像</Text>
-          <Text style={styles.secondary}>拖动图片调整位置，使用下方按钮缩放。</Text>
+          <Text style={styles.heading}>{t('cropTitle')}</Text>
+          <Text style={styles.secondary}>{t('cropHint')}</Text>
           <View
             style={[editorStyles.cropFrame, { backgroundColor: palette.surfaceMuted }]}
             {...panResponder.panHandlers}
           >
             <View style={editorStyles.nonInteractive}>
               <Image
-                accessibilityLabel="待裁剪头像"
+                accessibilityLabel={t('cropImageAlt')}
                 source={{ uri: asset.uri }}
                 style={[
                   editorStyles.image,
@@ -116,21 +118,21 @@ export function AvatarCropEditor({
             </View>
           </View>
           <View style={editorStyles.zoomControls}>
-            <ZoomButton label="缩小头像" icon="minus" onPress={() => changeZoom(zoom - zoomStep)} />
+            <ZoomButton label={t('zoomOut')} icon="minus" onPress={() => changeZoom(zoom - zoomStep)} />
             <Text style={styles.caption}>{Math.round(zoom * 100)}%</Text>
-            <ZoomButton label="放大头像" icon="plus" onPress={() => changeZoom(zoom + zoomStep)} />
+            <ZoomButton label={t('zoomIn')} icon="plus" onPress={() => changeZoom(zoom + zoomStep)} />
           </View>
           <View style={editorStyles.moveControls}>
-            <NudgeButton label="上移" onPress={() => moveBy(0, -nudgeStep)} />
-            <NudgeButton label="下移" onPress={() => moveBy(0, nudgeStep)} />
-            <NudgeButton label="左移" onPress={() => moveBy(-nudgeStep, 0)} />
-            <NudgeButton label="右移" onPress={() => moveBy(nudgeStep, 0)} />
+            <NudgeButton label={t('moveUp')} onPress={() => moveBy(0, -nudgeStep)} />
+            <NudgeButton label={t('moveDown')} onPress={() => moveBy(0, nudgeStep)} />
+            <NudgeButton label={t('moveLeft')} onPress={() => moveBy(-nudgeStep, 0)} />
+            <NudgeButton label={t('moveRight')} onPress={() => moveBy(nudgeStep, 0)} />
           </View>
           <View style={editorStyles.actions}>
-            <AppButton label="取消" onPress={onCancel} variant="secondary" />
+            <AppButton label={t('cancel')} onPress={onCancel} variant="secondary" />
             <AppButton
               disabled={processing}
-              label={processing ? '处理中…' : '使用此裁剪'}
+              label={processing ? t('processing') : t('useCrop')}
               onPress={() => void confirm()}
             />
           </View>

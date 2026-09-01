@@ -23,6 +23,7 @@ import {
 } from '../domain/storeCatalog';
 import { useTranslation } from 'react-i18next';
 import { storePoster } from './storePosters';
+import { i18n } from '../../../i18n/core';
 
 /**
  * S14 陪伴皮肤商店（doc-08 §15，P1-A Task 3）。push 页、未登录可浏览：
@@ -122,7 +123,7 @@ export function SkinStoreScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="返回"
+          accessibilityLabel={i18n.t('common:back')}
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >

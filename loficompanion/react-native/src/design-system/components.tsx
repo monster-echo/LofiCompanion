@@ -14,6 +14,7 @@ import { telemetry } from '../telemetry/Telemetry';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { buttonStyles, componentStyles } from './componentStyles';
 import { disabledContainer } from './derivedTokens';
+import { useTranslation } from 'react-i18next';
 
 export function AppButton({
   label,
@@ -114,6 +115,7 @@ export function PageHeader({
   title,
   rightAction,
 }: Readonly<{ title: string; rightAction?: PageHeaderAction }>) {
+  const { t } = useTranslation('common');
   const { back, canGoBack } = useApp();
   const { palette } = usePreferences();
   return (
@@ -123,7 +125,7 @@ export function PageHeader({
     ]}>
       <View style={componentStyles.headerSide}>
         {canGoBack ? (
-          <IconButton label="返回" icon="arrow-left" onPress={back} />
+          <IconButton label={t('back')} icon="arrow-left" onPress={back} />
         ) : null}
       </View>
       <Text style={[componentStyles.headerTitle, { color: palette.text }]}>{title}</Text>

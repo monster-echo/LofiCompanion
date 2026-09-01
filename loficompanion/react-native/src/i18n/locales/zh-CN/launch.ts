@@ -12,4 +12,5 @@ export const launch = {
   // 宣传页跳过
   skipPromo: '跳过宣传页',
   skip: '跳过',
+  promoCountdownA11y: '跳过宣传页，剩余 {{n}} 秒',
 } as const;

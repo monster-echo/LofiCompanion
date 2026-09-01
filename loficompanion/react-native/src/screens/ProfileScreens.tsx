@@ -16,10 +16,12 @@ import { ProfileIdentityCard } from '../profile/ProfileIdentityCard';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
+import { useTranslation } from 'react-i18next';
 
 export function ProfileScreen() {
   const { user, config, navigate, signOut, showConfirm, replace } = useApp();
   const { palette } = usePreferences();
+  const { t } = useTranslation('profile');
   const insets = useSafeAreaInsets();
   // 访客直达登录页（产品决策 2026-08-31：中间「登录后同步」页增加操作步骤、
   // 造成流失）。replace 语义保证登录页无返回入口，登录成功后由
@@ -30,9 +32,9 @@ export function ProfileScreen() {
   if (!user) return null;
   const tier = config.tiers.find((item) => item.id === user.tierId);
   const requestSignOut = () => showConfirm({
-    title: '退出登录？',
-    message: '服务端会撤销当前会话，本机敏感凭据也会清除。',
-    confirmLabel: '退出',
+    title: t('signOutConfirmTitle'),
+    message: t('signOutConfirmMessage'),
+    confirmLabel: t('signOutConfirmAction'),
     onConfirm: signOut,
   });
   return (
@@ -63,29 +65,29 @@ export function ProfileScreen() {
             {tier?.name ?? user.tierId}
           </Text>
           <Text style={[profileStyles.membershipText, { color: palette.textSecondary }]}>
-            {tier?.summary ?? '会员信息由服务端动态配置'}
+            {tier?.summary ?? t('membershipFallback')}
           </Text>
           <AppButton
-            label="查看会员权益"
+            label={t('viewMembershipPerks')}
             icon="crown"
             onPress={() => navigate('membership.home')}
           />
         </View>
         <AppCard>
-          <ListRow label="个人资料" route="profile.edit" icon="user" />
+          <ListRow label={t('rowProfile')} route="profile.edit" icon="user" />
           {config.features.statistics ? (
-            <ListRow label="使用统计" route="profile.statistics" icon="home" />
+            <ListRow label={t('rowStatistics')} route="profile.statistics" icon="home" />
           ) : null}
           {config.features.coupons ? (
-            <ListRow label="优惠券" route="profile.coupons" icon="gift" />
+            <ListRow label={t('rowCoupons')} route="profile.coupons" icon="gift" />
           ) : null}
           {config.features.invites ? (
-            <ListRow label="邀请好友" route="profile.invite" icon="gift" />
+            <ListRow label={t('rowInvite')} route="profile.invite" icon="gift" />
           ) : null}
-          <ListRow label="订单管理" route="membership.orders" icon="crown" />
-          <ListRow label="设置" route="settings.home" icon="settings" />
+          <ListRow label={t('rowOrders')} route="membership.orders" icon="crown" />
+          <ListRow label={t('rowSettings')} route="settings.home" icon="settings" />
         </AppCard>
-        <AppButton label="退出登录" variant="danger" onPress={requestSignOut} />
+        <AppButton label={t('signOutAction')} variant="danger" onPress={requestSignOut} />
       </ScrollView>
     </View>
   );
@@ -93,15 +95,16 @@ export function ProfileScreen() {
 
 function SignedOutProfile() {
   const { navigate } = useApp();
+  const { t } = useTranslation('profile');
   return (
     <View style={styles.page}>
-      <PageHeader title="我的" />
+      <PageHeader title={t('tabMine')} />
       <View style={styles.centered}>
         <Avatar label="M" />
-        <Text style={styles.title}>登录后同步你的数据</Text>
-        <Text style={styles.secondary}>会员、订单与设置会安全同步。</Text>
+        <Text style={styles.title}>{t('signedOutTitle')}</Text>
+        <Text style={styles.secondary}>{t('signedOutHint')}</Text>
         <View style={profileStyles.fullWidth}>
-          <AppButton label="登录或注册" onPress={() => navigate('auth.signIn')} />
+          <AppButton label={t('signInOrRegister')} onPress={() => navigate('auth.signIn')} />
         </View>
       </View>
     </View>
@@ -111,6 +114,7 @@ function SignedOutProfile() {
 // 头像显示：兼容 objectKey（→ presigned 24h）/ http(s) / data: 三种形态。
 function Avatar({ avatarUrl, label }: Readonly<{ avatarUrl?: string | null; label: string }>) {
   const { palette } = usePreferences();
+  const { t } = useTranslation('profile');
   const [resolved, setResolved] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
@@ -123,7 +127,7 @@ function Avatar({ avatarUrl, label }: Readonly<{ avatarUrl?: string | null; labe
   if (resolved) {
     return (
       <Image
-        accessibilityLabel="用户头像"
+        accessibilityLabel={t('avatarAlt')}
         source={{ uri: resolved }}
         style={profileStyles.avatar}
         onError={() => {
@@ -142,6 +146,7 @@ function Avatar({ avatarUrl, label }: Readonly<{ avatarUrl?: string | null; labe
 
 export function EditProfileScreen() {
   const { user, updateProfile, busy, showToast } = useApp();
+  const { t } = useTranslation('profile');
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '');
@@ -150,7 +155,7 @@ export function EditProfileScreen() {
   const chooseAvatar = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      showToast('需要相册权限才能选择头像', 'error');
+      showToast(t('galleryPermissionRequired'), 'error');
       return;
     }
     const selection = await ImagePicker.launchImageLibraryAsync({
@@ -164,12 +169,12 @@ export function EditProfileScreen() {
   };
   const save = async () => {
     if (await updateProfile({ displayName, bio, avatarUrl: avatarUrl || null })) {
-      showToast('个人资料已保存到服务端', 'success');
+      showToast(t('profileSaved'), 'success');
     }
   };
   return (
     <View style={styles.page}>
-      <PageHeader title="个人资料" />
+      <PageHeader title={t('rowProfile')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <ProfileIdentityCard
           displayName={displayName || user?.username || 'M'}
@@ -179,30 +184,30 @@ export function EditProfileScreen() {
           avatarUrl={avatarUrl}
           onAvatarPress={() => void chooseAvatar()}
         />
-        <Text style={styles.sectionLabel}>用户名（不可修改）</Text>
+        <Text style={styles.sectionLabel}>{t('usernameFixed')}</Text>
         <Text style={styles.secondary}>@{user?.username}</Text>
-        <Text style={styles.sectionLabel}>显示名称</Text>
+        <Text style={styles.sectionLabel}>{t('displayNameLabel')}</Text>
         <TextInput
-          accessibilityLabel="显示名称"
+          accessibilityLabel={t('displayNameLabel')}
           maxLength={40}
           onChangeText={setDisplayName}
           style={styles.input}
           value={displayName}
         />
-        <Text style={styles.sectionLabel}>个人简介</Text>
+        <Text style={styles.sectionLabel}>{t('bioLabel')}</Text>
         <TextInput
-          accessibilityLabel="个人简介"
+          accessibilityLabel={t('bioLabel')}
           maxLength={160}
           multiline
           onChangeText={setBio}
-          placeholder="介绍一下自己"
+          placeholder={t('bioPlaceholder')}
           style={[styles.input, profileStyles.bioInput]}
           value={bio}
         />
-        <Text style={styles.caption}>点击上方头像选择图片，可拖动和缩放裁剪为 512×512。</Text>
+        <Text style={styles.caption}>{t('avatarPickerHint')}</Text>
         <AppButton
           disabled={busy}
-          label={busy ? '保存中…' : '保存资料'}
+          label={busy ? t('saving') : t('saveProfile')}
           icon="check"
           onPress={() => void save()}
         />

@@ -15,6 +15,7 @@ import {
 import { AsyncState } from '../state/asyncState';
 import { useApp } from '../state/AppStore';
 import type { FeedbackScreenshot } from './FeedbackScreenshots';
+import { i18n } from '../i18n/core';
 
 type TicketInput = Readonly<{
   category: string;
@@ -82,7 +83,7 @@ export function SupportProvider({ children }: Readonly<{ children: ReactNode }>)
     setBusy(true);
     try {
       const created = await apiClient.createSupportTicket(input);
-      showToast('工单已提交', 'success');
+      showToast(i18n.t('errors:ticketSubmitted'), 'success');
       await openTicket(created.id);
       return true;
     } catch (error) {
@@ -120,7 +121,7 @@ export function SupportProvider({ children }: Readonly<{ children: ReactNode }>)
     setBusy(true);
     try {
       await apiClient.submitFeedback(input);
-      showToast('感谢反馈，我们会同步处理进度', 'success');
+      showToast(i18n.t('errors:feedbackReceived'), 'success');
       return true;
     } catch (error) {
       showToast(errorMessage(error), 'error');
@@ -162,7 +163,7 @@ function errorState<T>(error: unknown): AsyncState<T> {
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : '服务暂时不可用';
+  return error instanceof Error ? error.message : i18n.t('errors:serverBusy');
 }
 
 export function useSupport() {

@@ -44,6 +44,9 @@ export const leaderboards = {
   goalMetBadge: '已达成',
   viewGroup: '查看小组',
   refreshLabel: '刷新榜单',
+  shareCode: '{{label}}：{{code}}（在 LofiCompanion 输入即可加入）',
+  acceptFailed: '添加失败',
+  groupNameRequired: '先给小组起个名字',
 
   // S11 小组详情
   backLabel: '返回',

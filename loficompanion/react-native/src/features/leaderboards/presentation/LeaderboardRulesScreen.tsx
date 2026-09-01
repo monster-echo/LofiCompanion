@@ -7,6 +7,7 @@ import { useApp } from '../../../state/AppStore';
 import { radii, semantic, space, type } from '../../../theme/tokens';
 import { useAsyncRefresh } from '../application/useAsyncRefresh';
 import { useTranslation } from 'react-i18next';
+import { i18n } from '../../../i18n/core';
 
 /**
  * S12 排行规则与隐私（doc-08 §13）：顶部当前名次卡（P0 只显示当前名次与分钟，
@@ -43,7 +44,7 @@ export function LeaderboardRulesScreen() {
       void board.reload();
     } catch (error) {
       setSettings(previous); // 回滚
-      showToast(error instanceof Error ? error.message : '保存失败', 'error');
+      showToast(error instanceof Error ? error.message : i18n.t('errors:saveFailed'), 'error');
     }
   };
 

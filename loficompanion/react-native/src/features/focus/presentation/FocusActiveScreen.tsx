@@ -32,6 +32,7 @@ import { useFocusQuickPrefs } from "./focusQuickPrefs";
 import { useMusicLibrary } from "../../music/application/useMusicLibrary";
 import { getMusicController } from "../../music/data/expoAudioMusicController";
 import type { IconName } from "../../../design-system/AppIcon";
+import { i18n } from "../../../i18n/core";
 
 /**
  * S04 专注中（概念图 app-concept.png）：内容承载于 RN Modal 独立窗口层，
@@ -379,7 +380,7 @@ export function FocusActiveScreen() {
               <Text
                 style={styles.timerText}
                 accessibilityRole="text"
-                accessibilityLabel={`剩余 ${formatTimerSeconds(focus.remainingSeconds)}`}
+                accessibilityLabel={i18n.t('common:remaining', { time: formatTimerSeconds(focus.remainingSeconds) })}
               >
                 {formatTimerSeconds(focus.remainingSeconds)}
               </Text>

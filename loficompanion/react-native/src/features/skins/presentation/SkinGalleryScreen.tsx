@@ -22,6 +22,7 @@ import { formatPrice } from '../../store/domain/storeCatalog';
 import { findSkinManifestByIdOrSlug } from '../domain/registry';
 import type { SkinManifest } from '../domain/types';
 import { useTranslation } from 'react-i18next';
+import { i18n } from '../../../i18n/core';
 
 /**
  * S01 陪伴皮肤选择（doc-08 §2）。本屏唯一焦点：被选中的大幅皮肤预览。
@@ -95,7 +96,7 @@ export function SkinGalleryScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="返回"
+          accessibilityLabel={i18n.t('common:back')}
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >

@@ -8,6 +8,7 @@ import { styles } from '../theme/styles';
 import { AppIcon } from './AppIcon';
 import { AppButton } from './components';
 import { AppToastHost, TOAST_DURATION_MS } from './AppToast';
+import { useTranslation } from 'react-i18next';
 
 /**
  * 全局反馈宿主：Toast 交给 react-native-toast-message 顶部展示（AppToast），
@@ -15,6 +16,7 @@ import { AppToastHost, TOAST_DURATION_MS } from './AppToast';
  */
 export function FeedbackHost() {
   const { toast, confirm, closeConfirm } = useApp();
+  const { t } = useTranslation('common');
   const { palette } = usePreferences();
   // toast 状态变化 → 命令式触发顶部 toast；id 去重避免同一提示重复弹出
   const shownIdRef = useRef<number | null>(null);
@@ -48,7 +50,7 @@ export function FeedbackHost() {
               </View>
               <View style={feedbackStyles.action}>
                 <AppButton
-                  label={confirm?.confirmLabel ?? '确认'}
+                  label={confirm?.confirmLabel ?? t('confirm')}
                   variant="danger"
                   onPress={() => {
                     confirm?.onConfirm();

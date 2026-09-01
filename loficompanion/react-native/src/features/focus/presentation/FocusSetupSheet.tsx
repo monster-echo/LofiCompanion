@@ -73,7 +73,7 @@ export function FocusSetupSheet() {
   };
 
   return (
-    <SheetOverlay onClose={back} closeLabel="关闭" reducedMotion={focus.reducedMotion}>
+    <SheetOverlay onClose={back} reducedMotion={focus.reducedMotion}>
       <Text style={styles.title}>{t('setupTitle')}</Text>
 
       {/* 活动单选：两行内排列 */}
@@ -108,7 +108,7 @@ export function FocusSetupSheet() {
               key={value}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              accessibilityLabel={`${value} 分钟`}
+              accessibilityLabel={`${value} ${t('customUnit')}`}
               onPress={() => chooseQuick(value)}
               style={[styles.segment, selected && styles.segmentSelected]}
             >

@@ -7,6 +7,7 @@ import { profile as enProfile } from './locales/en-US/profile';
 import { support as enSupport } from './locales/en-US/support';
 import { common as enCommon } from './locales/en-US/common';
 import { launch as enLaunch } from './locales/en-US/launch';
+import { legal as enLegal } from './locales/en-US/legal';
 import { focus as enFocus } from './locales/en-US/focus';
 import { settings as enSettings } from './locales/en-US/settings';
 import { skins as enSkins } from './locales/en-US/skins';
@@ -21,6 +22,7 @@ import { profile as zhProfile } from './locales/zh-CN/profile';
 import { support as zhSupport } from './locales/zh-CN/support';
 import { common as zhCommon } from './locales/zh-CN/common';
 import { launch as zhLaunch } from './locales/zh-CN/launch';
+import { legal as zhLegal } from './locales/zh-CN/legal';
 import { focus as zhFocus } from './locales/zh-CN/focus';
 import { settings as zhSettings } from './locales/zh-CN/settings';
 import { skins as zhSkins } from './locales/zh-CN/skins';
@@ -40,6 +42,7 @@ export const resources = {
     support: zhSupport,
     common: zhCommon,
     launch: zhLaunch,
+    legal: zhLegal,
     settings: zhSettings,
     studyroom: zhStudyroom,
     skins: zhSkins,
@@ -56,6 +59,7 @@ export const resources = {
     support: enSupport,
     common: enCommon,
     launch: enLaunch,
+    legal: enLegal,
     settings: enSettings,
     studyroom: enStudyroom,
     skins: enSkins,

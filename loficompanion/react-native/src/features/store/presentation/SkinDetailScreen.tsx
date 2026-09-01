@@ -32,9 +32,9 @@ import {
   resolveRecovery,
 } from '../domain/storeCatalog';
 import { useTranslation } from 'react-i18next';
+import { i18n } from '../../../i18n/core';
 import {
   DETAIL_PREVIEW_STATES,
-  PREVIEW_STATE_LABELS,
   storePoster,
 } from './storePosters';
 
@@ -235,7 +235,7 @@ export function SkinDetailScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="返回"
+          accessibilityLabel={i18n.t('common:back')}
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
@@ -281,7 +281,7 @@ export function SkinDetailScreen() {
               <View style={styles.previewPlaceholder}>
                 <AppIcon name="image" color={semantic.textMuted} size={32} />
                 <Text style={styles.previewPlaceholderText}>
-                  {PREVIEW_STATE_LABELS[previewState]} · 状态预览以上线资源为准
+                  {t(previewState === 'focusing' ? 'stateFocusing' : previewState === 'drinking' ? 'stateDrinking' : previewState === 'completed' ? 'stateCompleted' : 'stateReady')} · {t('previewCaption', { state: '' })}
                 </Text>
               </View>
             )}
@@ -295,7 +295,7 @@ export function SkinDetailScreen() {
                 <Pressable
                   key={item}
                   accessibilityRole="button"
-                  accessibilityLabel={`预览${PREVIEW_STATE_LABELS[item]}状态`}
+                  accessibilityLabel={t('previewStateA11y', { state: item })}
                   accessibilityState={{ selected }}
                   onPress={() => setPreviewState(item)}
                   style={({ pressed }) => [
@@ -307,7 +307,7 @@ export function SkinDetailScreen() {
                   <Text
                     style={[styles.stateChipText, selected && styles.stateChipTextActive]}
                   >
-                    {PREVIEW_STATE_LABELS[item]}
+                    {t(item === 'focusing' ? 'stateFocusing' : item === 'drinking' ? 'stateDrinking' : item === 'completed' ? 'stateCompleted' : 'stateReady')}
                   </Text>
                 </Pressable>
               );
@@ -325,9 +325,9 @@ export function SkinDetailScreen() {
               <AppIcon name="crown" color={colors.membershipGold} size={16} />
               <Text style={styles.creatorText}>{t('officialCreator')}</Text>
             </View>
-            <InfoRow label="包含状态" value={t('stateCount', { n: 6 })} />
-            <InfoRow label="音轨" value={t('audioTrack')} />
-            <InfoRow label="离线大小" value={t('offlineSize')} />
+            <InfoRow label={t('includesStates')} value={t('stateCount', { n: 6 })} />
+            <InfoRow label={t('audioLabel')} value={t('audioTrack')} />
+            <InfoRow label={t('offlineLabel')} value={t('offlineSize')} />
             <Text style={styles.commercialNote}>{t('commercialNote')}</Text>
           </View>
         </ScrollView>

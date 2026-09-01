@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { apiClient } from '../data/apiClient';
 import { useApp } from '../state/AppStore';
+import { i18n } from '../i18n/core';
 
 type AuthRecoveryContextValue = Readonly<{
   email: string;
@@ -34,7 +35,7 @@ export function AuthRecoveryProvider({ children }: Readonly<{ children: ReactNod
       const result = await apiClient.requestPasswordReset(value);
       setEmail(value.trim().toLowerCase());
       setResendAvailableAt(Date.now() + result.resendAfterSeconds * 1000);
-      showToast('如果账号存在，验证码已经发送', 'success');
+      showToast(i18n.t('errors:recoveryCodeSent'), 'success');
       navigate('auth.verifyEmail');
       return true;
     } catch (error) {
@@ -67,7 +68,7 @@ export function AuthRecoveryProvider({ children }: Readonly<{ children: ReactNod
     try {
       await apiClient.resetPassword(resetToken, password);
       setResetToken('');
-      showToast('密码已经更新，请重新登录', 'success');
+      showToast(i18n.t('errors:recoveryPasswordUpdated'), 'success');
       replace('auth.signIn');
       return true;
     } catch (error) {
@@ -101,7 +102,7 @@ export function AuthRecoveryProvider({ children }: Readonly<{ children: ReactNod
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : '操作失败，请稍后重试';
+  return error instanceof Error ? error.message : i18n.t('errors:tryAgain');
 }
 
 export function useAuthRecovery() {

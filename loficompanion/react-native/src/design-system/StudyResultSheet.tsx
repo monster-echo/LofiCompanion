@@ -12,6 +12,7 @@ import {
 import { radii, semantic, space, type } from '../theme/tokens';
 import { AppIcon, IconName } from './AppIcon';
 import { achievementSoft, mediaSurface } from './derivedTokens';
+import { useTranslation } from 'react-i18next';
 
 export type SheetAction = Readonly<{
   label: string;
@@ -67,6 +68,7 @@ export function StudyResultSheet({
   bottomInset = 0,
   onDismiss,
 }: StudyResultSheetProps) {
+  const { t } = useTranslation('common');
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -97,7 +99,7 @@ export function StudyResultSheet({
       <View style={styles.overlay}>
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: progress }]}>
           <Pressable
-            accessibilityLabel="关闭结果"
+            accessibilityLabel={t('closeResult')}
             accessibilityRole="button"
             style={StyleSheet.absoluteFill}
             onPress={onDismiss}

@@ -11,4 +11,5 @@ export const skins = {
   // 首页右上角快切（doc-08 §3）：环绕切换上一套/下一套内置皮肤
   prevSkin: '上一套皮肤',
   nextSkin: '下一套皮肤',
+  previewA11y: '选择皮肤 {{name}}',
 } as const;

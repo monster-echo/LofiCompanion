@@ -13,6 +13,8 @@ import { useApp } from '../state/AppStore';
 import { styles } from '../theme/styles';
 import { NotificationCard } from '../notifications/NotificationCard';
 import { spacing } from '../theme/tokens';
+import { useTranslation } from 'react-i18next';
+import { i18n } from '../i18n/core';
 
 export function NotificationsScreen() {
   const {
@@ -22,6 +24,7 @@ export function NotificationsScreen() {
     markNotificationRead,
     navigate,
   } = useApp();
+  const { t } = useTranslation('profile');
   const [items, setItems] = useState<readonly NotificationItem[]>([]);
   useEffect(() => {
     if (user) void loadNotifications().then(setItems);
@@ -46,9 +49,9 @@ export function NotificationsScreen() {
     <View style={styles.page}>
       <OfflineBanner />
       <PageHeader
-        title="通知中心"
+        title={t('notificationsTitle')}
         rightAction={items.length ? {
-          label: '全部已读',
+          label: t('markAllRead'),
           onPress: () => void readAll(),
           disabled: unreadCount === 0,
         } : undefined}
@@ -57,9 +60,9 @@ export function NotificationsScreen() {
         {items.length ? (
           <View style={notificationStyles.toolbar}>
             <View>
-              <Text style={styles.heading}>最新通知</Text>
+              <Text style={styles.heading}>{t('latestNotifications')}</Text>
               <Text style={styles.caption}>
-                共 {items.length} 条通知 · {unreadCount} 条未读
+                {t('notificationCounts', { total: items.length, unread: unreadCount })}
               </Text>
             </View>
           </View>
@@ -68,7 +71,7 @@ export function NotificationsScreen() {
           <NotificationCard key={item.id} item={item} onPress={() => void open(item)} />
         ))}
         {!items.length ? (
-          <Text style={styles.secondary}>{user ? '暂无通知。' : '登录后查看通知。'}</Text>
+          <Text style={styles.secondary}>{user ? t('notificationsEmpty') : t('notificationsSignInRequired')}</Text>
         ) : null}
       </ScrollView>
     </View>
@@ -77,13 +80,14 @@ export function NotificationsScreen() {
 
 export function OrdersScreen() {
   const { user, loadOrders } = useApp();
+  const { t } = useTranslation('profile');
   const [orders, setOrders] = useState<readonly OrderView[]>([]);
   useEffect(() => {
     if (user) void loadOrders().then(setOrders);
   }, [loadOrders, user]);
   return (
     <View style={styles.page}>
-      <PageHeader title="订单管理" />
+      <PageHeader title={t('rowOrders')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {orders.map((order) => (
           <AppCard key={order.id}>
@@ -95,7 +99,7 @@ export function OrdersScreen() {
           </AppCard>
         ))}
         {!orders.length ? (
-          <Text style={styles.secondary}>{user ? '暂无订单。' : '登录后查看订单。'}</Text>
+          <Text style={styles.secondary}>{user ? t('ordersEmpty') : t('ordersSignInRequired')}</Text>
         ) : null}
       </ScrollView>
     </View>
@@ -104,19 +108,20 @@ export function OrdersScreen() {
 
 export function AboutScreen() {
   const { config, online } = useApp();
+  const { t } = useTranslation('profile');
   return (
     <View style={styles.page}>
-      <PageHeader title="关于与版本" />
+      <PageHeader title={t('aboutTitle')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <AppCard>
           <Text style={styles.heading}>{config.brand.appName}</Text>
           <Text style={styles.secondary}>{config.brand.tagline}</Text>
         </AppCard>
         <AppCard>
-          <ListRow label="客户端版本" value="1.0.0" />
-          <ListRow label="配置版本" value={`v${config.version}`} />
-          <ListRow label="配置 Schema" value={`v${config.schemaVersion}`} />
-          <ListRow label="服务状态" value={online ? '在线' : '离线缓存'} />
+          <ListRow label={t('clientVersion')} value="1.0.0" />
+          <ListRow label={t('configVersion')} value={`v${config.version}`} />
+          <ListRow label={t('configSchema')} value={`v${config.schemaVersion}`} />
+          <ListRow label={t('serviceStatus')} value={online ? t('statusOnline') : t('statusOfflineCache')} />
         </AppCard>
       </ScrollView>
     </View>
@@ -127,8 +132,13 @@ function isAppRoute(value: string | null): value is AppRoute {
   return Boolean(value && !value.includes('://'));
 }
 
+// 模块级工具（非组件）：文案在渲染/构造时经 i18n 实例解析，不在顶层取值。
 const statusLabel = (status: OrderStatus): string => ({
-  pending: '待支付', processing: '处理中', success: '已生效', failed: '失败', refunded: '已退款',
+  pending: i18n.t('profile:orderPending'),
+  processing: i18n.t('profile:orderProcessing'),
+  success: i18n.t('profile:orderSuccess'),
+  failed: i18n.t('profile:orderFailed'),
+  refunded: i18n.t('profile:orderRefunded'),
 }[status] ?? status);
 
 function formatMoney(amount: number, currency: string) {

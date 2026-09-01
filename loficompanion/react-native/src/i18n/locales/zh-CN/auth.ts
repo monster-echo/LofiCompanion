@@ -46,6 +46,7 @@ export const auth = {
   consentSuffix: '，并授权我们按上述文件处理我的相关信息，用于提供账号、专注同步、排行与客服服务。',
   // 社交登录
   otherWays: '其他登录方式',
+  signInWith: '{{label}}登录',
   labelPhoneShort: '手机号',
   githubFailed: 'GitHub 授权失败，请重试',
   googleFailed: 'Google 授权失败，请重试',

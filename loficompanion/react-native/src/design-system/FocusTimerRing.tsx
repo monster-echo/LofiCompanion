@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { semantic, space, type } from '../theme/tokens';
 import { fonts } from './fonts';
+import { i18n } from '../i18n/core';
 
 type FocusTimerRingProps = Readonly<{
   remainingSeconds: number;
@@ -58,8 +59,8 @@ export function FocusTimerRing({
       accessibilityRole="text"
       accessibilityLabel={
         durationLabel
-          ? `剩余 ${formatTimerSeconds(remainingSeconds)}，${durationLabel}`
-          : `剩余 ${formatTimerSeconds(remainingSeconds)}`
+          ? i18n.t('common:remaining', { time: formatTimerSeconds(remainingSeconds) }) + `，${durationLabel}`
+          : i18n.t('common:remaining', { time: formatTimerSeconds(remainingSeconds) })
       }
     >
       <Svg width={size} height={size} style={styles.ring}>
