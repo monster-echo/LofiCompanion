@@ -1,12 +1,20 @@
-import React, { createContext, ReactNode, useContext, useMemo } from 'react';
+import React, { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../state/AppStore';
 import { colors, darkColors, ThemeColors } from '../theme/tokens';
 import { applyTheme } from '../theme/styles';
+import { currentLanguage, i18n, type Locale } from '../i18n/core';
+import { deviceLocale } from '../i18n/deviceLocale';
+import { resolveLocale } from '../i18n/localePreference';
+import { readLocaleOverride } from '../data/storage';
+import type { resources } from '../i18n/resources';
 
 type ThemeMode = 'system' | 'light' | 'dark';
-type Locale = 'zh-CN' | 'en-US';
+
+// settings 命名空间的键（text() 的合法入参；Phase 2.4 后由 useTranslation 取代）
+export type TranslationKey = keyof (typeof resources)['zh-CN']['settings'] & string;
 
 type PreferencesValue = Readonly<{
   locale: Locale;
@@ -23,7 +31,27 @@ export function PreferencesProvider({ children }: Readonly<{ children: ReactNode
   const { user, config } = useApp();
   const systemScheme = useColorScheme();
   const mode = normalizeTheme(user?.settings.theme);
-  const locale = user?.settings.language === 'en-US' ? 'en-US' : 'zh-CN';
+  // 语言解析链（src/i18n/localePreference.ts）：服务端设置 > 访客本地覆盖 >
+  // 设备语言。i18n 实例在应用入口（src/i18n/index.ts）已按设备语言同步初始化，
+  // 此处只在解析链输入变化时校正；useTranslation 订阅 languageChanged——
+  // changeLanguage 后本组件重渲染，locale 消费方随之更新。
+  const { t } = useTranslation('settings');
+  const [override, setOverride] = useState<Locale | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void readLocaleOverride().then((value) => {
+      if (alive) setOverride(value);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const userLanguage = typeof user?.settings.language === 'string' ? user.settings.language : null;
+  useEffect(() => {
+    const next = resolveLocale(userLanguage, override, deviceLocale());
+    if (i18n.language !== next) void i18n.changeLanguage(next);
+  }, [userLanguage, override]);
+  const locale = currentLanguage();
   const dark = mode === 'dark' || (mode === 'system' && systemScheme === 'dark');
   const textScale = normalizeTextScale(user?.settings.textScale);
   // 颜色系统由服务端（auth.zhongbei.tech）下发：逐键覆盖内置 tokens；
@@ -39,7 +67,7 @@ export function PreferencesProvider({ children }: Readonly<{ children: ReactNode
     dark,
     palette,
     textScale,
-    text: (key) => translations[locale][key],
+    text: (key) => t(key),
   };
   return (
     <PreferencesContext.Provider value={value}>
@@ -65,32 +93,3 @@ function normalizeTextScale(value: unknown) {
   if (typeof value !== 'number') return 1;
   return Math.min(1.3, Math.max(0.9, value));
 }
-
-const translations = {
-  'zh-CN': {
-    settings: '设置', accountServices: '账户与服务', accountSecurity: '账户与安全',
-    devices: '登录设备管理', membership: '会员与订阅', appPreferences: '应用偏好',
-    notifications: '通知设置', general: '通用设置', appearance: '外观主题',
-    language: '语言', textSize: '字体大小', privacySupport: '隐私、存储与支持',
-    privacy: '隐私设置', permissions: '权限管理', storage: '存储与缓存',
-    help: '帮助与反馈', legal: '协议与政策', about: '关于与版本',
-    deleteAccount: '注销账号', system: '跟随系统', light: '浅色', dark: '深色',
-    chinese: '简体中文', english: 'English', selected: '已选择',
-    save: '保存设置', saving: '保存中…', saved: '设置已同步到服务端',
-    guest: '未登录用户', signInSync: '登录后同步跨设备设置',
-  },
-  'en-US': {
-    settings: 'Settings', accountServices: 'Account & services', accountSecurity: 'Account & security',
-    devices: 'Signed-in devices', membership: 'Membership & billing', appPreferences: 'App preferences',
-    notifications: 'Notifications', general: 'General', appearance: 'Appearance',
-    language: 'Language', textSize: 'Text size', privacySupport: 'Privacy, storage & support',
-    privacy: 'Privacy', permissions: 'Permissions', storage: 'Storage & cache',
-    help: 'Help & feedback', legal: 'Legal & policies', about: 'About',
-    deleteAccount: 'Delete account', system: 'Use system setting', light: 'Light', dark: 'Dark',
-    chinese: '简体中文', english: 'English', selected: 'Selected',
-    save: 'Save settings', saving: 'Saving…', saved: 'Settings synced',
-    guest: 'Guest', signInSync: 'Sign in to sync settings across devices',
-  },
-} as const;
-
-export type TranslationKey = keyof typeof translations['zh-CN'];

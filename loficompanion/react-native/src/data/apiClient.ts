@@ -18,6 +18,7 @@ import {
 } from '../domain/models';
 import { parseOrderStatus, type CreateOrderResult, type MembershipCurrent } from '../payment/paymentModels';
 import { getPlatformHeader } from './runtimePlatform';
+import { currentLanguage } from '../i18n/core';
 
 type Envelope<T> = Readonly<{ data: T }>;
 type ErrorPayload = Readonly<{
@@ -685,6 +686,8 @@ function clientHeaders() {
     'X-App-Environment': APP_ENVIRONMENT,
     'X-Platform': getPlatformHeader(),
     'X-App-Version': '1.0.0',
-    'Accept-Language': 'zh-CN',
+    // 跟随 i18n 当前语言（服务端据此本地化下发内容）；core.ts 零原生依赖，
+    // node 测试可安全导入
+    'Accept-Language': currentLanguage(),
   };
 }

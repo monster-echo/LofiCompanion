@@ -8,7 +8,19 @@ const refreshTokenKey = 'mobileui.session.refresh';
 const configKey = 'mobileui.config.lastKnownGood';
 const anonymousKey = 'mobileui.telemetry.anonymousId';
 const telemetryQueueKey = 'mobileui.telemetry.queue';
+const localeOverrideKey = 'mobileui.preferences.localeOverride';
 let anonymousIdPromise: Promise<string> | null = null;
+
+// 访客语言覆盖（登录用户走服务端 user.settings.language，优先级更高）。
+export async function readLocaleOverride(): Promise<'zh-CN' | 'en-US' | null> {
+  const raw = await AsyncStorage.getItem(localeOverrideKey);
+  return raw === 'zh-CN' || raw === 'en-US' ? raw : null;
+}
+
+export async function saveLocaleOverride(locale: 'zh-CN' | 'en-US' | null) {
+  if (locale) await AsyncStorage.setItem(localeOverrideKey, locale);
+  else await AsyncStorage.removeItem(localeOverrideKey);
+}
 
 export async function readSessionToken() {
   if (Platform.OS === 'web') return window.localStorage.getItem(tokenKey);

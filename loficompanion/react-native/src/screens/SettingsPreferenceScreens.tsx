@@ -4,6 +4,8 @@ import { AppButton, AppCard, ListRow, PageHeader, ToggleRow } from '../design-sy
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { useApp } from '../state/AppStore';
 import { styles } from '../theme/styles';
+import { i18n } from '../i18n/core';
+import { saveLocaleOverride } from '../data/storage';
 
 export type PreferenceKind = 'notifications' | 'general' | 'privacy' | 'appearance' | 'language';
 
@@ -55,6 +57,16 @@ function PreferenceFields({ enabled, kind, option, setEnabled, setOption }: Read
   setOption: (value: string) => void;
 }>) {
   const { text } = usePreferences();
+  const { user } = useApp();
+  // 语言选择的访客路径：无 Save 按钮（登录才同步服务端），行点按即时生效
+  // 并本地持久化；登录用户仍走底部 Save（PUT 服务端 → Provider 解析链生效）。
+  const chooseLanguage = (value: 'zh-CN' | 'en-US') => {
+    setOption(value);
+    if (!user) {
+      void saveLocaleOverride(value);
+      void i18n.changeLanguage(value);
+    }
+  };
   if (kind === 'appearance') return <>
     {(['system', 'light', 'dark'] as const).map((value) => (
       <ListRow
@@ -66,8 +78,8 @@ function PreferenceFields({ enabled, kind, option, setEnabled, setOption }: Read
     ))}
   </>;
   if (kind === 'language') return <>
-    <ListRow label={text('chinese')} onPress={() => setOption('zh-CN')} value={option === 'zh-CN' ? text('selected') : ''} />
-    <ListRow label={text('english')} onPress={() => setOption('en-US')} value={option === 'en-US' ? text('selected') : ''} />
+    <ListRow label={text('chinese')} onPress={() => chooseLanguage('zh-CN')} value={option === 'zh-CN' ? text('selected') : ''} />
+    <ListRow label={text('english')} onPress={() => chooseLanguage('en-US')} value={option === 'en-US' ? text('selected') : ''} />
   </>;
   return <ToggleRow label={preferenceLabel(kind)} value={enabled} onChange={setEnabled} />;
 }
