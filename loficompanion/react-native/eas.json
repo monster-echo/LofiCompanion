@@ -21,7 +21,8 @@
         "EXPO_PUBLIC_APP_ID": "loficompanion",
         "EXPO_PUBLIC_APP_ENVIRONMENT": "production",
         "EXPO_PUBLIC_API_URL": "https://auth.zhongbei.tech",
-        "EXPO_PUBLIC_BIZ_API_URL": "https://lofi-biz.zhongbei.tech"
+        "EXPO_PUBLIC_BIZ_API_URL": "https://lofi-biz.zhongbei.tech",
+        "EXPO_PUBLIC_STUDYROOM_WS_URL": "wss://lofi-biz.zhongbei.tech/studyroom"
       }
     },
     "production": {
@@ -33,7 +34,8 @@
         "EXPO_PUBLIC_APP_ID": "loficompanion",
         "EXPO_PUBLIC_APP_ENVIRONMENT": "production",
         "EXPO_PUBLIC_API_URL": "https://auth.zhongbei.tech",
-        "EXPO_PUBLIC_BIZ_API_URL": "https://lofi-biz.zhongbei.tech"
+        "EXPO_PUBLIC_BIZ_API_URL": "https://lofi-biz.zhongbei.tech",
+        "EXPO_PUBLIC_STUDYROOM_WS_URL": "wss://lofi-biz.zhongbei.tech/studyroom"
       }
     }
   },
