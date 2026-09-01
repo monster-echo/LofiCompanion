@@ -45,3 +45,30 @@ export async function listActiveEntitlements(
      WHERE user_id = ? AND app_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > ?)`,
   ).all(userId, appId, now) as readonly EntitlementRow[];
 }
+
+/**
+ * 续订：把订单曾发放过的权益键按新 expires_at 重新激活（幂等——同键先翻
+ * inactive 再插入新行）。appId 从既有权益行反查（orders 表不含 app_id）。
+ * 返回 false 表示该订单从未发放过权益（无从续订）。
+ */
+export async function renewEntitlementsForOrder(input: Readonly<{
+  orderId: string; userId: string; expiresAt: string;
+}>): Promise<boolean> {
+  const prior = await database.prepare(
+    `SELECT DISTINCT entitlement_key, app_id FROM user_entitlements WHERE source_order_id = ?`,
+  ).all(input.orderId) as readonly { entitlement_key: string; app_id: string }[];
+  if (prior.length === 0) return false;
+  const appId = prior[0]!.app_id;
+  await runTransaction(async () => {
+    for (const { entitlement_key: key } of prior) {
+      await database.prepare(
+        `UPDATE user_entitlements SET active = 0 WHERE user_id = ? AND entitlement_key = ? AND active = 1`,
+      ).run(input.userId, key);
+      await database.prepare(
+        `INSERT INTO user_entitlements(id, user_id, app_id, entitlement_key, source_order_id, active, acquired_at, expires_at)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+      ).run(createId(), input.userId, appId, key, input.orderId, nowIso(), input.expiresAt);
+    }
+  });
+  return true;
+}

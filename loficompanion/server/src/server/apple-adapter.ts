@@ -139,14 +139,23 @@ export class AppleAdapter implements PaymentAdapter {
       throw new ApiError(401, 'WEBHOOK_SIGNATURE_INVALID', 'apple webhook 验签失败', false);
     }
     const notificationType = String(notif.notificationType ?? '');
-    const kind: 'refund' | 'renew' =
-      notificationType === 'REFUND' || notificationType === 'REVOKE' ? 'refund' : 'renew';
+    // REFUND/REVOKE → 立即撤销；DID_RENEW → 续订；EXPIRED/GRACE_PERIOD_EXPIRED → 到期失效；
+    // 其余（SUBSCRIBED/DID_CHANGE_RENEWAL_STATUS/TEST…）不改变权益，忽略。
+    let kind: 'renew' | 'refund' | 'expire' = 'renew';
+    if (notificationType === 'REFUND' || notificationType === 'REVOKE') kind = 'refund';
+    else if (notificationType === 'DID_RENEW') kind = 'renew';
+    else if (notificationType === 'EXPIRED' || notificationType === 'GRACE_PERIOD_EXPIRED') kind = 'expire';
+    else return null;
     // The Data interface has no originalTransactionId; fall back to decoding signedTransactionInfo.
     let originalTransactionId = '';
+    let expiresAt: string | undefined;
     if (notif.data?.signedTransactionInfo) {
       try {
         const tx = await this.init().verifyAndDecodeTransaction(notif.data.signedTransactionInfo);
         originalTransactionId = tx.originalTransactionId ?? '';
+        // JWS transaction 的 expiresDate 为毫秒 epoch（数字）
+        const rawExpiry = (tx as { expiresDate?: number | string }).expiresDate;
+        if (rawExpiry) expiresAt = new Date(Number(rawExpiry)).toISOString();
       } catch {
         // leave empty — webhook-service handles unknown order safely
       }
@@ -156,7 +165,7 @@ export class AppleAdapter implements PaymentAdapter {
       const order = await findOrderByStoreTransactionId(originalTransactionId);
       orderId = order?.id ?? '';
     }
-    return { provider: 'apple', eventId: notif.notificationUUID ?? '', kind, orderId };
+    return { provider: 'apple', eventId: notif.notificationUUID ?? '', kind, orderId, expiresAt };
   }
 }
 

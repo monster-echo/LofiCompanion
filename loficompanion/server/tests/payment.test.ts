@@ -170,16 +170,44 @@ test('issueEntitlements 按 tier 发放权益且幂等', async () => {
 
 test('过期权益不再下发：expires_at 过去时被排除并惰性翻 inactive', async () => {
   const userId = await makeUser('app1');
-  await makeOrder('o-exp', userId);
+  const orderId = `o-exp-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+  await makeOrder(orderId, userId);
   const tier = defaultConfig.tiers.find((t) => t.id === 'plus')!;
   const past = new Date(Date.now() - 3_600_000).toISOString();
-  await issueEntitlements({ userId, appId: 'app1', orderId: 'o-exp', tier, expiresAt: past });
+  await issueEntitlements({ userId, appId: 'app1', orderId, tier, expiresAt: past });
   const keys = (await listActiveEntitlements(userId, 'app1')).map((e) => e.entitlement_key);
   assert.deepEqual(keys, [], '过期权益不得出现在激活列表');
   const inactive = await database.prepare(
     `SELECT COUNT(*)::int AS n FROM user_entitlements WHERE user_id = ? AND active = 0`,
   ).get(userId) as { n: number };
   assert.ok(inactive.n >= 1, '惰性清扫已把过期行翻 inactive');
+});
+
+test('续订 webhook：renew 按新到期重发权益 + 延长订单行，重放去重', async () => {
+  const userId = await makeUser('app1');
+  const orderId = `o-renew-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+  await makeOrder(orderId, userId);
+  const tier = defaultConfig.tiers.find((t) => t.id === 'plus')!;
+  const past = new Date(Date.now() - 60_000).toISOString();
+  await issueEntitlements({ userId, appId: 'app1', orderId, tier, expiresAt: past });
+  assert.equal((await listActiveEntitlements(userId, 'app1')).length, 0, '续订前已过期不可见');
+
+  const future = new Date(Date.now() + 30 * 86_400_000).toISOString();
+  const eventId = `sko-renew-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+  const body = Buffer.from(JSON.stringify({ eventId, kind: 'renew', orderId, expiresAt: future }));
+  const first = await applyWebhook('mock', body, {});
+  assert.equal(first.applied, true);
+  assert.equal(first.deduplicated, undefined);
+
+  const keys = (await listActiveEntitlements(userId, 'app1')).map((e) => e.entitlement_key).sort();
+  assert.deepEqual(keys, ['catalog.premium.active', 'generation.custom.enabled', 'insights.advanced', 'room.advanced_slots']);
+  const stored = await findOrderById(orderId);
+  assert.equal(stored!.expiresAt, future);
+
+  for (let i = 0; i < 5; i++) {
+    const replay = await applyWebhook('mock', body, {});
+    assert.equal(replay.deduplicated, true);
+  }
 });
 
 test('revokeEntitlementsForOrder 撤销该订单权益', async () => {

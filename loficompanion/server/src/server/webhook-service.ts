@@ -1,7 +1,14 @@
 import { createHash } from 'node:crypto';
 import { runTransaction } from './database';
-import { revokeEntitlementsForOrder } from './entitlement-service';
-import { findOrderById, insertWebhookEventIfNew, refundOrder } from './order-repository';
+import { renewEntitlementsForOrder, revokeEntitlementsForOrder } from './entitlement-service';
+import {
+  expireSubscriptionByOrder,
+  findOrderById,
+  insertWebhookEventIfNew,
+  refundOrder,
+  touchSubscriptionRenewAt,
+  updateOrderExpiry,
+} from './order-repository';
 import { paymentProvider, type PaymentProviderId } from './payment-providers';
 
 export async function applyWebhook(
@@ -26,8 +33,25 @@ export async function applyWebhook(
     if (event.kind === 'refund') {
       await refundOrder(event.orderId);
       await revokeEntitlementsForOrder(event.orderId);
+      return { applied: true };
     }
-    // kind === 'renew': subscription renew_at already set by verifyPurchase; real renewal in P-2/3/4.
+    if (event.kind === 'expire') {
+      // 到期失效：撤销权益 + 订阅行标记 expired（订单行保留作历史）
+      await revokeEntitlementsForOrder(event.orderId);
+      await expireSubscriptionByOrder(event.orderId);
+      return { applied: true };
+    }
+    // kind === 'renew'：按商店回传的新到期时刻重发权益并延长订单行。
+    // 权益从未发放过（无 prior 行）或缺少 expiresAt 时不做任何事——
+    // 到期谓词（entitlement-service）保证过期权益不会误发。
+    if (!event.expiresAt) return { applied: true };
+    const renewed = await renewEntitlementsForOrder({
+      orderId: event.orderId, userId: order.userId, expiresAt: event.expiresAt,
+    });
+    if (renewed) {
+      await updateOrderExpiry(event.orderId, event.expiresAt);
+      await touchSubscriptionRenewAt(event.orderId, event.expiresAt);
+    }
     return { applied: true };
   });
 }

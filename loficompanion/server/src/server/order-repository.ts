@@ -164,3 +164,22 @@ export async function getCurrentSubscription(
      WHERE user_id = ? AND app_id = ? AND plan_id = ?`,
   ).get<SubscriptionRow>(userId, appId, planId);
 }
+
+/** 续订：延长订单到期时刻（webhook DID_RENEW/RENEWED 路径）。 */
+export async function updateOrderExpiry(orderId: string, expiresAt: string): Promise<void> {
+  await database.prepare(`UPDATE orders SET expires_at = ? WHERE id = ?`).run(expiresAt, orderId);
+}
+
+/** 到期/撤销：订阅行标记 expired（best-effort，行可能不存在）。 */
+export async function expireSubscriptionByOrder(orderId: string): Promise<void> {
+  await database.prepare(
+    `UPDATE subscriptions SET status = 'expired', updated_at = ? WHERE current_order_id = ?`,
+  ).run(nowIso(), orderId);
+}
+
+/** 续订：订阅行 renew_at 前移并保持 active（best-effort）。 */
+export async function touchSubscriptionRenewAt(orderId: string, renewAt: string): Promise<void> {
+  await database.prepare(
+    `UPDATE subscriptions SET renew_at = ?, status = 'active', updated_at = ? WHERE current_order_id = ?`,
+  ).run(renewAt, nowIso(), orderId);
+}

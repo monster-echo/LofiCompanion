@@ -26,8 +26,10 @@ export type VerifyResult = Readonly<{
 export type WebhookEvent = Readonly<{
   provider: PaymentProviderId;
   eventId: string;
-  kind: 'renew' | 'refund';
+  kind: 'renew' | 'refund' | 'expire';
   orderId: string;
+  /** renew 时的新到期时刻（ISO）；缺失时续订退化为仅延长订单行 */
+  expiresAt?: string;
 }>;
 
 export interface PaymentAdapter {
@@ -48,7 +50,13 @@ const mockAdapter: PaymentAdapter = {
   async parseWebhook(rawBody) {
     const e = JSON.parse(rawBody.toString()) as Partial<WebhookEvent> & { eventId?: string };
     if (!e.eventId || !e.kind || !e.orderId) return null;
-    return { provider: 'mock', eventId: e.eventId, kind: e.kind, orderId: e.orderId };
+    return {
+      provider: 'mock',
+      eventId: e.eventId,
+      kind: e.kind,
+      orderId: e.orderId,
+      expiresAt: e.expiresAt,
+    };
   },
 };
 
