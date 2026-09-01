@@ -9,23 +9,25 @@ import {
 import { useStorageMaintenance, openSystemSettings } from '../settings/useStorageMaintenance';
 import { useApp } from '../state/AppStore';
 import { styles } from '../theme/styles';
+import { useTranslation } from 'react-i18next';
 
 export function TextSizeScreen() {
   const { user, saveSettings, busy } = useApp();
+  const { t } = useTranslation('settings');
   const [scale, setScale] = useState(Number(user?.settings.textScale ?? 1));
   const options = [
-    { value: 0.9, label: '较小' },
-    { value: 1, label: '标准' },
-    { value: 1.15, label: '较大' },
-    { value: 1.3, label: '特大' },
+    { value: 0.9, label: t('textSizeSmall') },
+    { value: 1, label: t('textSizeStandard') },
+    { value: 1.15, label: t('textSizeLarge') },
+    { value: 1.3, label: t('textSizeXlarge') },
   ] as const;
   return (
     <View style={styles.page}>
-      <PageHeader title="字体大小" />
+      <PageHeader title={t('textSize')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <AppCard>
           <Text style={[styles.body, { fontSize: 16 * scale }]}>
-            这是当前字体大小的实时预览。
+            {t('textSizePreview')}
           </Text>
         </AppCard>
         <AppCard>
@@ -34,13 +36,13 @@ export function TextSizeScreen() {
               key={option.value}
               label={option.label}
               onPress={() => setScale(option.value)}
-              value={scale === option.value ? '已选择' : ''}
+              value={scale === option.value ? t('selected') : ''}
             />
           ))}
         </AppCard>
         <AppButton
           disabled={busy || !user}
-          label={busy ? '保存中…' : '保存字体大小'}
+          label={busy ? t('saving') : t('saveTextSize')}
           onPress={() => void saveSettings({ textScale: scale })}
         />
       </ScrollView>
@@ -51,36 +53,37 @@ export function TextSizeScreen() {
 export function StorageScreen() {
   const storage = useStorageMaintenance();
   const { showConfirm, showToast } = useApp();
+  const { t } = useTranslation('settings');
   const clearCache = () => showConfirm({
-    title: '清理可再生成缓存？',
-    message: '将移除待上传遥测等临时数据。登录状态、个人设置和离线配置会保留。',
-    confirmLabel: '确认清理',
+    title: t('storageClearConfirmTitle'),
+    message: t('storageClearConfirmMessage'),
+    confirmLabel: t('storageClearConfirmAction'),
     onConfirm: async () => {
       try {
         const result = await storage.clear();
         const detail = result.bytesFreed
-          ? `，已释放 ${formatBytes(result.bytesFreed)}`
-          : '，当前没有需要清理的数据';
-        showToast(`缓存清理完成${detail}`, 'success');
+          ? t('storageFreedSize', { size: formatBytes(result.bytesFreed) })
+          : t('storageNothingToClear');
+        showToast(t('storageCleared', { detail }), 'success');
       } catch {
-        showToast('缓存清理失败，请稍后重试', 'error');
+        showToast(t('storageClearFailed'), 'error');
       }
     },
   });
   return (
     <View style={styles.page}>
-      <PageHeader title="存储与缓存" />
+      <PageHeader title={t('storage')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <AppCard>
-          <ListRow label="本地键值数量" value={String(storage.summary?.keys ?? 0)} />
-          <ListRow label="本地数据大小" value={formatBytes(storage.summary?.bytes ?? 0)} />
+          <ListRow label={t('storageLocalKeys')} value={String(storage.summary?.keys ?? 0)} />
+          <ListRow label={t('storageLocalSize')} value={formatBytes(storage.summary?.bytes ?? 0)} />
         </AppCard>
         <Text style={styles.secondary}>
-          清理只移除待上传遥测等可再生成缓存，不会删除登录凭证、个人设置或离线配置。
+          {t('storageClearHint')}
         </Text>
         <AppButton
           disabled={storage.loading}
-          label={storage.loading ? '处理中…' : '清理可再生成缓存'}
+          label={storage.loading ? t('processing') : t('storageClearAction')}
           onPress={clearCache}
           variant="secondary"
         />
@@ -91,23 +94,24 @@ export function StorageScreen() {
 
 export function PermissionsScreen() {
   const { showToast } = useApp();
+  const { t } = useTranslation('settings');
   const openSettings = async () => {
     if (!await openSystemSettings()) {
-      showToast('Web 端请使用浏览器的网站权限设置', 'info');
+      showToast(t('permissionsWebHint'), 'info');
     }
   };
   return (
     <View style={styles.page}>
-      <PageHeader title="权限管理" />
+      <PageHeader title={t('permissions')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <AppCard>
-          <Text style={styles.heading}>系统权限由设备管理</Text>
+          <Text style={styles.heading}>{t('permissionsDeviceManaged')}</Text>
           <Text style={styles.secondary}>
-            相机、相册、通知和麦克风权限只在相关功能需要时申请。你可以随时前往系统设置修改。
+            {t('permissionsDescription')}
           </Text>
         </AppCard>
         <AppButton
-          label="打开系统设置"
+          label={t('openSystemSettings')}
           onPress={() => void openSettings()}
           variant="secondary"
         />

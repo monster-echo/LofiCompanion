@@ -9,4 +9,7 @@ export const launch = {
   onboardingTitle: 'The basics in three steps',
   onboardingHint: 'Shown once after install — it won’t come back.',
   onboardingDone: 'Get started',
+  // 宣传页跳过
+  skipPromo: 'Skip promo',
+  skip: 'Skip',
 } as const;

@@ -6,6 +6,8 @@ import { useApp } from '../state/AppStore';
 import { styles } from '../theme/styles';
 import { i18n } from '../i18n/core';
 import { saveLocaleOverride } from '../data/storage';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 export type PreferenceKind = 'notifications' | 'general' | 'privacy' | 'appearance' | 'language';
 
@@ -57,6 +59,7 @@ function PreferenceFields({ enabled, kind, option, setEnabled, setOption }: Read
   setOption: (value: string) => void;
 }>) {
   const { text } = usePreferences();
+  const { t } = useTranslation('settings');
   const { user } = useApp();
   // 语言选择的访客路径：无 Save 按钮（登录才同步服务端），行点按即时生效
   // 并本地持久化；登录用户仍走底部 Save（PUT 服务端 → Provider 解析链生效）。
@@ -81,7 +84,7 @@ function PreferenceFields({ enabled, kind, option, setEnabled, setOption }: Read
     <ListRow label={text('chinese')} onPress={() => chooseLanguage('zh-CN')} value={option === 'zh-CN' ? text('selected') : ''} />
     <ListRow label={text('english')} onPress={() => chooseLanguage('en-US')} value={option === 'en-US' ? text('selected') : ''} />
   </>;
-  return <ToggleRow label={preferenceLabel(kind)} value={enabled} onChange={setEnabled} />;
+  return <ToggleRow label={preferenceLabel(kind, t)} value={enabled} onChange={setEnabled} />;
 }
 
 function preferenceInitial(kind: PreferenceKind, settings?: Readonly<Record<string, unknown>>) {
@@ -104,37 +107,38 @@ function preferencePatch(
   return { autoplayEnabled: enabled };
 }
 
-function preferenceLabel(kind: PreferenceKind) {
-  if (kind === 'notifications') return '允许应用内通知';
-  if (kind === 'privacy') return '允许匿名使用分析';
-  return '自动播放推荐内容';
+function preferenceLabel(kind: PreferenceKind, t: TFunction<'settings'>) {
+  if (kind === 'notifications') return t('prefInAppNotifications');
+  if (kind === 'privacy') return t('prefAnonymousAnalytics');
+  return t('prefAutoplayRecommendations');
 }
 
 export function DeleteAccountScreen() {
   const { deleteAccount, busy, replace, showConfirm } = useApp();
+  const { t } = useTranslation('settings');
   const [password, setPassword] = useState('');
   const requestDeletion = () => showConfirm({
-    title: '永久删除账户？',
-    message: '服务端将删除账户、会话、通知和订单关联，操作无法恢复。',
-    confirmLabel: '永久删除',
+    title: t('deleteAccountConfirmTitle'),
+    message: t('deleteAccountConfirmMessage'),
+    confirmLabel: t('deleteAccountConfirmAction'),
     onConfirm: async () => { if (await deleteAccount(password)) replace('home'); },
   });
   return (
     <View style={styles.page}>
-      <PageHeader title="注销账户" />
+      <PageHeader title={t('deleteAccountTitle')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.secondary}>请输入当前密码完成重新认证。</Text>
+        <Text style={styles.secondary}>{t('deleteAccountReauthHint')}</Text>
         <TextInput
-          accessibilityLabel="当前密码"
+          accessibilityLabel={t('currentPassword')}
           onChangeText={setPassword}
-          placeholder="当前密码"
+          placeholder={t('currentPassword')}
           secureTextEntry
           style={styles.input}
           value={password}
         />
         <AppButton
           disabled={busy || !password}
-          label="永久删除账户"
+          label={t('deleteAccountAction')}
           icon="trash"
           variant="danger"
           onPress={requestDeletion}

@@ -1,2 +1,33 @@
 // membership 域文案（en 键集须与 zh deep-equal（parity.test.ts））。
-export const membership = {} as const;
+export const membership = {
+  // 会员中心
+  title: 'Membership',
+  heroTitle: 'Tiers that flex with your product',
+  heroBody: 'Your setup includes {{tiers}} tiers and {{plans}} plans.',
+  sectionPlans: 'Available plans',
+  mockNotice: 'This is demo checkout — no real store or payment channel is called.',
+  confirming: 'Confirming…',
+  signInToSubscribe: 'Sign in to subscribe',
+  mockOrder: 'Place demo order (not a real payment)',
+  confirmSubscribe: 'Confirm subscription',
+  emptyPlans: 'No plans are set up for this app yet.',
+  browsePlusSkins: 'Browse Plus skin catalog',
+  plusSkinValue: 'Plus unlocks the official curated skins',
+  viewOrders: 'View order history',
+  tierCurrent: 'Current tier',
+  tierRecommended: 'Recommended',
+  entitlementsCount: '{{n}} entitlements configured',
+  planSelected: 'This plan is selected',
+  planProvider: 'Payment channel: {{provider}}',
+  interval: {
+    month: 'mo',
+    year: 'yr',
+    lifetime: 'lifetime',
+    one_time: 'use',
+  },
+  // 确认订阅（结账页）
+  checkoutTitle: 'Confirm subscription',
+  checkoutMockNotice: 'Demo checkout: completed through a mock channel.',
+  done: 'Done',
+  retry: 'Retry',
+} as const;

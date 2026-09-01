@@ -9,4 +9,7 @@ export const launch = {
   onboardingTitle: '三步了解核心功能',
   onboardingHint: '首次安装展示，完成后不会重复出现。',
   onboardingDone: '完成引导',
+  // 宣传页跳过
+  skipPromo: '跳过宣传页',
+  skip: '跳过',
 } as const;

@@ -9,6 +9,7 @@ import { TranslationKey, usePreferences } from '../preferences/PreferencesProvid
 import { useApp } from '../state/AppStore';
 import { SyncStatusRow } from '../features/sync/presentation/SyncStatusRow';
 import { styles } from '../theme/styles';
+import { useTranslation } from 'react-i18next';
 
 type SettingItem = Readonly<{
   policy?: string;
@@ -45,6 +46,7 @@ const groups: readonly SettingGroup[] = [
 export function SettingsScreen() {
   const { config, user } = useApp();
   const { text } = usePreferences();
+  const { t } = useTranslation('settings');
   const visible = (item: SettingItem) => !item.policy
     || config.settingsPolicy[item.policy]?.visibility === 'visible';
   return (
@@ -55,7 +57,7 @@ export function SettingsScreen() {
         <AppCard>
           <Text style={styles.heading}>{user?.displayName ?? text('guest')}</Text>
           <Text style={styles.secondary}>
-            {user ? (user.hasEmail && user.email ? user.email : '未绑定邮箱') : text('signInSync')}
+            {user ? (user.hasEmail && user.email ? user.email : t('emailNotBound')) : text('signInSync')}
           </Text>
           <SyncStatusRow />
         </AppCard>
@@ -96,44 +98,45 @@ function settingValue(
 
 export function AccountSecurityScreen() {
   const { user, changePassword, busy, navigate, showToast } = useApp();
+  const { t } = useTranslation('settings');
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const submit = async () => {
     if (await changePassword(current, next)) {
-      showToast('密码已修改，请重新登录', 'success');
+      showToast(t('passwordChanged'), 'success');
       navigate('auth.signIn');
     }
   };
   return (
     <View style={styles.page}>
-      <PageHeader title="账户与安全" />
+      <PageHeader title={t('accountSecurity')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <AppCard>
           <ListRow
-            label="登录邮箱"
-            value={user ? (user.hasEmail && user.email ? user.email : '未绑定邮箱') : '未登录'}
+            label={t('loginEmail')}
+            value={user ? (user.hasEmail && user.email ? user.email : t('emailNotBound')) : t('notSignedIn')}
           />
-          <ListRow label="身份绑定" value="邮箱密码" />
+          <ListRow label={t('identityBinding')} value={t('emailPassword')} />
         </AppCard>
         <TextInput
-          accessibilityLabel="当前密码"
+          accessibilityLabel={t('currentPassword')}
           onChangeText={setCurrent}
-          placeholder="当前密码"
+          placeholder={t('currentPassword')}
           secureTextEntry
           style={styles.input}
           value={current}
         />
         <TextInput
-          accessibilityLabel="新密码"
+          accessibilityLabel={t('newPassword')}
           onChangeText={setNext}
-          placeholder="至少 8 位新密码"
+          placeholder={t('newPasswordHint')}
           secureTextEntry
           style={styles.input}
           value={next}
         />
         <AppButton
           disabled={busy || !user}
-          label={busy ? '修改中…' : '修改密码'}
+          label={busy ? t('changingPassword') : t('changePassword')}
           icon="lock"
           onPress={() => void submit()}
         />
@@ -144,6 +147,7 @@ export function AccountSecurityScreen() {
 
 export function DevicesScreen() {
   const { loadSessions, revokeSession, user } = useApp();
+  const { t } = useTranslation('settings');
   const [sessions, setSessions] = useState<readonly SessionView[]>([]);
   useEffect(() => {
     if (user) void loadSessions().then(setSessions);
@@ -153,19 +157,19 @@ export function DevicesScreen() {
   };
   return (
     <View style={styles.page}>
-      <PageHeader title="登录设备" />
+      <PageHeader title={t('devicesTitle')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {sessions.map((session) => (
           <AppCard key={session.id}>
             <ListRow
               label={session.deviceName}
-              value={session.current ? '当前设备' : '撤销'}
+              value={session.current ? t('currentDevice') : t('revoke')}
               onPress={session.current ? undefined : () => void revoke(session.id)}
             />
-            <Text style={styles.caption}>最近活动：{formatDate(session.lastSeenAt)}</Text>
+            <Text style={styles.caption}>{t('lastActiveAt', { time: formatDate(session.lastSeenAt) })}</Text>
           </AppCard>
         ))}
-        {!sessions.length ? <Text style={styles.secondary}>暂无活动会话。</Text> : null}
+        {!sessions.length ? <Text style={styles.secondary}>{t('noSessions')}</Text> : null}
       </ScrollView>
     </View>
   );
