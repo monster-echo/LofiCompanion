@@ -8,7 +8,8 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { radii, semantic } from "../../../theme/tokens";
+import { radii, type ThemeColors } from "../../../theme/tokens";
+import { useThemeStyles } from "../../../theme/useThemeStyles";
 
 export type SheetOverlayProps = Readonly<{
   /** 遮罩点击 / Android 返回时的关闭回调 */
@@ -55,6 +56,7 @@ export function SheetOverlay({
   children,
 }: SheetOverlayProps) {
   const { t } = useTranslation("common");
+  const styles = useThemeStyles(makeStyles);
   const resolvedCloseLabel = closeLabel ?? t("close");
   const enter = useRef(new Animated.Value(0)).current;
   const top = anchor === "top";
@@ -113,20 +115,20 @@ export function SheetOverlay({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
   },
   backdrop: {
     ...absoluteFill,
-    backgroundColor: semantic.scrimBottom,
+    backgroundColor: p.scrimBottom,
   },
   sheet: {
     position: "absolute",
     left: 0,
     right: 0,
     maxHeight: "72%",
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     paddingTop: 8,
     paddingHorizontal: 20,
     paddingBottom: 12, // doc-07 §7.1：底部固定 CTA 与安全区 12（安全区由外层 SafeArea 承担）
@@ -136,21 +138,21 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radii.sheet,
     borderTopRightRadius: radii.sheet,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: semantic.borderStandard,
+    borderTopColor: p.borderStandard,
   },
   sheetTop: {
     top: 0,
     borderBottomLeftRadius: radii.sheet,
     borderBottomRightRadius: radii.sheet,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: semantic.borderStandard,
+    borderBottomColor: p.borderStandard,
   },
   handle: {
     alignSelf: "center",
     width: 36,
     height: 4,
     borderRadius: radii.round,
-    backgroundColor: semantic.borderStandard,
+    backgroundColor: p.borderStandard,
     marginBottom: 12,
   },
 });

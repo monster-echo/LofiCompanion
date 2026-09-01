@@ -16,7 +16,9 @@ import {
   SkinPreviewCard,
 } from '../../../design-system/SkinPreviewCard';
 import { useApp } from '../../../state/AppStore';
-import { radii, semantic, space, type } from '../../../theme/tokens';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
 import { formatPrice } from '../../store/domain/storeCatalog';
 import { findSkinManifestByIdOrSlug } from '../domain/registry';
@@ -34,6 +36,8 @@ import { i18n } from '../../../i18n/core';
 export function SkinGalleryScreen() {
   const focus = useFocus();
   const { back, navigate } = useApp();
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const { t } = useTranslation('skins');
   const { t: tStore } = useTranslation('store');
   const { width: windowWidth } = useWindowDimensions();
@@ -100,7 +104,7 @@ export function SkinGalleryScreen() {
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
+          <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t('galleryTitle')}</Text>
       </View>
@@ -130,12 +134,12 @@ export function SkinGalleryScreen() {
           onPress={() => navigate('store.home')}
           style={({ pressed }) => [styles.storeEntry, pressed && styles.pressed]}
         >
-          <AppIcon name="palette" color={semantic.actionFocus} size={20} />
+          <AppIcon name="palette" color={palette.actionFocus} size={20} />
           <View style={styles.storeEntryTexts}>
             <Text style={styles.storeEntryTitle}>{tStore('storeEntry')}</Text>
             <Text style={styles.storeEntryHint}>{tStore('storeEntryHint')}</Text>
           </View>
-          <AppIcon name="chevron-right" color={semantic.textMuted} size={18} />
+          <AppIcon name="chevron-right" color={palette.textMuted} size={18} />
         </Pressable>
       </ScrollView>
 
@@ -166,10 +170,10 @@ export function SkinGalleryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvas,
+    backgroundColor: p.canvas,
   },
   header: {
     height: 56,
@@ -187,7 +191,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     position: 'absolute',
     left: 88,
     right: 88,
@@ -201,7 +205,7 @@ const styles = StyleSheet.create({
   },
   countCaption: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     textAlign: 'center',
     marginTop: space.x1,
   },
@@ -210,9 +214,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.x3,
     borderRadius: radii.card,
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     paddingHorizontal: space.x4,
     minHeight: 64,
   },
@@ -222,11 +226,11 @@ const styles = StyleSheet.create({
   },
   storeEntryTitle: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   storeEntryHint: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   ctaArea: {
     paddingHorizontal: space.x4,
@@ -235,7 +239,7 @@ const styles = StyleSheet.create({
   cta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     paddingHorizontal: space.x5,
     alignItems: 'center',
     justifyContent: 'center',
@@ -245,7 +249,7 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   pressed: {
     opacity: 0.82,

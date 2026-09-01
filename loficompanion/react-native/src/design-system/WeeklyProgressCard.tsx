@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
-import { radii, semantic, space, type } from '../theme/tokens';
+import { radii, space, type, ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
+import { usePreferences } from '../preferences/PreferencesProvider';
 import { useTranslation } from 'react-i18next';
 
 type WeeklyProgressCardProps = Readonly<{
@@ -34,6 +36,8 @@ export function WeeklyProgressCard({
   todayIndex = currentWeekDayIndex(new Date()),
 }: WeeklyProgressCardProps) {
   const { t } = useTranslation('common');
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const dayLabels = [0, 1, 2, 3, 4, 5, 6].map((i) => t(`dayShort${i}` as 'dayShort0'));
   const [chartWidth, setChartWidth] = useState(0);
   const values = normalizeDays(days);
@@ -76,7 +80,7 @@ export function WeeklyProgressCard({
                     width={BAR_WIDTH}
                     height={CHART_HEIGHT}
                     rx={BAR_RADIUS}
-                    fill={semantic.surfaceInset}
+                    fill={palette.surfaceInset}
                   />
                   {minutes > 0 ? (
                     <Rect
@@ -85,7 +89,7 @@ export function WeeklyProgressCard({
                       width={BAR_WIDTH}
                       height={filledHeight}
                       rx={BAR_RADIUS}
-                      fill={isToday ? semantic.actionFocus : semantic.actionPrimary}
+                      fill={isToday ? palette.actionFocus : palette.actionPrimary}
                     />
                   ) : null}
                 </Svg>
@@ -118,11 +122,11 @@ function normalizeDays(days: readonly number[]): number[] {
   return safe.slice(0, 7);
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   card: {
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     borderRadius: radii.card,
     padding: space.x4,
     gap: space.x3,
@@ -134,12 +138,12 @@ const styles = StyleSheet.create({
   },
   title: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flexShrink: 1,
   },
   target: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     marginLeft: space.x2,
   },
   chart: {
@@ -151,10 +155,10 @@ const styles = StyleSheet.create({
   },
   axisLabel: {
     ...type.micro,
-    color: semantic.textMuted,
+    color: p.textMuted,
     textAlign: 'center',
   },
   axisLabelToday: {
-    color: semantic.actionFocus,
+    color: p.actionFocus,
   },
 });

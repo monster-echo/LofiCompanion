@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AchievementTile } from '../../../design-system/AchievementTile';
 import { AppIcon, IconName } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
-import { radii, semantic, space, type } from '../../../theme/tokens';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import type { SkinManifest } from '../../skins/domain/types';
 import { useFocus } from '../../focus/application/FocusStore';
 import { ACHIEVEMENT_DEFS } from '../domain/rules';
@@ -30,6 +31,7 @@ export function AchievementsScreen() {
   const { t } = useTranslation('achievements');
   const { navigate, replace } = useApp();
   const insets = useSafeAreaInsets();
+  const styles = useThemeStyles(makeStyles);
 
   const entries = completedEntries(focus.history);
   const now = Date.now();
@@ -123,6 +125,7 @@ function EmptyState({
 }>) {
   const { t } = useTranslation('achievements');
   const { locale } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const firstDef = ACHIEVEMENT_DEFS[0];
   return (
     <View style={styles.empty}>
@@ -154,6 +157,8 @@ function LinkRow({
   icon,
   onPress,
 }: Readonly<{ label: string; icon: IconName; onPress: () => void }>) {
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -161,17 +166,17 @@ function LinkRow({
       onPress={onPress}
       style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
     >
-      <AppIcon name={icon} color={semantic.actionFocus} size={20} />
+      <AppIcon name={icon} color={palette.actionFocus} size={20} />
       <Text style={styles.linkLabel}>{label}</Text>
-      <AppIcon name="chevron-right" color={semantic.textMuted} size={18} />
+      <AppIcon name="chevron-right" color={palette.textMuted} size={18} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvas,
+    backgroundColor: p.canvas,
   },
   scroll: {
     flex: 1,
@@ -192,9 +197,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     height: 82,
     borderRadius: radii.card,
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     paddingHorizontal: space.x3,
     paddingVertical: space.x2,
     justifyContent: 'center',
@@ -202,7 +207,7 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   metricValueRow: {
     flexDirection: 'row',
@@ -211,12 +216,12 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     ...type.displayMetric,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   metricUnit: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   links: {
     gap: space.x2,
@@ -228,18 +233,18 @@ const styles = StyleSheet.create({
     gap: space.x3,
     paddingHorizontal: space.x4,
     borderRadius: radii.card,
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
   },
   linkLabel: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flex: 1,
   },
   sectionTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   grid: {
     flexDirection: 'row',
@@ -262,28 +267,28 @@ const styles = StyleSheet.create({
   },
   emptyMediaCaption: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     margin: space.x3,
   },
   emptyHint: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   emptyCondition: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   emptyCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: space.x1,
   },
   emptyCtaText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   pressed: {
     opacity: 0.82,

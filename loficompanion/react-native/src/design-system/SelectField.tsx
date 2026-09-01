@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePreferences } from '../preferences/PreferencesProvider';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing, ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
 import { AppIcon } from './AppIcon';
 import { useTranslation } from 'react-i18next';
 
@@ -19,6 +20,7 @@ export function SelectField<T extends string | number>({
   onChange: (value: T) => void;
 }>) {
   const { palette } = usePreferences();
+  const selectStyles = useThemeStyles(makeSelectStyles);
   const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
@@ -68,7 +70,7 @@ export function SelectField<T extends string | number>({
   );
 }
 
-const selectStyles = StyleSheet.create({
+const makeSelectStyles = (p: ThemeColors) => StyleSheet.create({
   field: { gap: spacing.x2 },
   label: { fontSize: 13, fontWeight: '600' },
   control: {
@@ -84,7 +86,7 @@ const selectStyles = StyleSheet.create({
   scrim: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: colors.scrim,
+    backgroundColor: p.scrim,
   },
   sheet: {
     borderTopLeftRadius: radii.sheet,

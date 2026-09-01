@@ -7,7 +7,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { radii, semantic, space, type } from '../theme/tokens';
+import { radii, space, type, ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
+import { usePreferences } from '../preferences/PreferencesProvider';
 import { AppIcon, IconName } from './AppIcon';
 
 export type FocusActionItem = Readonly<{
@@ -36,6 +38,7 @@ const PRESS_MS = 120;
  * 按下反馈 120ms scale(0.98) + 亮度降低（以 opacity 表达，动效仅 transform/opacity）。
  */
 export function FocusActionBar({ items }: FocusActionBarProps) {
+  const styles = useThemeStyles(makeStyles);
   return (
     <View style={styles.row} accessibilityRole="toolbar">
       {items.map((item) => (
@@ -47,8 +50,10 @@ export function FocusActionBar({ items }: FocusActionBarProps) {
 
 function FocusActionButton({ item }: Readonly<{ item: FocusActionItem }>) {
   const animation = useRef(new Animated.Value(1)).current;
+  const styles = useThemeStyles(makeStyles);
+  const { palette } = usePreferences();
   const accent = item.variant === 'accent';
-  const foreground = accent ? semantic.actionPrimary : semantic.textSecondary;
+  const foreground = accent ? palette.actionPrimary : palette.textSecondary;
 
   const toPressed = () => {
     Animated.timing(animation, {
@@ -103,7 +108,7 @@ function FocusActionButton({ item }: Readonly<{ item: FocusActionItem }>) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: space.x2,
@@ -126,7 +131,7 @@ const styles = StyleSheet.create({
     gap: space.x2,
   },
   accent: {
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     backgroundColor: 'transparent',
   },
   neutral: {
@@ -142,12 +147,12 @@ const styles = StyleSheet.create({
   },
   badge: {
     borderRadius: radii.round,
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceInset,
     paddingHorizontal: space.x2,
     paddingVertical: 2,
   },
   badgeText: {
     ...type.micro,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
 });

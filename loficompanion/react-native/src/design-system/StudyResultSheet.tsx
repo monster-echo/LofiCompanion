@@ -9,7 +9,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { radii, semantic, space, type } from '../theme/tokens';
+import { radii, space, type, ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
+import { usePreferences } from '../preferences/PreferencesProvider';
 import { AppIcon, IconName } from './AppIcon';
 import { achievementSoft, mediaSurface } from './derivedTokens';
 import { useTranslation } from 'react-i18next';
@@ -69,6 +71,8 @@ export function StudyResultSheet({
   onDismiss,
 }: StudyResultSheetProps) {
   const { t } = useTranslation('common');
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -131,7 +135,7 @@ export function StudyResultSheet({
           >
             <View style={styles.resultRow}>
               <View style={styles.doneBadge}>
-                <AppIcon name="check-circle" color={semantic.success} size={28} />
+                <AppIcon name="check-circle" color={palette.success} size={28} />
               </View>
               <View style={styles.resultText}>
                 <Text style={styles.resultTitle}>专注 {sessionMinutes} 分钟</Text>
@@ -158,7 +162,7 @@ export function StudyResultSheet({
               <View style={styles.achievementRow}>
                 <AppIcon
                   name={rewardIcon(newAchievement.rewardItemId)}
-                  color={semantic.achievement}
+                  color={palette.achievement}
                   size={20}
                 />
                 <Text style={styles.achievementText} numberOfLines={1}>
@@ -194,14 +198,14 @@ export function StudyResultSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'transparent',
   },
   backdrop: {
-    backgroundColor: semantic.scrimBottom,
+    backgroundColor: p.scrimBottom,
   },
   sheet: {
     maxHeight: '90%',
@@ -209,7 +213,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radii.sheet,
     borderTopRightRadius: radii.sheet,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: semantic.borderStandard,
+    borderTopColor: p.borderStandard,
     paddingTop: space.x5,
     paddingHorizontal: space.x4,
   },
@@ -228,9 +232,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radii.round,
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceInset,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -240,33 +244,33 @@ const styles = StyleSheet.create({
   },
   resultTitle: {
     ...type.title1,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   resultMeta: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   weekBlock: {
     gap: space.x2,
   },
   weekLabel: {
     ...type.label,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   weekTrack: {
     height: PROGRESS_BAR_HEIGHT,
     borderRadius: radii.small,
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceInset,
     overflow: 'hidden',
   },
   weekFill: {
     height: '100%',
     borderRadius: radii.small,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
   },
   weekValue: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   achievementRow: {
     flexDirection: 'row',
@@ -279,7 +283,7 @@ const styles = StyleSheet.create({
   },
   achievementText: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flexShrink: 1,
   },
   ctaArea: {
@@ -289,27 +293,27 @@ const styles = StyleSheet.create({
   primaryCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     paddingHorizontal: space.x5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryCtaText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   secondaryCta: {
     minHeight: 48,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     paddingHorizontal: space.x4,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryCtaText: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   ctaPressed: {
     opacity: 0.78,

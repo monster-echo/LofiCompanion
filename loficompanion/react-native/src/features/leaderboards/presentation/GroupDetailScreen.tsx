@@ -6,7 +6,9 @@ import type { RootParamList } from '../../../navigation/navigationRef';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { mediaControl } from '../../../design-system/derivedTokens';
 import { useApp } from '../../../state/AppStore';
-import { radii, semantic, space, type } from '../../../theme/tokens';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { useAsyncRefresh } from '../application/useAsyncRefresh';
@@ -29,6 +31,8 @@ export function GroupDetailScreen() {
   const groupId = params?.groupId ?? '';
   const { user, navigate, back } = useApp();
   const focus = useFocus();
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
 
   const loaded = useAsyncRefresh(async () => {
     const [detail, board, previous] = await Promise.all([
@@ -114,7 +118,7 @@ export function GroupDetailScreen() {
                 )}
                 {member.role === 'owner' ? (
                   <View style={styles.ownerCrown} pointerEvents="none">
-                    <AppIcon name="crown" color={semantic.achievement} size={12} />
+                    <AppIcon name="crown" color={palette.achievement} size={12} />
                   </View>
                 ) : null}
               </View>
@@ -173,9 +177,9 @@ export function GroupDetailScreen() {
             onPress={() => navigate('weekly.settlement', { groupId })}
             style={({ pressed }) => [styles.settlementRow, pressed && styles.pressed]}
           >
-            <AppIcon name="image" color={semantic.achievement} size={20} />
+            <AppIcon name="image" color={palette.achievement} size={20} />
             <Text style={styles.settlementText}>{t('lastWeekSettlement')}</Text>
-            <AppIcon name="chevron-right" color={semantic.textMuted} size={18} />
+            <AppIcon name="chevron-right" color={palette.textMuted} size={18} />
           </Pressable>
         ) : null}
       </ScrollView>
@@ -188,7 +192,7 @@ export function GroupDetailScreen() {
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
+          <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
         <Text style={styles.appBarTitle} numberOfLines={1}>{detail.group.name}</Text>
         <View style={styles.backButton} />
@@ -211,6 +215,7 @@ export function GroupDetailScreen() {
 
 function MissingGroup({ onBack }: Readonly<{ onBack: () => void }>) {
   const { t } = useTranslation('leaderboards');
+  const styles = useThemeStyles(makeStyles);
   return (
     <StateShell onBack={onBack} title="">
       <Text style={styles.stateText}>{t('groupUnavailable')}</Text>
@@ -224,6 +229,8 @@ function StateShell({ onBack, title, children }: Readonly<{
   children: React.ReactNode;
 }>) {
   const { t } = useTranslation('leaderboards');
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   return (
     <View style={styles.screen}>
       <View style={styles.appBar}>
@@ -233,7 +240,7 @@ function StateShell({ onBack, title, children }: Readonly<{
           onPress={onBack}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
+          <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
         <Text style={styles.appBarTitle}>{title}</Text>
         <View style={styles.backButton} />
@@ -243,10 +250,10 @@ function StateShell({ onBack, title, children }: Readonly<{
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvasDeep,
+    backgroundColor: p.canvasDeep,
   },
   media: {
     height: '44%',
@@ -281,7 +288,7 @@ const styles = StyleSheet.create({
   },
   appBarTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flex: 1,
     textAlign: 'center',
   },
@@ -299,11 +306,11 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: radii.round,
-    backgroundColor: semantic.success,
+    backgroundColor: p.success,
   },
   onlineText: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     fontVariant: ['tabular-nums'],
   },
   avatarsRow: {
@@ -325,15 +332,15 @@ const styles = StyleSheet.create({
     top: -4,
   },
   avatarFallback: {
-    backgroundColor: semantic.surfaceRaised,
+    backgroundColor: p.surfaceRaised,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitial: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   overflowChip: {
     backgroundColor: mediaControl,
@@ -342,63 +349,63 @@ const styles = StyleSheet.create({
   },
   overflowText: {
     ...type.label,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   goalCard: {
     backgroundColor: mediaControl,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     borderRadius: radii.card,
     padding: space.x6, // 共同目标卡 24 内边距（doc-08 §12）
     gap: space.x2,
   },
   goalLabel: {
     ...type.label,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   goalValue: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   goalTarget: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     fontVariant: ['tabular-nums'],
   },
   progressTrack: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceInset,
     overflow: 'hidden',
     marginTop: space.x1,
   },
   progressFill: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
   },
   contributionCard: {
     backgroundColor: mediaControl,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     borderRadius: radii.card,
     padding: space.x4, // 我的贡献卡 16 内边距（doc-08 §12）
     gap: space.x1,
   },
   contributionLabel: {
     ...type.label,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   contributionValue: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   joinCodeCard: {
     backgroundColor: mediaControl,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     borderRadius: radii.card,
     padding: space.x4,
     gap: space.x2,
@@ -415,18 +422,18 @@ const styles = StyleSheet.create({
   },
   copyText: {
     ...type.label,
-    color: semantic.actionPrimary,
+    color: p.actionPrimary,
   },
   joinCode: {
     ...type.title1,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     fontVariant: ['tabular-nums'],
     letterSpacing: 4,
     textAlign: 'center',
   },
   joinCodeHint: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     textAlign: 'center',
   },
   settlementRow: {
@@ -436,13 +443,13 @@ const styles = StyleSheet.create({
     gap: space.x3,
     borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
-    backgroundColor: semantic.surface,
+    borderColor: p.borderStandard,
+    backgroundColor: p.surface,
     paddingHorizontal: space.x4,
   },
   settlementText: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flex: 1,
   },
   ctaBar: {
@@ -454,13 +461,13 @@ const styles = StyleSheet.create({
   primaryCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryCtaText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   stateWrap: {
     flex: 1,
@@ -471,26 +478,26 @@ const styles = StyleSheet.create({
   },
   stateTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     textAlign: 'center',
   },
   stateText: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     textAlign: 'center',
   },
   retryButton: {
     minHeight: 48,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.x6,
   },
   retryText: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   pressed: {
     opacity: 0.82,

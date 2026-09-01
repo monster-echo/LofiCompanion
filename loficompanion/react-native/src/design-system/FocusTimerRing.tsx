@@ -1,7 +1,9 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { semantic, space, type } from '../theme/tokens';
+import { space, type, ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
+import { usePreferences } from '../preferences/PreferencesProvider';
 import { fonts } from './fonts';
 import { i18n } from '../i18n/core';
 
@@ -42,6 +44,8 @@ export function FocusTimerRing({
   const circumference = 2 * Math.PI * radius;
   const total = Math.max(1, totalSeconds);
   const fraction = Math.min(1, Math.max(0, remainingSeconds / total));
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
 
   const timerStyle = {
     ...BASE_TIMER,
@@ -50,7 +54,7 @@ export function FocusTimerRing({
     lineHeight: Math.round(BASE_TIMER.lineHeight * scale),
     // doc-07 §6.2：计时数字 tracking 0.02em（RN 用 pt 表达）
     letterSpacing: BASE_TIMER.fontSize * scale * 0.02,
-    color: semantic.textPrimary,
+    color: palette.textPrimary,
   };
 
   return (
@@ -68,7 +72,7 @@ export function FocusTimerRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={semantic.borderSoft}
+          stroke={palette.borderSoft}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -77,7 +81,7 @@ export function FocusTimerRing({
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke={semantic.actionPrimary}
+            stroke={palette.actionPrimary}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             fill="none"
@@ -99,12 +103,12 @@ export function FocusTimerRing({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   container: { alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', left: 0, top: 0 },
   center: { alignItems: 'center', justifyContent: 'center' },
   duration: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
 });

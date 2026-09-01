@@ -4,7 +4,9 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import type { AchievementDef, RoomItemId } from '../features/achievements/domain/rules';
 import { useTranslation } from 'react-i18next';
 import { currentLanguage } from '../i18n/core';
-import { radii, semantic, space, type } from '../theme/tokens';
+import { radii, space, type, ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
+import { usePreferences } from '../preferences/PreferencesProvider';
 import { AppIcon, IconName } from './AppIcon';
 
 type AchievementTileProps = Readonly<{
@@ -55,6 +57,8 @@ function formatUnlockDate(epochMs: number): string {
  */
 export function AchievementTile({ def, name, description, unlocked, unlockedAt }: AchievementTileProps) {
   const { t } = useTranslation('achievements');
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const gradientId = React.useMemo(() => {
     gradientSeq += 1;
     return `achievement-art-${gradientSeq}`;
@@ -75,19 +79,19 @@ export function AchievementTile({ def, name, description, unlocked, unlockedAt }
           <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
             <Defs>
               <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={semantic.surfaceRaised} />
-                <Stop offset="1" stopColor={semantic.surfaceInset} />
+                <Stop offset="0" stopColor={palette.surfaceRaised} />
+                <Stop offset="1" stopColor={palette.surfaceInset} />
               </LinearGradient>
             </Defs>
             <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gradientId})`} />
           </Svg>
         ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: semantic.surfaceInset }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.surfaceInset }]} />
         )}
         <View style={[styles.artContent, unlocked ? undefined : styles.artLocked]}>
           <AppIcon
             name={unlocked ? rewardIcon : 'lock'}
-            color={unlocked ? semantic.achievement : semantic.textMuted}
+            color={unlocked ? palette.achievement : palette.textMuted}
             size={unlocked ? 32 : 20}
           />
         </View>
@@ -104,17 +108,17 @@ export function AchievementTile({ def, name, description, unlocked, unlockedAt }
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   card: {
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     borderRadius: radii.card,
     overflow: 'hidden',
   },
   art: {
     aspectRatio: 1.6,
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceInset,
   },
   artContent: {
     ...absoluteFill,
@@ -133,13 +137,13 @@ const styles = StyleSheet.create({
   },
   name: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   description: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   nameLocked: {
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
 });

@@ -4,7 +4,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
 import { mediaControl } from '../../../design-system/derivedTokens';
-import { radii, semantic, space, type } from '../../../theme/tokens';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { useTranslation } from 'react-i18next';
@@ -47,6 +49,8 @@ export function RoomScreen() {
   const { t } = useTranslation('achievements');
   const { back } = useApp();
   const { width: windowWidth } = useWindowDimensions();
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   // 同一时间只开一个 callout；再次点击同一热点收起
   const [openItemId, setOpenItemId] = useState<RoomItemId | null>(null);
 
@@ -142,21 +146,21 @@ export function RoomScreen() {
         onPress={back}
         style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
       >
-        <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
+        <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvas,
+    backgroundColor: p.canvas,
   },
   media: {
     height: '66%',
     overflow: 'hidden',
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceInset,
   },
   hotspot: {
     width: HOTSPOT_SIZE,
@@ -168,9 +172,9 @@ const styles = StyleSheet.create({
     left: '50%',
     width: CALLOUT_WIDTH,
     borderRadius: radii.control,
-    backgroundColor: semantic.surfaceRaised,
+    backgroundColor: p.surfaceRaised,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     paddingHorizontal: space.x3,
     paddingVertical: space.x2,
     gap: 2,
@@ -183,11 +187,11 @@ const styles = StyleSheet.create({
   },
   calloutName: {
     ...type.label,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   calloutSource: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   bottom: {
     flex: 1,
@@ -198,11 +202,11 @@ const styles = StyleSheet.create({
   },
   bottomTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   bottomCaption: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   arrangeRow: {
     flexDirection: 'row',
@@ -215,25 +219,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.x4,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     alignItems: 'center',
     justifyContent: 'center',
     opacity: 0.45, // doc-07 §7.3 禁用态保持可读
   },
   arrangeButtonText: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   badge: {
     borderRadius: radii.round,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     paddingHorizontal: space.x2,
     paddingVertical: space.x1,
   },
   badgeText: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   backButton: {
     position: 'absolute',

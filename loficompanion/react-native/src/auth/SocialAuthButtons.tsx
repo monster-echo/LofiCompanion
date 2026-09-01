@@ -7,7 +7,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { AuthProviderIcon } from './AuthProviderIcon';
 import { useApp } from '../state/AppStore';
 import { useTranslation } from 'react-i18next';
-import { colors, spacing } from '../theme/tokens';
+import { spacing } from '../theme/tokens';
+import type { ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -32,6 +34,7 @@ export function SocialAuthButtons({
     showToast,
   } = useApp();
   const { t } = useTranslation('auth');
+  const socialStyles = useThemeStyles(makeStyles);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const redirectUri = AuthSession.makeRedirectUri({ scheme: 'mobilestarter', path: 'oauth' });
   const nonce = useMemo(() => Crypto.randomUUID(), []);
@@ -157,10 +160,10 @@ export function SocialAuthButtons({
   );
 }
 
-const socialStyles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   section: { gap: spacing.x3 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.x3 },
-  line: { flex: 1, height: 1, backgroundColor: colors.border },
-  caption: { color: colors.textSecondary, fontSize: 12 },
+  line: { flex: 1, height: 1, backgroundColor: p.border },
+  caption: { color: p.textSecondary, fontSize: 12 },
   row: { flexDirection: 'row', justifyContent: 'center', gap: spacing.x4 },
 });

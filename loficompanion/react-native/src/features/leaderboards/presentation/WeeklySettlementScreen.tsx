@@ -6,7 +6,9 @@ import type { RootParamList } from '../../../navigation/navigationRef';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { achievementSoft, mediaControl } from '../../../design-system/derivedTokens';
 import { useApp } from '../../../state/AppStore';
-import { radii, semantic, space, type } from '../../../theme/tokens';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { useAsyncRefresh } from '../application/useAsyncRefresh';
@@ -25,6 +27,8 @@ export function WeeklySettlementScreen() {
   const groupId = params?.groupId ?? '';
   const { user, navigate, back } = useApp();
   const focus = useFocus();
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
 
   // 周结算查上一周：周末后首次查询惰性生成不可变快照（服务端保证幂等）
   const weekId = weekIdOf(previousWeekStartMs(Date.now()));
@@ -57,7 +61,7 @@ export function WeeklySettlementScreen() {
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
+          <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
       </View>
 
@@ -105,7 +109,7 @@ export function WeeklySettlementScreen() {
               <Text
                 style={[
                   styles.resultValue,
-                  { color: view?.goalMet ? semantic.success : semantic.textPrimary },
+                  { color: view?.goalMet ? palette.success : palette.textPrimary },
                 ]}
               >
                 {view?.goalMet ? t('settlementGoalMet') : t('settlementGoalRemain', { minutes: remainMinutes })}
@@ -114,7 +118,7 @@ export function WeeklySettlementScreen() {
 
             {view?.goalMet ? (
               <View style={styles.rewardRow}>
-                <AppIcon name="group" color={semantic.achievement} size={20} />
+                <AppIcon name="group" color={palette.achievement} size={20} />
                 <Text style={styles.rewardText} numberOfLines={1}>{t('settlementReward')}</Text>
               </View>
             ) : null}
@@ -145,10 +149,10 @@ export function WeeklySettlementScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvasDeep,
+    backgroundColor: p.canvasDeep,
   },
   media: {
     height: '58%',
@@ -171,8 +175,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radii.sheet,
     borderWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: 0,
-    borderColor: semantic.borderStandard,
-    backgroundColor: semantic.canvas,
+    borderColor: p.borderStandard,
+    backgroundColor: p.canvas,
     paddingTop: space.x5,
     paddingHorizontal: space.x4,
     paddingBottom: space.x6,
@@ -188,11 +192,11 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   sheetWeek: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     fontVariant: ['tabular-nums'],
   },
   resultRow: {
@@ -204,12 +208,12 @@ const styles = StyleSheet.create({
   },
   resultLabel: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     flexShrink: 1,
   },
   resultValue: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
@@ -224,12 +228,12 @@ const styles = StyleSheet.create({
   },
   rewardText: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flexShrink: 1,
   },
   pendingText: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     textAlign: 'center',
     paddingVertical: space.x6,
   },
@@ -240,25 +244,25 @@ const styles = StyleSheet.create({
   primaryCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryCtaText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   secondaryCta: {
     minHeight: 48,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryCtaText: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   pressed: {
     opacity: 0.82,

@@ -1,5 +1,5 @@
 
-  const { t } = useTranslation('store');import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
@@ -18,7 +18,8 @@ import { MockPaymentProvider } from '../../../payment/mockPaymentProvider';
 import type { RootParamList } from '../../../navigation/navigationRef';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
-import { colors, radii, semantic, space, type } from '../../../theme/tokens';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
 import type { StorageDriver } from '../../focus/data/storageDriver';
 import { useFocus } from '../../focus/application/FocusStore';
 import { SheetOverlay } from '../../focus/presentation/SheetOverlay';
@@ -72,7 +73,9 @@ export function SkinDetailScreen() {
   const skinSlug = params?.skinSlug ?? '';
   const { user, navigate, back, showToast } = useApp();
   const focus = useFocus();
-  const { locale } = usePreferences();
+  const { locale, palette } = usePreferences();
+  const { t } = useTranslation('store');
+  const styles = useThemeStyles(makeStyles);
   const signedIn = user !== null;
   const { width: windowWidth } = useWindowDimensions();
 
@@ -239,14 +242,14 @@ export function SkinDetailScreen() {
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
+          <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t('appBarTitle')}</Text>
       </View>
 
       {state.status === 'error' ? (
         <View style={styles.stateArea}>
-          <AppIcon name="alert" color={colors.warning} size={28} />
+          <AppIcon name="alert" color={palette.warning} size={28} />
           <Text style={styles.stateText}>{state.message}</Text>
           <Pressable
             accessibilityRole="button"
@@ -279,7 +282,7 @@ export function SkinDetailScreen() {
               />
             ) : (
               <View style={styles.previewPlaceholder}>
-                <AppIcon name="image" color={semantic.textMuted} size={32} />
+                <AppIcon name="image" color={palette.textMuted} size={32} />
                 <Text style={styles.previewPlaceholderText}>
                   {t(previewState === 'focusing' ? 'stateFocusing' : previewState === 'drinking' ? 'stateDrinking' : previewState === 'completed' ? 'stateCompleted' : 'stateReady')} · {t('previewCaption', { state: '' })}
                 </Text>
@@ -322,7 +325,7 @@ export function SkinDetailScreen() {
               </Text>
             </View>
             <View style={styles.creatorRow}>
-              <AppIcon name="crown" color={colors.membershipGold} size={16} />
+              <AppIcon name="crown" color={palette.membershipGold} size={16} />
               <Text style={styles.creatorText}>{t('officialCreator')}</Text>
             </View>
             <InfoRow label={t('includesStates')} value={t('stateCount', { n: 6 })} />
@@ -350,7 +353,7 @@ export function SkinDetailScreen() {
             onPress={useOwnedSkin}
             style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
           >
-            <AppIcon name="check" color={semantic.canvasDeep} size={18} />
+            <AppIcon name="check" color={palette.canvasDeep} size={18} />
             <Text style={styles.ctaText}>{t('ownedUse')}</Text>
           </Pressable>
         ) : product.accessType === 'premium' ? (
@@ -362,7 +365,7 @@ export function SkinDetailScreen() {
             onPress={() => showToast(t('plusComingSoon'), 'info')}
             style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
           >
-            <AppIcon name="crown" color={semantic.canvasDeep} size={18} />
+            <AppIcon name="crown" color={palette.canvasDeep} size={18} />
             <Text style={styles.ctaText}>{t('joinPlus')}</Text>
           </Pressable>
         ) : (
@@ -419,6 +422,7 @@ export function SkinDetailScreen() {
 }
 
 function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
+  const styles = useThemeStyles(makeStyles);
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -438,10 +442,10 @@ const absoluteFill = {
   bottom: 0,
 } as const;
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvas,
+    backgroundColor: p.canvas,
   },
   header: {
     height: 56,
@@ -458,7 +462,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     position: 'absolute',
     left: 88,
     right: 88,
@@ -471,7 +475,7 @@ const styles = StyleSheet.create({
     paddingBottom: space.x5,
   },
   preview: {
-    backgroundColor: semantic.surfaceRaised,
+    backgroundColor: p.surfaceRaised,
   },
   previewPlaceholder: {
     ...absoluteFill,
@@ -482,7 +486,7 @@ const styles = StyleSheet.create({
   },
   previewPlaceholderText: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     textAlign: 'center',
   },
   stateSwitch: {
@@ -496,28 +500,28 @@ const styles = StyleSheet.create({
     minHeight: 40,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stateChipActive: {
-    borderColor: semantic.actionFocus,
+    borderColor: p.actionFocus,
     backgroundColor: 'rgba(79,143,232,0.16)',
   },
   stateChipText: {
     ...type.label,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   stateChipTextActive: {
-    color: semantic.actionFocus,
+    color: p.actionFocus,
   },
   infoCard: {
     marginTop: space.x4,
     marginHorizontal: space.x4,
     borderRadius: radii.card,
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     padding: space.x4,
     gap: space.x3,
   },
@@ -527,7 +531,7 @@ const styles = StyleSheet.create({
   },
   skinName: {
     ...type.title1,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   creatorRow: {
     flexDirection: 'row',
@@ -536,7 +540,7 @@ const styles = StyleSheet.create({
   },
   creatorText: {
     ...type.label,
-    color: colors.membershipGold,
+    color: p.membershipGold,
   },
   infoRow: {
     flexDirection: 'row',
@@ -546,19 +550,19 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     ...type.body,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   infoValue: {
     ...type.body,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flexShrink: 1,
     textAlign: 'right',
   },
   commercialNote: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: semantic.borderSoft,
+    borderTopColor: p.borderSoft,
     paddingTop: space.x3,
   },
   ctaArea: {
@@ -568,7 +572,7 @@ const styles = StyleSheet.create({
   cta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     paddingHorizontal: space.x5,
     flexDirection: 'row',
     alignItems: 'center',
@@ -577,23 +581,23 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   ctaSkeleton: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.surfaceRaised,
+    backgroundColor: p.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
     opacity: 0.7,
   },
   ctaSkeletonText: {
     ...type.bodyStrong,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   sheetTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     textAlign: 'center',
     marginBottom: space.x3,
   },
@@ -609,7 +613,7 @@ const styles = StyleSheet.create({
   },
   sheetRestoreText: {
     ...type.bodyStrong,
-    color: semantic.actionFocus,
+    color: p.actionFocus,
   },
   stateArea: {
     flex: 1,
@@ -620,7 +624,7 @@ const styles = StyleSheet.create({
   },
   stateText: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     textAlign: 'center',
   },
   retryButton: {
@@ -628,13 +632,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.x5,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     alignItems: 'center',
     justifyContent: 'center',
   },
   retryText: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   pressed: {
     opacity: 0.82,

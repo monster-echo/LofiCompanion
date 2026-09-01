@@ -3,7 +3,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { WeeklyProgressCard } from '../../../design-system/WeeklyProgressCard';
 import { useApp } from '../../../state/AppStore';
-import { radii, semantic, space, type } from '../../../theme/tokens';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
 import { useTranslation } from 'react-i18next';
 import {
@@ -23,6 +25,8 @@ export function HistoryScreen() {
   const { t } = useTranslation('achievements');
   const { t: tFocus } = useTranslation('focus');
   const { back, navigate } = useApp();
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
 
   const entries = completedEntries(focus.history);
   const empty = entries.length === 0;
@@ -79,7 +83,7 @@ export function HistoryScreen() {
                     {
                       width: `${Math.max(4, Math.round((slice.minutes / peakMinutes) * 100))}%`,
                       backgroundColor:
-                        index === 0 ? semantic.actionPrimary : semantic.borderStandard,
+                        index === 0 ? palette.actionPrimary : palette.borderStandard,
                     },
                   ]}
                 />
@@ -113,6 +117,8 @@ export function HistoryScreen() {
 /** App bar 56：左返回 44×44，标题居中，右 88×40 周期选择器（P0-A 展示位） */
 function Header({ onBack }: Readonly<{ onBack: () => void }>) {
   const { t } = useTranslation('achievements');
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   return (
     <View style={styles.header}>
       <Pressable
@@ -121,12 +127,12 @@ function Header({ onBack }: Readonly<{ onBack: () => void }>) {
         onPress={onBack}
         style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
       >
-        <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
+        <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
       </Pressable>
       <Text style={styles.headerTitle}>{t('historyTitle')}</Text>
       <View style={styles.periodChip}>
         <Text style={styles.periodChipText}>{t('periodThisWeek')}</Text>
-        <AppIcon name="chevron-down" color={semantic.textMuted} size={16} />
+        <AppIcon name="chevron-down" color={palette.textMuted} size={16} />
       </View>
     </View>
   );
@@ -140,10 +146,10 @@ function formatDay(epochMs: number): string {
   return `${month}-${day}`;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvas,
+    backgroundColor: p.canvas,
   },
   header: {
     height: 56,
@@ -161,7 +167,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flex: 1,
     textAlign: 'center',
   },
@@ -170,7 +176,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -178,7 +184,7 @@ const styles = StyleSheet.create({
   },
   periodChipText: {
     ...type.label,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   scroll: {
     flex: 1,
@@ -190,16 +196,16 @@ const styles = StyleSheet.create({
     gap: space.x6,
   },
   card: {
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     borderRadius: radii.card,
     padding: space.x4,
     gap: space.x2,
   },
   cardTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     marginBottom: space.x1,
   },
   sliceRow: {
@@ -210,14 +216,14 @@ const styles = StyleSheet.create({
   },
   sliceLabel: {
     ...type.label,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     width: 48,
   },
   sliceTrack: {
     flex: 1,
     height: 6,
     borderRadius: 3,
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceInset,
     overflow: 'hidden',
   },
   sliceFill: {
@@ -226,7 +232,7 @@ const styles = StyleSheet.create({
   },
   sliceValue: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     minWidth: 44,
     textAlign: 'right',
     fontVariant: ['tabular-nums'],
@@ -240,22 +246,22 @@ const styles = StyleSheet.create({
   },
   timelineDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: semantic.borderSoft,
+    borderTopColor: p.borderSoft,
   },
   timelineDate: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     width: 52,
     fontVariant: ['tabular-nums'],
   },
   timelineActivity: {
     ...type.body,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flex: 1,
   },
   timelineMinutes: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     fontVariant: ['tabular-nums'],
   },
   empty: {
@@ -267,17 +273,17 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   emptyHint: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     textAlign: 'center',
   },
   emptyCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.x6,
@@ -286,7 +292,7 @@ const styles = StyleSheet.create({
   },
   emptyCtaText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   pressed: {
     opacity: 0.82,

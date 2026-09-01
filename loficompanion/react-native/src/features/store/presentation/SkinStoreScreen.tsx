@@ -13,7 +13,8 @@ import { AppIcon } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { skinDisplayName } from '../../skins/domain/registry';
-import { colors, radii, semantic, space, type } from '../../../theme/tokens';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { useFocus } from '../../focus/application/FocusStore';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
 import { BUILT_IN_SKINS, findSkinManifest } from '../../skins/domain/registry';
@@ -59,7 +60,8 @@ const imageFill = {
 
 export function SkinStoreScreen() {
   const { back, navigate, user } = useApp();
-  const { locale } = usePreferences();
+  const { locale, palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const { t } = useTranslation('store');
   const focus = useFocus();
   const signedIn = user !== null;
@@ -127,7 +129,7 @@ export function SkinStoreScreen() {
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
+          <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t('appBarTitle')}</Text>
         <Pressable
@@ -145,7 +147,7 @@ export function SkinStoreScreen() {
 
       {state.status === 'error' ? (
         <View style={styles.stateArea}>
-          <AppIcon name="alert" color={colors.warning} size={28} />
+          <AppIcon name="alert" color={palette.warning} size={28} />
           <Text style={styles.stateText}>{t('loadFailed')}</Text>
           <Pressable
             accessibilityRole="button"
@@ -206,6 +208,7 @@ function CurrentSkinBanner({
   width,
 }: Readonly<{ slug: string; name: string; width: number }>) {
   const { t } = useTranslation('store');
+  const styles = useThemeStyles(makeStyles);
   const poster = storePoster(slug, 'ready');
   return (
     <View
@@ -241,6 +244,7 @@ function Section({
   onPressCard: (card: StoreSkinCard) => void;
 }>) {
   const { t } = useTranslation('store');
+  const styles = useThemeStyles(makeStyles);
   if (cards.length === 0) return null;
   return (
     <View style={styles.section}>
@@ -270,6 +274,8 @@ function StoreCard({
   onPress,
 }: Readonly<{ card: StoreSkinCard; width: number; onPress: () => void }>) {
   const { t } = useTranslation('store');
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const poster = storePoster(card.slug, 'ready');
   const priceText = card.accessType === 'free'
     ? t('priceFree')
@@ -295,7 +301,7 @@ function StoreCard({
           <Image source={poster} style={imageFill} resizeMode="cover" />
         ) : (
           <View style={styles.posterPlaceholder}>
-            <AppIcon name="image" color={semantic.textMuted} size={22} />
+            <AppIcon name="image" color={palette.textMuted} size={22} />
           </View>
         )}
         {/* 使用中 / 已拥有 徽标（doc-08 §15 状态） */}
@@ -305,7 +311,7 @@ function StoreCard({
           </View>
         ) : card.owned ? (
           <View style={[styles.cornerBadge, styles.ownedCorner]}>
-            <AppIcon name="check" color={semantic.canvasDeep} size={12} />
+            <AppIcon name="check" color={palette.canvasDeep} size={12} />
             <Text style={styles.ownedCornerText}>{t('ownedBadge')}</Text>
           </View>
         ) : null}
@@ -336,6 +342,7 @@ function StoreCard({
 
 /** 价格加载中骨架（doc-08 §15：失败前占位，不可点） */
 function SectionsSkeleton({ windowWidth }: Readonly<{ windowWidth: number }>) {
+  const styles = useThemeStyles(makeStyles);
   const cardWidth = Math.min(CARD_WIDTH, (windowWidth - space.x4 * 2 - space.x3) / 2);
   return (
     <>
@@ -353,10 +360,10 @@ function SectionsSkeleton({ windowWidth }: Readonly<{ windowWidth: number }>) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvas,
+    backgroundColor: p.canvas,
   },
   header: {
     height: 56,
@@ -373,7 +380,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     position: 'absolute',
     left: 88,
     right: 88,
@@ -388,10 +395,10 @@ const styles = StyleSheet.create({
   },
   ownedEntryText: {
     ...type.bodyStrong,
-    color: semantic.actionFocus,
+    color: p.actionFocus,
   },
   ownedEntryActive: {
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   list: {
     paddingTop: space.x3,
@@ -406,7 +413,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   bannerPlaceholder: {
-    backgroundColor: semantic.surfaceRaised,
+    backgroundColor: p.surfaceRaised,
   },
   bannerScrim: {
     ...absoluteFill,
@@ -425,43 +432,43 @@ const styles = StyleSheet.create({
   },
   bannerName: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flexShrink: 1,
   },
   inUseBadge: {
     borderRadius: radii.round,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     paddingHorizontal: space.x3,
     paddingVertical: space.x1,
     marginLeft: space.x2,
   },
   inUseBadgeText: {
     ...type.micro,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   section: {
     gap: space.x3,
   },
   sectionTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   sectionRow: {
     gap: space.x3,
   },
   card: {
     borderRadius: radii.card,
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     overflow: 'hidden',
   },
   cardInUse: {
-    borderColor: semantic.borderEmphasis,
+    borderColor: p.borderEmphasis,
   },
   posterArea: {
     height: POSTER_HEIGHT,
-    backgroundColor: semantic.surfaceRaised,
+    backgroundColor: p.surfaceRaised,
   },
   posterPlaceholder: {
     ...absoluteFill,
@@ -480,14 +487,14 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   inUseCorner: {
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
   },
   ownedCorner: {
-    backgroundColor: semantic.actionFocus,
+    backgroundColor: p.actionFocus,
   },
   ownedCornerText: {
     ...type.micro,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   cardInfo: {
     padding: space.x3,
@@ -495,32 +502,32 @@ const styles = StyleSheet.create({
   },
   cardName: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   cardStates: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   pricePill: {
     alignSelf: 'flex-start',
     marginTop: space.x1,
     borderRadius: radii.round,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
-    backgroundColor: semantic.surfaceRaised,
+    borderColor: p.borderStandard,
+    backgroundColor: p.surfaceRaised,
     paddingHorizontal: space.x2,
     paddingVertical: 3,
   },
   pricePillPlus: {
-    borderColor: semantic.borderEmphasis,
+    borderColor: p.borderEmphasis,
     backgroundColor: 'rgba(79,143,232,0.16)',
   },
   pricePillText: {
     ...type.micro,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   pricePillPlusText: {
-    color: semantic.actionFocus,
+    color: p.actionFocus,
   },
   skeletonRow: {
     flexDirection: 'row',
@@ -529,7 +536,7 @@ const styles = StyleSheet.create({
   skeletonCard: {
     height: POSTER_HEIGHT + 92,
     borderRadius: radii.card,
-    backgroundColor: semantic.surfaceRaised,
+    backgroundColor: p.surfaceRaised,
     opacity: 0.55,
   },
   stateArea: {
@@ -541,7 +548,7 @@ const styles = StyleSheet.create({
   },
   stateText: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     textAlign: 'center',
   },
   retryButton: {
@@ -549,13 +556,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.x5,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     alignItems: 'center',
     justifyContent: 'center',
   },
   retryText: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   pressed: {
     opacity: 0.82,

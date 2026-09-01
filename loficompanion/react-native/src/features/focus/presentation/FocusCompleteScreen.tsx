@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StudyResultSheet } from '../../../design-system/StudyResultSheet';
 import { replaceRoute } from '../../../navigation/navigationRef';
 import { useApp } from '../../../state/AppStore';
-import { semantic, type } from '../../../theme/tokens';
+import { type, type ThemeColors } from '../../../theme/tokens';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { ACHIEVEMENT_DEFS } from '../../achievements/domain/rules';
 import { effectiveSeconds as computeEffective } from '../domain/engine';
 import { useFocus } from '../application/FocusStore';
@@ -17,6 +18,7 @@ import { useTranslation } from 'react-i18next';
  * 时卡片移除、sheet 自然收缩。completions 为空（深链/回退导航）→ 回首页。
  */
 export function FocusCompleteScreen() {
+  const styles = useThemeStyles(makeStyles);
   const focus = useFocus();
   const { t } = useTranslation('focus');
   const { t: tAchievements } = useTranslation('achievements');
@@ -80,10 +82,10 @@ export function FocusCompleteScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvasDeep,
+    backgroundColor: p.canvasDeep,
   },
   media: {
     height: '56%',
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...type.title1,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     position: 'absolute',
     top: 24,
     left: 20,

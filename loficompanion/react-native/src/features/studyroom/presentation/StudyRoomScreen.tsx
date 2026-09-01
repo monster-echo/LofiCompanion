@@ -14,7 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { AppIcon } from '../../../design-system/AppIcon';
-import { radii, semantic, space, type } from '../../../theme/tokens';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
 import { stateAsset } from '../../skins/domain/resolve';
 import { fetchRoomCounts } from '../data/roomsClient';
@@ -32,7 +33,8 @@ const COUNTS_POLL_MS = 15_000;
 
 export function StudyRoomScreen() {
   const { navigate } = useApp();
-  const { locale } = usePreferences();
+  const { locale, palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const { t } = useTranslation('studyroom');
   const insets = useSafeAreaInsets();
   const { state, refreshing, refresh } = useAsyncRefresh(() => fetchRoomCounts(httpBase()), []);
@@ -61,7 +63,7 @@ export function StudyRoomScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor={semantic.textSecondary}
+            tintColor={palette.textSecondary}
           />
         }
       >
@@ -100,7 +102,7 @@ export function StudyRoomScreen() {
                     </View>
                     <View style={styles.enterPill}>
                       <Text style={styles.enterText}>{t('enterRoom', { name })}</Text>
-                      <AppIcon name="chevron-right" color={semantic.textPrimary} size={14} />
+                      <AppIcon name="chevron-right" color={palette.textPrimary} size={14} />
                     </View>
                   </View>
                 </View>
@@ -133,10 +135,10 @@ const absoluteFill = {
   bottom: 0,
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvasDeep,
+    backgroundColor: p.canvasDeep,
   },
   content: {
     paddingHorizontal: space.x4,
@@ -144,16 +146,16 @@ const styles = StyleSheet.create({
   },
   title: {
     ...type.title1,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   subtitle: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     marginBottom: space.x3,
   },
   countsHint: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     marginBottom: space.x2,
   },
   cards: {
@@ -164,7 +166,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.card,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
   },
   cardScrim: {
     ...absoluteFill,
@@ -177,7 +179,7 @@ const styles = StyleSheet.create({
   },
   cardName: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     textShadowColor: 'rgba(6,16,28,0.45)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 12,
@@ -196,11 +198,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 999,
-    backgroundColor: semantic.success,
+    backgroundColor: p.success,
   },
   onlineText: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     fontVariant: ['tabular-nums'],
   },
   enterPill: {
@@ -210,13 +212,13 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
     backgroundColor: 'rgba(12, 14, 20, 0.55)',
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     paddingHorizontal: space.x3,
     paddingVertical: space.x1,
   },
   enterText: {
     ...type.label,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   pressed: {
     opacity: 0.82,

@@ -12,7 +12,9 @@ import {
   achievementBorder, achievementSoft, rankAccentColors, rankAccentSoft,
 } from '../../../design-system/derivedTokens';
 import { useApp } from '../../../state/AppStore';
-import { colors, radii, semantic, space, type } from '../../../theme/tokens';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useAsyncRefresh } from '../application/useAsyncRefresh';
 import { avatarInitial, goalProgress, rankAccent } from '../domain/model';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +29,8 @@ type Segment = 'friends' | 'group';
 
 export function LeaderboardHomeScreen() {
   const { t } = useTranslation('leaderboards');
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const { user, navigate, showToast } = useApp();
   const [segment, setSegment] = useState<Segment>('friends');
   // undefined = 本地引用读取中；null = 未加入（显示建组/加入入口）
@@ -157,7 +161,7 @@ export function LeaderboardHomeScreen() {
           onPress={() => navigate('leaderboard.rules')}
           style={({ pressed }) => [styles.helpButton, pressed && styles.pressed]}
         >
-          <AppIcon name="help" color={semantic.textSecondary} size={22} />
+          <AppIcon name="help" color={palette.textSecondary} size={22} />
         </Pressable>
       </View>
       <Text style={styles.weekCaption}>
@@ -180,7 +184,7 @@ export function LeaderboardHomeScreen() {
 
       {/* 规则提示行，高 32：锁图标 + 仅展示完成的专注 */}
       <View style={styles.hintRow}>
-        <AppIcon name="lock" color={semantic.textMuted} size={14} />
+        <AppIcon name="lock" color={palette.textMuted} size={14} />
         <Text style={styles.hintText}>{t('hintCompletedOnly')}</Text>
       </View>
 
@@ -194,7 +198,7 @@ export function LeaderboardHomeScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={refresh}
-                tintColor={semantic.textSecondary}
+                tintColor={palette.textSecondary}
               />
             )}
           >
@@ -225,7 +229,7 @@ export function LeaderboardHomeScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={refresh}
-                tintColor={semantic.textSecondary}
+                tintColor={palette.textSecondary}
               />
             )}
           >
@@ -278,6 +282,7 @@ function SegmentButton({ label, active, onPress }: Readonly<{
   onPress: () => void;
 }>) {
   const { t } = useTranslation('leaderboards');
+  const styles = useThemeStyles(makeStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -298,6 +303,7 @@ function SegmentButton({ label, active, onPress }: Readonly<{
 /** 榜单行：高 76 = 名次区 40 + 头像 44 + 昵称 + 分钟右对齐 tabular */
 function RankRow({ entry }: Readonly<{ entry: LeaderboardRankingRemote }>) {
   const { t } = useTranslation('leaderboards');
+  const styles = useThemeStyles(makeStyles);
   const accent = rankAccent(entry.rank);
   return (
     <View style={styles.row}>
@@ -335,6 +341,7 @@ function SelfCard({ entry, onRules }: Readonly<{
   onRules: () => void;
 }>) {
   const { t } = useTranslation('leaderboards');
+  const styles = useThemeStyles(makeStyles);
   return (
     <View style={[styles.selfCard, entry.youOptedOut && styles.selfCardOptedOut]}>
       <View style={styles.selfLeft}>
@@ -378,6 +385,8 @@ function InviteEntry({ inviteCode, inviteInput, acceptBusy, onInviteInputChange,
   onShareCode: (code: string) => void;
 }>) {
   const { t } = useTranslation('leaderboards');
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   return (
     <View style={styles.emptyWrap}>
       <View style={styles.emptyHead}>
@@ -407,7 +416,7 @@ function InviteEntry({ inviteCode, inviteInput, acceptBusy, onInviteInputChange,
             maxLength={8}
             onChangeText={onInviteInputChange}
             placeholder={t('inviteInputPlaceholder')}
-            placeholderTextColor={semantic.textMuted}
+            placeholderTextColor={palette.textMuted}
             style={styles.input}
             value={inviteInput}
           />
@@ -440,6 +449,8 @@ function NoGroupEntry({ groupName, joinCode, busy, onGroupNameChange, onJoinCode
   onJoinGroup: () => void;
 }>) {
   const { t } = useTranslation('leaderboards');
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   return (
     <View style={styles.emptyWrap}>
       <View style={styles.emptyHead}>
@@ -453,7 +464,7 @@ function NoGroupEntry({ groupName, joinCode, busy, onGroupNameChange, onJoinCode
           maxLength={24}
           onChangeText={onGroupNameChange}
           placeholder={t('createGroupNamePlaceholder')}
-          placeholderTextColor={semantic.textMuted}
+          placeholderTextColor={palette.textMuted}
           style={styles.input}
           value={groupName}
         />
@@ -477,7 +488,7 @@ function NoGroupEntry({ groupName, joinCode, busy, onGroupNameChange, onJoinCode
             maxLength={8}
             onChangeText={onJoinCodeChange}
             placeholder={t('joinGroupPlaceholder')}
-            placeholderTextColor={semantic.textMuted}
+            placeholderTextColor={palette.textMuted}
             style={styles.input}
             value={joinCode}
           />
@@ -507,12 +518,14 @@ function GroupBoard({ myGroup, view, onViewGroup }: Readonly<{
   onViewGroup: () => void;
 }>) {
   const { t } = useTranslation('leaderboards');
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const ratio = goalProgress(Math.floor(view.groupTotalSeconds / 60), view.weeklyGoalMinutes);
   return (
     <View>
       <View style={styles.card}>
         <View style={styles.groupHeadRow}>
-          <AppIcon name="group" color={semantic.actionPrimary} size={20} />
+          <AppIcon name="group" color={palette.actionPrimary} size={20} />
           <Text style={styles.groupName} numberOfLines={1}>{myGroup.groupName}</Text>
           {view.goalMet ? <Text style={styles.goalMetBadge}>{t('goalMetBadge')}</Text> : null}
         </View>
@@ -538,6 +551,7 @@ function GroupBoard({ myGroup, view, onViewGroup }: Readonly<{
 
 function LoadingHint() {
   const { t } = useTranslation('leaderboards');
+  const styles = useThemeStyles(makeStyles);
   return (
     <View style={styles.stateWrap}>
       <Text style={styles.stateText}>正在加载…</Text>
@@ -547,6 +561,7 @@ function LoadingHint() {
 
 function ErrorState({ message, onRetry }: Readonly<{ message: string; onRetry: () => void }>) {
   const { t } = useTranslation('leaderboards');
+  const styles = useThemeStyles(makeStyles);
   return (
     <View style={styles.stateWrap}>
       <Text style={styles.stateTitle}>{t('loadFailed')}</Text>
@@ -571,6 +586,7 @@ function GroupErrorState({ message, code, onRetry, onClearRef }: Readonly<{
   onClearRef: () => void;
 }>) {
   const { t } = useTranslation('leaderboards');
+  const styles = useThemeStyles(makeStyles);
   const stale = code === 'GROUP_FORBIDDEN' || code === 'GROUP_NOT_FOUND';
   return (
     <View style={styles.stateWrap}>
@@ -597,10 +613,10 @@ function GroupErrorState({ message, code, onRetry, onClearRef }: Readonly<{
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvas,
+    backgroundColor: p.canvas,
   },
   header: {
     height: 56,
@@ -614,7 +630,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flex: 1,
     textAlign: 'center',
   },
@@ -627,7 +643,7 @@ const styles = StyleSheet.create({
   },
   weekCaption: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     textAlign: 'center',
     marginBottom: space.x2,
   },
@@ -636,8 +652,8 @@ const styles = StyleSheet.create({
     marginHorizontal: space.x4,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
-    backgroundColor: semantic.surface,
+    borderColor: p.borderStandard,
+    backgroundColor: p.surface,
     flexDirection: 'row',
     padding: 2,
     gap: 2,
@@ -649,14 +665,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   segmentItemActive: {
-    backgroundColor: colors.brandSoft,
+    backgroundColor: p.brandSoft,
   },
   segmentText: {
     ...type.label,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   segmentTextActive: {
-    color: semantic.actionPrimary,
+    color: p.actionPrimary,
   },
   hintRow: {
     height: 32,
@@ -667,7 +683,7 @@ const styles = StyleSheet.create({
   },
   hintText: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   listArea: {
     flex: 1,
@@ -706,7 +722,7 @@ const styles = StyleSheet.create({
   },
   rankPlain: {
     ...type.body,
-    color: semantic.textMuted,
+    color: p.textMuted,
     fontVariant: ['tabular-nums'],
     textAlign: 'center',
   },
@@ -716,24 +732,24 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
   },
   avatarFallback: {
-    backgroundColor: semantic.surfaceRaised,
+    backgroundColor: p.surfaceRaised,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitial: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   nickname: {
     ...type.body,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flex: 1,
   },
   minutes: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     fontVariant: ['tabular-nums'],
   },
   selfCard: {
@@ -752,8 +768,8 @@ const styles = StyleSheet.create({
     gap: space.x3,
   },
   selfCardOptedOut: {
-    backgroundColor: semantic.surface,
-    borderColor: semantic.borderStandard,
+    backgroundColor: p.surface,
+    borderColor: p.borderStandard,
   },
   selfLeft: {
     flex: 1,
@@ -777,14 +793,14 @@ const styles = StyleSheet.create({
   },
   selfName: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flexShrink: 1,
     maxWidth: 120,
   },
   meBadge: {
     ...type.micro,
-    color: semantic.actionPrimary,
-    backgroundColor: colors.brandSoft,
+    color: p.actionPrimary,
+    backgroundColor: p.brandSoft,
     borderRadius: radii.small,
     paddingHorizontal: space.x1,
     paddingVertical: 1,
@@ -792,7 +808,7 @@ const styles = StyleSheet.create({
   },
   selfRank: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     fontVariant: ['tabular-nums'],
   },
   optedRow: {
@@ -802,16 +818,16 @@ const styles = StyleSheet.create({
   },
   optedText: {
     ...type.caption,
-    color: colors.warning,
+    color: p.warning,
   },
   optedAction: {
     ...type.caption,
-    color: semantic.actionPrimary,
+    color: p.actionPrimary,
     textDecorationLine: 'underline',
   },
   selfMinutes: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   emptyWrap: {
@@ -824,29 +840,29 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     textAlign: 'center',
   },
   emptyHint: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     textAlign: 'center',
   },
   card: {
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     borderRadius: radii.card,
     padding: space.x4,
     gap: space.x3,
   },
   cardLabel: {
     ...type.label,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   inviteCode: {
     ...type.displayMetric,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     fontVariant: ['tabular-nums'],
     letterSpacing: 4,
     textAlign: 'center',
@@ -855,11 +871,11 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 48,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     borderRadius: radii.control,
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceInset,
     paddingHorizontal: space.x3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     ...type.body,
   },
   acceptRow: {
@@ -870,38 +886,38 @@ const styles = StyleSheet.create({
     minWidth: 72,
     minHeight: 48,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.x3,
   },
   acceptButtonText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   primaryButton: {
     minHeight: 48,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButtonText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   secondaryButton: {
     minHeight: 44,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.x4,
   },
   secondaryButtonText: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -914,11 +930,11 @@ const styles = StyleSheet.create({
   },
   stateTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   stateText: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     textAlign: 'center',
   },
   stateRetry: {
@@ -932,14 +948,14 @@ const styles = StyleSheet.create({
   },
   groupName: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flex: 1,
   },
   goalMetBadge: {
     ...type.micro,
-    color: semantic.success,
+    color: p.success,
     borderWidth: 1,
-    borderColor: semantic.success,
+    borderColor: p.success,
     borderRadius: radii.small,
     paddingHorizontal: space.x1,
     paddingVertical: 1,
@@ -947,19 +963,19 @@ const styles = StyleSheet.create({
   },
   groupGoalText: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     fontVariant: ['tabular-nums'],
   },
   progressTrack: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceInset,
     overflow: 'hidden',
   },
   progressFill: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
   },
   pressed: {
     opacity: 0.82,

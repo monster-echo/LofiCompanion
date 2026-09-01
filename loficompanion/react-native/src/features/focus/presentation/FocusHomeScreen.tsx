@@ -13,10 +13,12 @@ import { ImmersiveMediaSurface } from "../../skins/presentation/ImmersiveMediaSu
 import { AppIcon } from "../../../design-system/AppIcon";
 import { formatTimerSeconds } from "../../../design-system/FocusTimerRing";
 import { useApp } from "../../../state/AppStore";
+import { usePreferences } from "../../../preferences/PreferencesProvider";
 import { useFocus } from "../application/FocusStore";
 import { DEFAULT_ACTIVITY, DEFAULT_DURATION } from "../domain/validate";
 import { mediaControl, mediaSurface } from "../../../design-system/derivedTokens";
-import { radii, semantic, space, type } from "../../../theme/tokens";
+import { radii, space, type, type ThemeColors } from "../../../theme/tokens";
+import { useThemeStyles } from "../../../theme/useThemeStyles";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -26,6 +28,8 @@ import { useTranslation } from "react-i18next";
  * 底部结果板承载今日战绩与主 CTA，锚定在悬浮 Tab 之上。
  */
 export function FocusHomeScreen() {
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const focus = useFocus();
   const { navigate, showToast } = useApp();
   const { t: tSkin } = useTranslation('skins');
@@ -108,7 +112,7 @@ export function FocusHomeScreen() {
             >
               <AppIcon
                 name="chevron-left"
-                color={semantic.textPrimary}
+                color={palette.textPrimary}
                 size={20}
               />
             </Pressable>
@@ -123,7 +127,7 @@ export function FocusHomeScreen() {
             >
               <AppIcon
                 name="chevron-right"
-                color={semantic.textPrimary}
+                color={palette.textPrimary}
                 size={20}
               />
             </Pressable>
@@ -180,7 +184,7 @@ export function FocusHomeScreen() {
               <Text style={styles.selectorText}>{selectorLabel}</Text>
               <AppIcon
                 name="chevron-down"
-                color={semantic.textMuted}
+                color={palette.textMuted}
                 size={18}
               />
             </Pressable>
@@ -191,10 +195,10 @@ export function FocusHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvasDeep,
+    backgroundColor: p.canvasDeep,
   },
   mediaArea: {
     flex: 1,
@@ -208,7 +212,7 @@ const styles = StyleSheet.create({
   },
   greetingText: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   // 与问候语（top 24 / left 20）镜像；box-none 只让圆钮接点击，媒体入口不受遮挡
   skinSwitcher: {
@@ -234,14 +238,14 @@ const styles = StyleSheet.create({
     borderRadius: radii.card,
     backgroundColor: mediaSurface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     paddingHorizontal: space.x5,
     paddingVertical: space.x4,
     justifyContent: "space-between",
   },
   boardEmpty: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   statsRow: {
     flexDirection: "row",
@@ -250,12 +254,12 @@ const styles = StyleSheet.create({
   },
   statMain: {
     ...type.title1,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     fontVariant: ["tabular-nums"],
   },
   statSub: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     fontVariant: ["tabular-nums"],
   },
   boardActions: {
@@ -264,20 +268,20 @@ const styles = StyleSheet.create({
   primaryCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     paddingHorizontal: space.x5,
     alignItems: "center",
     justifyContent: "center",
   },
   primaryCtaText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   selector: {
     minHeight: 48,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     paddingHorizontal: space.x4,
     flexDirection: "row",
     alignItems: "center",
@@ -285,7 +289,7 @@ const styles = StyleSheet.create({
   },
   selectorText: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   pressed: {
     opacity: 0.82,

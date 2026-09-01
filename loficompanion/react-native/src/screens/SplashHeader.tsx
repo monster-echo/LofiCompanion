@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing, ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
 import { styles } from '../theme/styles';
 
 type SplashHeaderProps = Readonly<{
@@ -18,6 +19,7 @@ export function SplashHeader({
   surfaceColor,
 }: SplashHeaderProps) {
   const { t } = useTranslation('launch');
+  const headerStyles = useThemeStyles(makeHeaderStyles);
   return (
     <View style={headerStyles.header}>
       <View
@@ -41,7 +43,7 @@ export function SplashHeader({
   );
 }
 
-const headerStyles = StyleSheet.create({
+const makeHeaderStyles = (p: ThemeColors) => StyleSheet.create({
   header: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -62,5 +64,5 @@ const headerStyles = StyleSheet.create({
     height: 44,
     borderRadius: radii.round,
   },
-  countdownNumber: { fontSize: 18, fontWeight: '700', color: colors.brand },
+  countdownNumber: { fontSize: 18, fontWeight: '700', color: p.brand },
 });

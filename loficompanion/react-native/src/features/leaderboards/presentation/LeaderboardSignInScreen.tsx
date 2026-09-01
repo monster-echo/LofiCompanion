@@ -2,7 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppIcon, IconName } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
-import { colors, radii, semantic, space, type } from '../../../theme/tokens';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -13,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 export function LeaderboardSignInScreen() {
   const { t } = useTranslation('leaderboards');
   const { navigate } = useApp();
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
 
   const rules: readonly { icon: IconName; text: string }[] = [
     { icon: 'check-circle', text: t('ruleCompletedOnly') },
@@ -28,14 +32,14 @@ export function LeaderboardSignInScreen() {
 
       <View style={styles.body}>
         <View style={styles.heroIcon}>
-          <AppIcon name="group" color={semantic.actionPrimary} size={32} />
+          <AppIcon name="group" color={palette.actionPrimary} size={32} />
         </View>
         <Text style={styles.heroTitle}>{t('signInInvite')}</Text>
 
         <View style={styles.rules}>
           {rules.map((rule) => (
             <View key={rule.text} style={styles.ruleRow}>
-              <AppIcon name={rule.icon} color={semantic.textSecondary} size={20} />
+              <AppIcon name={rule.icon} color={palette.textSecondary} size={20} />
               <Text style={styles.ruleText}>{rule.text}</Text>
             </View>
           ))}
@@ -56,10 +60,10 @@ export function LeaderboardSignInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvas,
+    backgroundColor: p.canvas,
   },
   header: {
     height: 56,
@@ -68,7 +72,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   body: {
     flex: 1,
@@ -83,19 +87,19 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.brandSoft,
+    backgroundColor: p.brandSoft,
   },
   heroTitle: {
     ...type.title3,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     textAlign: 'center',
   },
   rules: {
     alignSelf: 'stretch',
     borderRadius: radii.card,
-    backgroundColor: semantic.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
+    borderColor: p.borderSoft,
     paddingHorizontal: space.x4,
     paddingVertical: space.x2,
   },
@@ -107,24 +111,24 @@ const styles = StyleSheet.create({
   },
   ruleText: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     flex: 1,
   },
   cta: {
     alignSelf: 'stretch',
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   upcoming: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   pressed: {
     opacity: 0.82,

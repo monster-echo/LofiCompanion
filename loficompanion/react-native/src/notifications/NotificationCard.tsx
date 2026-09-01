@@ -5,7 +5,8 @@ import type { TFunction } from 'i18next';
 import { AppIcon, IconName } from '../design-system/AppIcon';
 import { NotificationItem } from '../domain/models';
 import { usePreferences } from '../preferences/PreferencesProvider';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing, ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
 import { styles } from '../theme/styles';
 
 export function NotificationCard({
@@ -13,6 +14,7 @@ export function NotificationCard({
   onPress,
 }: Readonly<{ item: NotificationItem; onPress: () => void }>) {
   const { palette } = usePreferences();
+  const cardStyles = useThemeStyles(makeCardStyles);
   const { t } = useTranslation('common');
   const unread = !item.readAt;
   return (
@@ -27,13 +29,13 @@ export function NotificationCard({
         cardStyles.card,
         {
           backgroundColor: unread ? palette.brandSoft : palette.surface,
-          borderColor: unread ? colors.brand : palette.border,
+          borderColor: unread ? palette.brand : palette.border,
         },
         pressed && cardStyles.pressed,
       ]}
     >
       <View style={[cardStyles.icon, { backgroundColor: palette.surfaceMuted }]}>
-        <AppIcon name={notificationIcon(item.type)} color={notificationColor(item.type)} size={22} />
+        <AppIcon name={notificationIcon(item.type)} color={notificationColor(item.type, palette)} size={22} />
       </View>
       <View style={cardStyles.content}>
         <View style={cardStyles.titleRow}>
@@ -61,11 +63,11 @@ function notificationIcon(type: string): IconName {
   return 'bell';
 }
 
-function notificationColor(type: string) {
-  if (type === 'membership') return colors.membershipGold;
-  if (type === 'security') return colors.warning;
-  if (type === 'order' || type === 'billing') return colors.success;
-  return colors.info;
+function notificationColor(type: string, palette: ThemeColors) {
+  if (type === 'membership') return palette.membershipGold;
+  if (type === 'security') return palette.warning;
+  if (type === 'order' || type === 'billing') return palette.success;
+  return palette.info;
 }
 
 function relativeTime(value: string, t: TFunction<'common'>) {
@@ -81,7 +83,7 @@ function relativeTime(value: string, t: TFunction<'common'>) {
   return new Date(value).toLocaleDateString('zh-CN');
 }
 
-const cardStyles = StyleSheet.create({
+const makeCardStyles = (p: ThemeColors) => StyleSheet.create({
   card: {
     minHeight: 104,
     flexDirection: 'row',
@@ -107,6 +109,6 @@ const cardStyles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: radii.round,
-    backgroundColor: colors.brand,
+    backgroundColor: p.brand,
   },
 });

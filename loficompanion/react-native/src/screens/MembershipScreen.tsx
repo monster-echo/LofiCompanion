@@ -5,8 +5,10 @@ import type { TFunction } from 'i18next';
 import { AppButton, AppCard, ListRow, PageHeader } from '../design-system/components';
 import { BillingPlan, MembershipTier } from '../domain/models';
 import { useApp } from '../state/AppStore';
-import { colors, membershipAccents, radii, spacing } from '../theme/tokens';
+import { membershipAccents, radii, spacing } from '../theme/tokens';
+import type { ThemeColors } from '../theme/tokens';
 import { styles } from '../theme/styles';
+import { useThemeStyles } from '../theme/useThemeStyles';
 
 export function MembershipScreen() {
   const { t } = useTranslation('membership');
@@ -75,6 +77,7 @@ export function MembershipScreen() {
 
 function MembershipHero({ tiers, plans }: Readonly<{ tiers: number; plans: number }>) {
   const { t } = useTranslation('membership');
+  const localStyles = useThemeStyles(makeStyles);
   return (
     <View style={localStyles.proHero}>
       <Text style={localStyles.proLabel}>MEMBERSHIP</Text>
@@ -86,6 +89,7 @@ function MembershipHero({ tiers, plans }: Readonly<{ tiers: number; plans: numbe
 
 function TierCard({ tier, current }: Readonly<{ tier: MembershipTier; current: boolean }>) {
   const { t } = useTranslation('membership');
+  const localStyles = useThemeStyles(makeStyles);
   return (
     <AppCard>
       <View style={localStyles.tierHeading}>
@@ -131,13 +135,13 @@ export function formatPrice(plan: BillingPlan, t: TFunction<'membership'>) {
   return `${price}/${period}`;
 }
 
-const localStyles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   tierHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  currentTag: { color: colors.success, fontSize: 12, fontWeight: '700' },
+  currentTag: { color: p.success, fontSize: 12, fontWeight: '700' },
   proHero: {
-    borderRadius: radii.card, padding: spacing.x6, gap: spacing.x3, backgroundColor: colors.text,
+    borderRadius: radii.card, padding: spacing.x6, gap: spacing.x3, backgroundColor: p.text,
   },
-  proLabel: { color: colors.brand, fontWeight: '700', letterSpacing: 2 },
-  proTitle: { color: colors.surface, fontSize: 26, fontWeight: '700' },
-  proBody: { color: colors.border, fontSize: 14 },
+  proLabel: { color: p.brand, fontWeight: '700', letterSpacing: 2 },
+  proTitle: { color: p.surface, fontSize: 26, fontWeight: '700' },
+  proBody: { color: p.border, fontSize: 14 },
 });

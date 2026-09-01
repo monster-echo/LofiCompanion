@@ -4,7 +4,9 @@ import { apiClient } from '../../../data/apiClient';
 import type { LeaderboardPrivacyRemote, LeaderboardViewRemote } from '../../../data/apiClient';
 import { AppIcon, type IconName } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
-import { radii, semantic, space, type } from '../../../theme/tokens';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useAsyncRefresh } from '../application/useAsyncRefresh';
 import { useTranslation } from 'react-i18next';
 import { i18n } from '../../../i18n/core';
@@ -17,6 +19,8 @@ import { i18n } from '../../../i18n/core';
 export function LeaderboardRulesScreen() {
   const { t } = useTranslation('leaderboards');
   const { user, back, showToast, showConfirm } = useApp();
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const privacy = useAsyncRefresh(() => apiClient.getLeaderboardPrivacy(), []);
   const board = useAsyncRefresh(() => apiClient.friendsLeaderboard(), []);
 
@@ -80,7 +84,7 @@ export function LeaderboardRulesScreen() {
           onPress={back}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <AppIcon name="arrow-left" color={semantic.textPrimary} size={22} />
+          <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t('rulesTitle')}</Text>
         <View style={styles.backButton} />
@@ -135,7 +139,7 @@ export function LeaderboardRulesScreen() {
         <View style={styles.rulesCard}>
           {rules.map((rule) => (
             <View key={rule.text} style={styles.ruleRow}>
-              <AppIcon name={rule.icon} color={semantic.textSecondary} size={20} />
+              <AppIcon name={rule.icon} color={palette.textSecondary} size={20} />
               <Text style={styles.ruleText}>{rule.text}</Text>
             </View>
           ))}
@@ -177,7 +181,7 @@ export function LeaderboardRulesScreen() {
         >
           <Text style={styles.bodyToggleText}>{t('rulesBodyTitle')}</Text>
           <View style={rulesOpen ? styles.chevronOpen : undefined}>
-            <AppIcon name="chevron-down" color={semantic.textMuted} size={18} />
+            <AppIcon name="chevron-down" color={palette.textMuted} size={18} />
           </View>
         </Pressable>
         {rulesOpen ? (
@@ -190,10 +194,10 @@ export function LeaderboardRulesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: semantic.canvas,
+    backgroundColor: p.canvas,
   },
   header: {
     height: 56,
@@ -211,7 +215,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     flex: 1,
     textAlign: 'center',
   },
@@ -227,41 +231,41 @@ const styles = StyleSheet.create({
   rankCard: {
     borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
-    backgroundColor: semantic.surface,
+    borderColor: p.borderSoft,
+    backgroundColor: p.surface,
     alignItems: 'center',
     padding: space.x5,
     gap: space.x1,
   },
   rankLabel: {
     ...type.label,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   rankValue: {
     ...type.displayMetric,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   rankMinutes: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     fontVariant: ['tabular-nums'],
   },
   rankHidden: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     textAlign: 'center',
   },
   cardCaption: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
     textAlign: 'center',
   },
   rulesCard: {
     borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
-    backgroundColor: semantic.surface,
+    borderColor: p.borderSoft,
+    backgroundColor: p.surface,
     paddingHorizontal: space.x4,
     paddingVertical: space.x2,
   },
@@ -273,14 +277,14 @@ const styles = StyleSheet.create({
   },
   ruleText: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     flex: 1,
   },
   privacyCard: {
     borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
-    backgroundColor: semantic.surface,
+    borderColor: p.borderSoft,
+    backgroundColor: p.surface,
     paddingHorizontal: space.x4,
     paddingVertical: space.x2,
     gap: space.x2,
@@ -298,11 +302,11 @@ const styles = StyleSheet.create({
   },
   switchLabel: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
   },
   switchHint: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   bodyToggle: {
     minHeight: 44,
@@ -313,7 +317,7 @@ const styles = StyleSheet.create({
   },
   bodyToggleText: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   chevronOpen: {
     transform: [{ rotate: '180deg' }],
@@ -321,20 +325,20 @@ const styles = StyleSheet.create({
   rulesBodyCard: {
     borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: semantic.borderSoft,
-    backgroundColor: semantic.surface,
+    borderColor: p.borderSoft,
+    backgroundColor: p.surface,
     padding: space.x4,
   },
   rulesBodyText: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     lineHeight: 22,
   },
   retryButton: {
     minHeight: 44,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
+    borderColor: p.borderStandard,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.x6,
@@ -342,7 +346,7 @@ const styles = StyleSheet.create({
   },
   retryText: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   pressed: {
     opacity: 0.82,

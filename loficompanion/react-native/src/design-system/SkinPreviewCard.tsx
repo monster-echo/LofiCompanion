@@ -4,7 +4,8 @@ import { stateAsset } from "../features/skins/domain/resolve";
 import type { SkinManifest } from "../features/skins/domain/types";
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { skinDisplayName } from '../features/skins/domain/registry';
-import { radii, semantic, space, type } from "../theme/tokens";
+import { radii, space, type, ThemeColors } from "../theme/tokens";
+import { useThemeStyles } from '../theme/useThemeStyles';
 import { AppIcon } from "./AppIcon";
 import { useTranslation } from 'react-i18next';
 
@@ -36,7 +37,8 @@ export function SkinPreviewCard({
   trailingLabel,
   width = SKIN_PREVIEW_CARD_WIDTH,
 }: SkinPreviewCardProps) {
-  const { locale } = usePreferences();
+  const { locale, palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const { t } = useTranslation('skins');
   const displayName = skinDisplayName(manifest, locale);
   const poster = stateAsset(manifest, "ready").poster;
@@ -93,7 +95,7 @@ export function SkinPreviewCard({
           pointerEvents="none"
         >
           <View style={styles.checkCircle}>
-            <AppIcon name="check" color={semantic.canvasDeep} size={16} />
+            <AppIcon name="check" color={palette.canvasDeep} size={16} />
           </View>
         </View>
       ) : null}
@@ -101,7 +103,7 @@ export function SkinPreviewCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   card: {
     height: SKIN_PREVIEW_CARD_HEIGHT,
     overflow: "hidden",
@@ -117,31 +119,32 @@ const styles = StyleSheet.create({
   },
   namePill: {
     borderRadius: radii.round,
-    backgroundColor: "rgba(6,16,28,0.55)", // night.950 @55%，压住文字不压图片
+    backgroundColor: "rgba(6,16,28,0.55)", // night.950 @55%，压住文字不压图片；压在海报影像上，主题无关
     paddingHorizontal: space.x3,
     paddingVertical: space.x1,
   },
   name: {
     ...type.bodyStrong,
-    color: semantic.textPrimary,
+    // 纸白文字（paper.100）直接压在深色胶囊+海报影像上，主题无关，不随亮色调色板翻转
+    color: "#F3EFE7",
   },
   trailing: {
     borderRadius: radii.round,
-    backgroundColor: semantic.surfaceRaised,
+    backgroundColor: p.surfaceRaised,
     paddingHorizontal: space.x2,
     paddingVertical: space.x1,
     marginLeft: space.x2,
   },
   trailingText: {
     ...type.caption,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   ring: {
     position: "absolute",
     left: 0,
     top: 0,
     borderWidth: 2,
-    borderColor: semantic.actionFocus,
+    borderColor: p.actionFocus,
   },
   checkCircle: {
     position: "absolute",
@@ -150,7 +153,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: radii.round,
-    backgroundColor: semantic.actionFocus,
+    backgroundColor: p.actionFocus,
     alignItems: "center",
     justifyContent: "center",
   },

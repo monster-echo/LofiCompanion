@@ -17,7 +17,8 @@ import type {
   SkinManifest,
   SkinStateAsset,
 } from "../domain/types";
-import { primitives, semantic } from "../../../theme/tokens";
+import { primitives, type ThemeColors } from "../../../theme/tokens";
+import { useThemeStyles } from "../../../theme/useThemeStyles";
 
 export type ImmersiveMediaSurfaceProps = Readonly<{
   manifest: SkinManifest;
@@ -150,6 +151,7 @@ export function ImmersiveMediaSurface({
   reducedMotion = false,
   style,
 }: ImmersiveMediaSurfaceProps) {
+  const styles = useThemeStyles(makeStyles);
   const gradientIds = useMemo(() => {
     gradientSeq += 1;
     const seq = gradientSeq;
@@ -447,10 +449,10 @@ export function ImmersiveMediaSurface({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   container: {
     overflow: "hidden",
-    backgroundColor: semantic.surfaceInset,
+    backgroundColor: p.surfaceInset,
   },
   scrims: {
     ...absoluteFill,

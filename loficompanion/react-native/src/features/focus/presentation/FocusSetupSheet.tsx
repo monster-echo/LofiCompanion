@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { replaceRoute } from '../../../navigation/navigationRef';
 import { useApp } from '../../../state/AppStore';
-import { colors, radii, semantic, space, type } from '../../../theme/tokens';
+import { usePreferences } from '../../../preferences/PreferencesProvider';
+import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
+import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { useFocus } from '../application/FocusStore';
 import { useMusicLibrary } from '../../music/application/useMusicLibrary';
 import type { ActivityType } from '../domain/types';
@@ -22,6 +24,8 @@ import { useTranslation } from 'react-i18next';
  * transparentModal，sheet 结构由 SheetOverlay 承担，开始后原位替换为专注页。
  */
 export function FocusSetupSheet() {
+  const { palette } = usePreferences();
+  const styles = useThemeStyles(makeStyles);
   const focus = useFocus();
   const { t } = useTranslation('focus');
   const { back, showToast, signedIn } = useApp();
@@ -127,7 +131,7 @@ export function FocusSetupSheet() {
           onChangeText={onCustomChange}
           keyboardType="number-pad"
           placeholder={t('customPlaceholder')}
-          placeholderTextColor={semantic.textMuted}
+          placeholderTextColor={palette.textMuted}
           style={styles.customInput}
           maxLength={3}
         />
@@ -181,10 +185,10 @@ export function FocusSetupSheet() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   title: {
     ...type.title2,
-    color: semantic.textPrimary,
+    color: p.textPrimary,
     marginBottom: space.x4,
   },
   chipWrap: {
@@ -196,22 +200,22 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
-    backgroundColor: semantic.surfaceRaised,
+    borderColor: p.borderStandard,
+    backgroundColor: p.surfaceRaised,
     paddingHorizontal: space.x4,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chipSelected: {
-    backgroundColor: colors.brandSoft,
-    borderColor: semantic.borderEmphasis,
+    backgroundColor: p.brandSoft,
+    borderColor: p.borderEmphasis,
   },
   chipText: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   chipTextSelected: {
-    color: semantic.actionPrimary,
+    color: p.actionPrimary,
   },
   segmentRow: {
     flexDirection: 'row',
@@ -223,18 +227,18 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
-    backgroundColor: semantic.surfaceRaised,
+    borderColor: p.borderStandard,
+    backgroundColor: p.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
   segmentSelected: {
-    backgroundColor: colors.brandSoft,
-    borderColor: semantic.borderEmphasis,
+    backgroundColor: p.brandSoft,
+    borderColor: p.borderEmphasis,
   },
   segmentText: {
     ...type.bodyStrong,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
     fontVariant: ['tabular-nums'],
   },
   customRow: {
@@ -245,23 +249,23 @@ const styles = StyleSheet.create({
   },
   customLabel: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   customInput: {
     width: 96,
     height: 44,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: semantic.borderStandard,
-    backgroundColor: semantic.surfaceInset,
-    color: semantic.textPrimary,
+    borderColor: p.borderStandard,
+    backgroundColor: p.surfaceInset,
+    color: p.textPrimary,
     textAlign: 'center',
     ...type.bodyStrong,
     paddingVertical: 0,
   },
   customUnit: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   musicRow: {
     flexDirection: 'row',
@@ -271,11 +275,11 @@ const styles = StyleSheet.create({
   },
   musicLabel: {
     ...type.body,
-    color: semantic.textSecondary,
+    color: p.textSecondary,
   },
   musicHint: {
     ...type.caption,
-    color: semantic.textMuted,
+    color: p.textMuted,
   },
   musicChips: {
     flexDirection: 'row',
@@ -284,20 +288,20 @@ const styles = StyleSheet.create({
   },
   errorText: {
     ...type.caption,
-    color: semantic.danger,
+    color: p.danger,
     marginTop: space.x2,
   },
   cta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: semantic.actionPrimary,
+    backgroundColor: p.actionPrimary,
     marginTop: space.x5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaText: {
     ...type.bodyStrong,
-    color: semantic.canvasDeep,
+    color: p.canvasDeep,
   },
   pressed: {
     opacity: 0.82,

@@ -6,7 +6,8 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { AppButton } from '../design-system/components';
 import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing, ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
 import { styles } from '../theme/styles';
 
 export type FeedbackScreenshot = Readonly<{
@@ -27,6 +28,7 @@ export function FeedbackScreenshots({
 }>) {
   const { showToast } = useApp();
   const { palette } = usePreferences();
+  const screenshotStyles = useThemeStyles(makeScreenshotStyles);
   const { t } = useTranslation('support');
   const choose = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -124,16 +126,16 @@ function isScreenshot(
   return value !== null;
 }
 
-const screenshotStyles = StyleSheet.create({
+const makeScreenshotStyles = (p: ThemeColors) => StyleSheet.create({
   section: { gap: spacing.x3 },
   heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   previews: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.x3 },
   previewCard: {
     overflow: 'hidden',
     borderRadius: radii.control,
-    backgroundColor: colors.surface,
+    backgroundColor: p.surface,
   },
   preview: { width: 104, height: 104 },
   remove: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  removeText: { color: colors.error, fontWeight: '700' },
+  removeText: { color: p.error, fontWeight: '700' },
 });

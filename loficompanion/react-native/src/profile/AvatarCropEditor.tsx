@@ -6,8 +6,10 @@ import { AppButton } from '../design-system/components';
 import { AppIcon, IconName } from '../design-system/AppIcon';
 import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing } from '../theme/tokens';
+import type { ThemeColors } from '../theme/tokens';
 import { styles } from '../theme/styles';
+import { useThemeStyles } from '../theme/useThemeStyles';
 import { useTranslation } from 'react-i18next';
 
 const cropSize = 280;
@@ -29,6 +31,7 @@ export function AvatarCropEditor({
   const { palette } = usePreferences();
   const { user, showToast } = useApp();
   const { t } = useTranslation('profile');
+  const editorStyles = useThemeStyles(makeStyles);
   const [zoom, setZoom] = useState(initialZoom);
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
   const [processing, setProcessing] = useState(false);
@@ -147,6 +150,7 @@ function NudgeButton({
   onPress,
 }: Readonly<{ label: string; onPress: () => void }>) {
   const { palette } = usePreferences();
+  const editorStyles = useThemeStyles(makeStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -164,6 +168,7 @@ function ZoomButton({
   onPress,
 }: Readonly<{ label: string; icon: IconName; onPress: () => void }>) {
   const { palette } = usePreferences();
+  const editorStyles = useThemeStyles(makeStyles);
   return (
     <Pressable
       accessibilityLabel={label}
@@ -207,13 +212,13 @@ function sourceCrop(asset: ImagePickerAsset, zoom: number, offset: Point) {
   };
 }
 
-const editorStyles = StyleSheet.create({
+const makeStyles = (p: ThemeColors) => StyleSheet.create({
   backdrop: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.x5,
-    backgroundColor: colors.scrim,
+    backgroundColor: p.scrim,
   },
   sheet: {
     width: '100%',
@@ -221,7 +226,7 @@ const editorStyles = StyleSheet.create({
     padding: spacing.x5,
     gap: spacing.x4,
     borderRadius: radii.sheet,
-    backgroundColor: colors.surface,
+    backgroundColor: p.surface,
   },
   cropFrame: {
     width: cropSize,
@@ -229,7 +234,7 @@ const editorStyles = StyleSheet.create({
     alignSelf: 'center',
     overflow: 'hidden',
     borderRadius: radii.round,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: p.surfaceMuted,
   },
   image: { alignSelf: 'center' },
   nonInteractive: { pointerEvents: 'none' },
@@ -241,7 +246,7 @@ const editorStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radii.control,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: p.surfaceMuted,
   },
   zoomButton: {
     width: 48,
@@ -249,7 +254,7 @@ const editorStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radii.round,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: p.surfaceMuted,
   },
   actions: { gap: spacing.x3 },
 });

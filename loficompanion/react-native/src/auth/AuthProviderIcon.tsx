@@ -2,7 +2,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { usePreferences } from '../preferences/PreferencesProvider';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing, ThemeColors } from '../theme/tokens';
+import { useThemeStyles } from '../theme/useThemeStyles';
 import { i18n } from '../i18n/core';
 
 export type AuthProviderName = 'apple' | 'google' | 'github' | 'phone';
@@ -21,6 +22,7 @@ export function AuthProviderIcon({
   onPress,
 }: Props) {
   const { palette } = usePreferences();
+  const providerStyles = useThemeStyles(makeProviderStyles);
   return (
     <View style={providerStyles.item}>
       <Pressable
@@ -65,7 +67,7 @@ function BrandMark({ name }: Readonly<{ name: AuthProviderName }>) {
   );
 }
 
-const providerStyles = StyleSheet.create({
+const makeProviderStyles = (p: ThemeColors) => StyleSheet.create({
   item: { alignItems: 'center', gap: spacing.x1 },
   button: {
     width: 52,
@@ -74,9 +76,9 @@ const providerStyles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radii.round,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: p.border,
+    backgroundColor: p.surface,
   },
   disabled: { opacity: 0.38 },
-  label: { color: colors.textSecondary, fontSize: 12 },
+  label: { color: p.textSecondary, fontSize: 12 },
 });
