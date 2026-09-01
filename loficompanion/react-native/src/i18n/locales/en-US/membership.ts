@@ -30,4 +30,7 @@ export const membership = {
   checkoutMockNotice: 'Demo checkout: completed through a mock channel.',
   done: 'Done',
   retry: 'Retry',
+  restorePurchases: 'Restore purchases',
+  restoreDone: 'Your purchases have been restored',
+  restoreNone: 'No purchases to restore',
 } as const;

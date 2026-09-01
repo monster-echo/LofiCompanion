@@ -80,6 +80,7 @@ type AppContextValue = Readonly<{
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   deleteAccount: (password: string) => Promise<boolean>;
   purchase: (planId: string) => Promise<boolean>;
+  restorePurchases: DataActions['restorePurchases'];
   loadSessions: DataActions['loadSessions'];
   revokeSession: DataActions['revokeSession'];
   loadNotifications: DataActions['loadNotifications'];

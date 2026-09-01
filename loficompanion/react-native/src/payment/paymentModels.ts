@@ -18,6 +18,8 @@ export type CreateOrderResult = Readonly<{
   orderId: string;
   storeProductId: string;
   status: string;
+  /** 支付通道（'mock' 仅开发环境；生产为原生商店 IAP） */
+  provider: string;
 }>;
 
 export type OrderStatus = 'pending' | 'processing' | 'success' | 'failed' | 'refunded';

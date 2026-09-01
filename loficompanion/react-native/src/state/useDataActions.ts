@@ -11,8 +11,10 @@ import {
   UsageSummary,
   UserSettings,
 } from '../domain/models';
-import { MockPaymentProvider } from '../payment/mockPaymentProvider';
+import { createPaymentProvider } from '../payment/paymentFactory';
+import { IapError } from '../payment/iapPaymentProvider';
 import { i18n } from '../i18n/core';
+import { Platform } from 'react-native';
 import type { PurchaseState } from './AppStore';
 
 type Run = <T>(operation: () => Promise<T>) => Promise<T>;
@@ -27,6 +29,8 @@ export type DataActions = Readonly<{
   changePassword: (current: string, next: string) => Promise<boolean>;
   deleteAccount: (password: string) => Promise<boolean>;
   purchase: (planId: string) => Promise<boolean>;
+  /** 恢复购买：商店已购 → 服务端按票据重验 → 权益合并（IAP 沙盒/换机场景） */
+  restorePurchases: () => Promise<boolean>;
   loadSessions: () => Promise<readonly SessionView[]>;
   revokeSession: (id: string) => Promise<boolean>;
   loadNotifications: () => Promise<readonly NotificationItem[]>;
@@ -82,9 +86,23 @@ export function useDataActions(
       try {
         const idempotencyKey = `rn-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const order = await run(() => apiClient.createOrder(planId, idempotencyKey));
-        const provider = new MockPaymentProvider();
-        const result = await run(() => provider.purchase(order.storeProductId));
+        const provider = createPaymentProvider(order);
+        let result;
+        try {
+          result = await run(() => provider.purchase(order.storeProductId));
+        } catch (error) {
+          // 用户取消购买：静默回 idle，不报错误
+          if (error instanceof IapError && error.kind === 'cancelled') {
+            setPurchaseState({ kind: 'idle' });
+            return false;
+          }
+          throw error;
+        }
         const verified = await run(() => apiClient.verifyPurchase(order.orderId, result.receipt));
+        if (verified.status === 'success') {
+          // 权益已入账后才 finish 交易（未 finish 的交易可自愈重试）
+          await provider.finish?.(result).catch(() => undefined);
+        }
         setPurchaseState(verified.status === 'success'
           ? { kind: 'success', order: verified }
           : { kind: 'failed', order: verified });
@@ -105,6 +123,17 @@ export function useDataActions(
         }
         return false;
       }
+    },
+    restorePurchases: async () => {
+      const provider = createPaymentProvider({ provider: Platform.OS === 'ios' ? 'apple' : 'google' });
+      const receipts = (await run(() => provider.restore())).map((item) => item.receipt);
+      if (receipts.length === 0) return false;
+      const { entitlements } = await run(() => apiClient.restore(receipts));
+      if (entitlements.length > 0) {
+        try { setUser((await run(apiClient.bootstrap)).user); } catch { /* best-effort */ }
+        return true;
+      }
+      return false;
     },
     loadSessions: () => run(apiClient.sessions),
     revokeSession: async (id: string) => {

@@ -30,4 +30,7 @@ export const membership = {
   checkoutMockNotice: '演示支付：通过模拟渠道完成。',
   done: '完成',
   retry: '重试',
+  restorePurchases: '恢复购买',
+  restoreDone: '已恢复你的购买',
+  restoreNone: '没有找到可恢复的购买',
 } as const;

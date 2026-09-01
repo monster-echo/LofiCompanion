@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AppButton, AppCard, ListRow, PageHeader } from '../design-system/components';
+import { RestoreRow } from './MembershipRestoreRow';
 import { BillingPlan, MembershipTier } from '../domain/models';
 import { useApp } from '../state/AppStore';
 import { membershipAccents, radii, spacing } from '../theme/tokens';
@@ -70,6 +71,7 @@ export function MembershipScreen() {
           onPress={() => navigate('store.home')}
         />
         <ListRow label={t('viewOrders')} route="membership.orders" icon="gift" />
+        <RestoreRow />
       </ScrollView>
     </View>
   );
