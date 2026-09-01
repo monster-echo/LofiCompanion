@@ -5,7 +5,7 @@ import type {
   ServerEvent,
 } from '../domain/protocol';
 import { defaultRoomId, type StudyRoomId } from '../domain/rooms';
-import type { StudyRoomTransport, TransportStatus } from '../data/wsTransport';
+import type { StudyRoomTransport, TransportStatus } from '../data/sseTransport';
 
 /**
  * 自习室控制器（框架无关，注入 transport，node 可测）：连接生命周期、

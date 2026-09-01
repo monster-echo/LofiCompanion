@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ClientEvent, ServerEvent } from '../domain/protocol';
-import type { StudyRoomTransport, TransportStatus } from '../data/wsTransport';
+import type { StudyRoomTransport, TransportStatus } from '../data/sseTransport';
 import { createStudyRoomController } from './studyRoomController';
 
 // 控制器行为守护（注入 fake transport，node 可测）：连接生命周期、
@@ -73,7 +73,7 @@ function snapshotEvent(overrides: Partial<Extract<ServerEvent, { type: 'snapshot
 function createController(fake: FakeTransport) {
   return createStudyRoomController({
     transport: fake.transport,
-    resolveUrl: () => 'ws://localhost:3321/studyroom',
+    resolveUrl: () => 'http://localhost:3320/api/studyroom/stream',
     readToken: () => Promise.resolve('token-1'),
     now: () => 1_000_000,
   });
@@ -96,7 +96,7 @@ describe('studyRoomController', () => {
     controller.actions.enter('rainy-study-room');
     await Promise.resolve();
     expect(fake.connects).toEqual([
-      { url: 'ws://localhost:3321/studyroom?room=rainy-study-room', token: 'token-1' },
+      { url: 'http://localhost:3320/api/studyroom/stream?room=rainy-study-room', token: 'token-1' },
     ]);
     expect(controller.getState().roomId).toBe('rainy-study-room');
     expect(controller.getState().status).toBe('connecting');

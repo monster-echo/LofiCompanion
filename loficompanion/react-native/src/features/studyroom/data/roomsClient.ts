@@ -1,9 +1,9 @@
-import { studyRoomHttpBaseOf } from '../domain/wsUrl';
+import { apiClient } from '../../../data/apiClient';
 
 /**
- * 房间目录在线数（WS 服务的内存态经同源 HTTP 暴露）：列表页浏览用，
- * 无需建连。GET /rooms → { data: { rooms: [{ roomId, onlineCount }] } }。
- * 轮询节奏由屏幕层决定（聚焦刷新 + 15s 兜底），这里只发单次请求。
+ * 房间目录在线数（biz 进程内 hub 经 /api/studyroom/rooms 暴露）：列表页浏览用，
+ * 无需建连。轮询节奏由屏幕层决定（聚焦刷新 + 15s 兜底），这里只发单次请求。
+ * 走 apiClient.requestBiz——biz base、X-App-* headers、401 自动刷新重试一并复用。
  */
 
 export interface RoomOnlineCount {
@@ -11,15 +11,8 @@ export interface RoomOnlineCount {
   readonly onlineCount: number;
 }
 
-export async function fetchRoomCounts(httpBase: string): Promise<readonly RoomOnlineCount[]> {
-  const response = await fetch(`${httpBase}/rooms`);
-  if (!response.ok) {
-    throw new Error(`rooms unavailable: ${response.status}`);
-  }
-  const body = (await response.json()) as {
-    data?: { rooms?: Array<{ roomId?: unknown; onlineCount?: unknown }> };
-  };
-  const rooms = body.data?.rooms ?? [];
+export async function fetchRoomCounts(): Promise<readonly RoomOnlineCount[]> {
+  const { rooms } = await apiClient.studyRoomCounts();
   return rooms
     .filter(
       (room): room is { roomId: string; onlineCount: number } =>

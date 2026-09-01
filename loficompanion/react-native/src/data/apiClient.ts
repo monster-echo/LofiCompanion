@@ -32,8 +32,9 @@ type ErrorPayload = Readonly<{
 }>;
 type ErrorEnvelope = Readonly<{ error: ErrorPayload }>;
 
-// 业务后端（biz-server）独立部署；未配置时回落 auth base（本地 dev 常用同机部署）
-function getBizApiBase() {
+// 业务后端（biz-server）独立部署；未配置时回落 auth base（本地 dev 常用同机部署）。
+// 自 3.4 起自习室 SSE/POST 也走 biz origin，SSE 传输层复用它。
+export function getBizApiBase() {
   return process.env.EXPO_PUBLIC_BIZ_API_URL?.trim() || getApiBase();
 }
 
@@ -459,6 +460,17 @@ export const apiClient = {
   serverAchievements: () =>
     requestBiz<{ achievements: readonly unknown[] }>('/api/v1/me/achievements'),
   serverRoom: () => requestBiz<{ items: readonly unknown[] }>('/api/v1/me/room'),
+  /** 自习室房间在线数（biz SSE 同源 /api/studyroom/rooms；SSE 单向下列表计数走轮询）。 */
+  studyRoomCounts: () =>
+    requestBiz<{ rooms: ReadonlyArray<{ roomId?: unknown; onlineCount?: unknown }> }>(
+      '/api/studyroom/rooms',
+    ),
+  /** 发送弹幕（SSE 架构下客户端→服务端走 POST；错误 envelope 的 code/retryAfterSeconds 经 ApiClientError 抛出）。 */
+  danmakuSend: (roomId: string, content: string) =>
+    requestBiz<{ message: unknown }>(
+      `/api/studyroom/danmaku?room=${encodeURIComponent(roomId)}`,
+      jsonOptions('POST', { content }),
+    ),
   telemetry: (batch: {
     anonymousId: string;
     sessionId: string;

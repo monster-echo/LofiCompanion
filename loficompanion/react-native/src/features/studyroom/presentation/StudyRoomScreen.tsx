@@ -20,7 +20,6 @@ import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh'
 import { stateAsset } from '../../skins/domain/resolve';
 import { fetchRoomCounts } from '../data/roomsClient';
 import { STUDY_ROOMS, roomName, type StudyRoomDef } from '../domain/rooms';
-import { resolveStudyRoomWsUrl, studyRoomHttpBaseOf } from '../domain/wsUrl';
 
 /**
  * S-自习室 Tab 根页：公开自习室列表（先选房、后进入）。房间 = 内置皮肤
@@ -37,7 +36,7 @@ export function StudyRoomScreen() {
   const styles = useThemeStyles(makeStyles);
   const { t } = useTranslation('studyroom');
   const insets = useSafeAreaInsets();
-  const { state, refreshing, refresh } = useAsyncRefresh(() => fetchRoomCounts(httpBase()), []);
+  const { state, refreshing, refresh } = useAsyncRefresh(() => fetchRoomCounts(), []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -115,17 +114,6 @@ export function StudyRoomScreen() {
   );
 }
 
-/** WS 地址 → 同源 HTTP 基地址（与 WS 共用 env 配置与开发缺省）。 */
-function httpBase(): string {
-  return studyRoomHttpBaseOf(
-    resolveStudyRoomWsUrl({
-      wsUrl: process.env.EXPO_PUBLIC_STUDYROOM_WS_URL,
-      platformOS: Platform.OS,
-      isDev: __DEV__,
-    }),
-  );
-}
-
 // RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充（对齐 SheetOverlay）
 const absoluteFill = {
   position: 'absolute' as const,
@@ -179,7 +167,9 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   cardName: {
     ...type.title2,
-    color: p.textPrimary,
+    // 房间卡文字压在固定暗色 scrim 之上（媒体卡）：onMedia 固定浅色
+    // （原 textPrimary 亮色下变深字 → 暗底深字不可读，3.3 修复）
+    color: p.onMedia,
     textShadowColor: 'rgba(6,16,28,0.45)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 12,
@@ -202,7 +192,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   onlineText: {
     ...type.caption,
-    color: p.textSecondary,
+    color: p.onMediaSecondary,
     fontVariant: ['tabular-nums'],
   },
   enterPill: {
@@ -218,7 +208,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   enterText: {
     ...type.label,
-    color: p.textPrimary,
+    color: p.onMedia,
   },
   pressed: {
     opacity: 0.82,
