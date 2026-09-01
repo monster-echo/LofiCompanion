@@ -33,7 +33,15 @@ export async function revokeEntitlementsForOrder(orderId: string) {
 export async function listActiveEntitlements(
   userId: string, appId: string,
 ): Promise<readonly EntitlementRow[]> {
+  const now = nowIso();
+  // 惰性清扫：先把本人已过期行翻 inactive（无定时器依赖；expires_at 谓词兜底
+  // 保证即使未清扫也不会把过期权益发给查询方）。
+  await database.prepare(
+    `UPDATE user_entitlements SET active = 0
+     WHERE user_id = ? AND app_id = ? AND active = 1 AND expires_at IS NOT NULL AND expires_at <= ?`,
+  ).run(userId, appId, now);
   return await database.prepare(
-    `SELECT * FROM user_entitlements WHERE user_id = ? AND app_id = ? AND active = 1`,
-  ).all(userId, appId) as readonly EntitlementRow[];
+    `SELECT * FROM user_entitlements
+     WHERE user_id = ? AND app_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > ?)`,
+  ).all(userId, appId, now) as readonly EntitlementRow[];
 }

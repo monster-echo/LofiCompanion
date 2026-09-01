@@ -43,7 +43,7 @@ async function makeOrder(orderId: string, userId: string): Promise<string> {
   await database.prepare(
     `INSERT INTO orders(id, user_id, plan_id, tier_id, idempotency_key, status, amount_minor, currency, provider, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(orderId, userId, 'pro-monthly', 'pro', `k-${orderId}`, 'success', 1800, 'CNY', 'mock', ts);
+  ).run(orderId, userId, 'pro-monthly', 'plus', `k-${orderId}`, 'success', 1800, 'CNY', 'mock', ts);
   return orderId;
 }
 
@@ -51,7 +51,7 @@ function configWith(mappedPlan = true) {
   return {
     ...defaultConfig,
     plans: [{
-      id: 'pro-monthly', tierId: 'pro', name: 'Pro', interval: 'month' as const,
+      id: 'pro-monthly', tierId: 'plus', name: 'Pro', interval: 'month' as const,
       priceMinor: 1800, currency: 'CNY', provider: 'mock' as const,
       storeProductMapping: mappedPlan
         ? { apple: 'com.x.pro', google: 'pro_g', hms: 'pro_h' }
@@ -73,7 +73,7 @@ async function seedSucceededOrder(userId: string): Promise<string> {
 
 test('BillingPlan 支持 storeProductMapping 与 hms provider', () => {
   const plan = {
-    id: 'pro-monthly', tierId: 'pro', name: 'Pro 月度', interval: 'month',
+    id: 'pro-monthly', tierId: 'plus', name: 'Pro 月度', interval: 'month',
     priceMinor: 1800, currency: 'CNY', provider: 'hms' as const,
     storeProductMapping: { hms: 'pro.monthly_001' },
   };
@@ -83,7 +83,7 @@ test('BillingPlan 支持 storeProductMapping 与 hms provider', () => {
 
 test('provider 为 apple/google/hms 但缺对应映射时 schema 拒绝', () => {
   const plan = {
-    id: 'bad', tierId: 'pro', name: 'Bad', interval: 'month',
+    id: 'bad', tierId: 'plus', name: 'Bad', interval: 'month',
     priceMinor: 100, currency: 'CNY', provider: 'apple' as const,
     storeProductMapping: { google: 'x' },
   };
@@ -161,17 +161,31 @@ test('platform → storeKey 解析', () => {
 test('issueEntitlements 按 tier 发放权益且幂等', async () => {
   const userId = await makeUser('app1');
   await makeOrder('o1', userId);
-  const tier = defaultConfig.tiers.find((t) => t.id === 'pro')!;
+  const tier = defaultConfig.tiers.find((t) => t.id === 'plus')!;
   await issueEntitlements({ userId, appId: 'app1', orderId: 'o1', tier, expiresAt: null });
   await issueEntitlements({ userId, appId: 'app1', orderId: 'o1', tier, expiresAt: null });
   const keys = (await listActiveEntitlements(userId, 'app1')).map((e) => e.entitlement_key).sort();
-  assert.deepEqual(keys, ['cloud.100gb', 'export.hd', 'templates.pro']);
+  assert.deepEqual(keys, ['catalog.premium.active', 'generation.custom.enabled', 'insights.advanced', 'room.advanced_slots']);
+});
+
+test('过期权益不再下发：expires_at 过去时被排除并惰性翻 inactive', async () => {
+  const userId = await makeUser('app1');
+  await makeOrder('o-exp', userId);
+  const tier = defaultConfig.tiers.find((t) => t.id === 'plus')!;
+  const past = new Date(Date.now() - 3_600_000).toISOString();
+  await issueEntitlements({ userId, appId: 'app1', orderId: 'o-exp', tier, expiresAt: past });
+  const keys = (await listActiveEntitlements(userId, 'app1')).map((e) => e.entitlement_key);
+  assert.deepEqual(keys, [], '过期权益不得出现在激活列表');
+  const inactive = await database.prepare(
+    `SELECT COUNT(*)::int AS n FROM user_entitlements WHERE user_id = ? AND active = 0`,
+  ).get(userId) as { n: number };
+  assert.ok(inactive.n >= 1, '惰性清扫已把过期行翻 inactive');
 });
 
 test('revokeEntitlementsForOrder 撤销该订单权益', async () => {
   const userId = await makeUser('app1');
   await makeOrder('o2', userId);
-  const tier = defaultConfig.tiers.find((t) => t.id === 'pro')!;
+  const tier = defaultConfig.tiers.find((t) => t.id === 'plus')!;
   await issueEntitlements({ userId, appId: 'app1', orderId: 'o2', tier, expiresAt: null });
   await revokeEntitlementsForOrder('o2');
   const keys = await listActiveEntitlements(userId, 'app1');
@@ -253,7 +267,7 @@ test('verifyPurchase 成功 → order success + 发权益 + 幂等', async () =>
   assert.equal(r1.status, 'success');
   assert.equal(r2.status, 'success');
   const ents = (await listActiveEntitlements(userId, 'app1')).map((e) => e.entitlement_key).sort();
-  assert.deepEqual(ents, ['cloud.100gb', 'export.hd', 'templates.pro']);
+  assert.deepEqual(ents, ['catalog.premium.active', 'generation.custom.enabled', 'insights.advanced', 'room.advanced_slots']);
 });
 
 test('verifyPurchase 失败 → order failed，不发权益', async () => {
@@ -268,7 +282,7 @@ test('restorePurchases 按 productId 反查并补发（orderId 缺省）', async
   const userId = await makeUser('app1');
   await restorePurchases({ appId: 'app1', environment: 'development', userId, receipts: [{ productId: 'com.x.pro' }], platform: 'ios', config: configWith() });
   const ents = (await listActiveEntitlements(userId, 'app1')).map((e) => e.entitlement_key).sort();
-  assert.deepEqual(ents, ['cloud.100gb', 'export.hd', 'templates.pro']);
+  assert.deepEqual(ents, ['catalog.premium.active', 'generation.custom.enabled', 'insights.advanced', 'room.advanced_slots']);
 });
 
 test('verifyPurchase 拒绝跨用户订单（ORDER_NOT_FOUND，不泄露存在性）', async () => {

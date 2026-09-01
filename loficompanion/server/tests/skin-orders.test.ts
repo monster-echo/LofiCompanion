@@ -44,6 +44,12 @@ after(async () => database.close());
      VALUES ('skin-product-paid-fixture', 'skin-paid-fixture', 'skin.official.paid-fixture', '{}', 1200, 'CNY', 'active', ?, ?)
      ON CONFLICT (id) DO NOTHING`,
   ).run(ts, ts);
+  // 免费皮肤夹具：skin 行存在但无 product 行（「皮肤在册但不可下单」用例）
+  await database.prepare(
+    `INSERT INTO skins(id, slug, name, access_type, manifest_version, moderation_status, published_at, created_at)
+     VALUES ('skin-free-fixture', 'free-fixture', '免费测试皮肤', 'free', 1, 'approved', ?, ?)
+     ON CONFLICT (id) DO NOTHING`,
+  ).run(ts, ts);
 }
 
 const REFUND_EVENT_ID = `sko-refund-${process.pid}`;
@@ -95,18 +101,11 @@ test('不可下单：未知皮肤/免费皮肤 404，下架商品 422', async ()
     () => createSkinOrder({ userId, skinId: 'skin-nope', idempotencyKey: 'k-nope' }),
     (err: ApiError) => err.status === 404 && err.code === 'SKIN_NOT_FOUND',
   );
+  // P3c 后 id/slug 解析走 skin_products 反范式化行——无商品行的皮肤（免费）
+  // 在下单路径表现为 SKIN_NOT_FOUND（可下单性与存在性同源）
   await assert.rejects(
-    () => createSkinOrder({ userId, skinId: 'rainy-study-room', idempotencyKey: 'k-free' }),
-    (err: ApiError) => err.status === 404 && err.code === 'SKIN_PRODUCT_NOT_FOUND',
-  );
-  // 种子皮肤已全免费（doc-01 PRD）：无商品行，一律不可下单
-  await assert.rejects(
-    () => createSkinOrder({ userId, skinId: 'sunny-classroom', idempotencyKey: 'k-free-sunny' }),
-    (err: ApiError) => err.status === 404 && err.code === 'SKIN_PRODUCT_NOT_FOUND',
-  );
-  await assert.rejects(
-    () => createSkinOrder({ userId, skinId: 'midnight-workstation', idempotencyKey: 'k-free-midnight' }),
-    (err: ApiError) => err.status === 404 && err.code === 'SKIN_PRODUCT_NOT_FOUND',
+    () => createSkinOrder({ userId, skinId: 'free-fixture', idempotencyKey: 'k-free' }),
+    (err: ApiError) => err.status === 404 && err.code === 'SKIN_NOT_FOUND',
   );
   try {
     await database.prepare(

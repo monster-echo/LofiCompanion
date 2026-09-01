@@ -69,9 +69,11 @@ export class GoogleAdapter implements PaymentAdapter {
         `${PLAY_API}/${packageName}/purchases/subscriptions/${productId}/tokens/${purchaseToken}`,
         { headers },
       );
+      let isSubscription = true;
 
       // 404 → not a subscription; try one-time product.
       if (response.status === 404) {
+        isSubscription = false;
         response = await fetch(
           `${PLAY_API}/${packageName}/purchases/products/${productId}/tokens/${purchaseToken}`,
           { headers },
@@ -90,6 +92,17 @@ export class GoogleAdapter implements PaymentAdapter {
       // For one-time products, purchaseState 0 = Purchased.
       if (purchaseState !== undefined && purchaseState !== 0) {
         return { ok: false };
+      }
+
+      // 购买确认：未 ack 的购买 3 天后会被 Google 自动退款。acknowledge 幂等
+      // （409/已 ack 视为成功）；ack 失败不否决验签结果，只尽力补 ack。
+      const acknowledgementState = purchase['acknowledgementState'] as number | undefined;
+      if (acknowledgementState === 0) {
+        const kind = isSubscription ? 'subscriptions' : 'products';
+        await fetch(
+          `${PLAY_API}/${packageName}/purchases/${kind}/${productId}/tokens/${purchaseToken}:acknowledge`,
+          { method: 'POST', headers, body: '{}' },
+        ).catch(() => undefined);
       }
 
       return {

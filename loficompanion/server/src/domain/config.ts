@@ -310,6 +310,7 @@ export const defaultConfig: RuntimeConfig = {
       originalPriceMinor: 21600,
       currency: 'CNY',
       provider: 'mock',
+      storeProductMapping: { apple: 'com.zhongbei.plus.yearly', google: 'plus_yearly_001', hms: 'plus_yearly_001' },
     },
   ],
 };

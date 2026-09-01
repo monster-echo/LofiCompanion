@@ -3,7 +3,7 @@ import type { RuntimeConfig } from '@/domain/config';
 import type { ClientPlatform } from './client-context';
 import { ApiError } from './http';
 import { issueEntitlements } from './entitlement-service';
-import { runTransaction } from './database';
+import { database, runTransaction } from './database';
 import {
   completeOrder, failOrder, findOrder, findOrderById, findOrderByReceiptHash,
   insertPendingOrder, listOrders, markProcessing, upsertSubscription, type OrderView,
@@ -124,6 +124,8 @@ export async function verifyPurchase(input: VerifyInput): Promise<OrderView> {
       storeTransactionId: result.storeTransactionId ?? '',
       receiptHash, expiresAt,
     });
+    // 同步用户档位（/v1/me/entitlement 的 HMAC Pro token 数据源）
+    await database.prepare(`UPDATE users SET tier_id = ? WHERE id = ?`).run(plan.tierId, input.userId);
     const tier = input.config.tiers.find((t) => t.id === plan.tierId);
     if (tier) {
       await issueEntitlements({
