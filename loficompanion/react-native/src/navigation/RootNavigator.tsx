@@ -121,14 +121,14 @@ const TABS: readonly TabDef[] = [
  * 图标：iOS 用 SF Symbols（选中实心、未选中描边）；Android 用位图原生染色。
  */
 function MainTabs() {
-  const { locale } = usePreferences();
+  const { locale, palette } = usePreferences();
   return (
     <NativeTab.Navigator
       initialRouteName="home"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: semantic.actionPrimary,
-        tabBarInactiveTintColor: semantic.textMuted,
+        tabBarActiveTintColor: palette.actionPrimary,
+        tabBarInactiveTintColor: palette.textMuted,
       }}
     >
       {TABS.map((tab) => (

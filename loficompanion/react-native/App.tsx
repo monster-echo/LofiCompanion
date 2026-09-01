@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Platform, SafeAreaView } from 'react-native';
 import * as ExpoSplashScreen from 'expo-splash-screen';
-import { DarkTheme, NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
@@ -17,8 +17,7 @@ import { telemetry } from './src/telemetry/Telemetry';
 import { AppErrorBoundary } from './src/telemetry/AppErrorBoundary';
 import { SupportProvider } from './src/support/SupportStore';
 import { AuthRecoveryProvider } from './src/auth/AuthRecoveryStore';
-import { PreferencesProvider } from './src/preferences/PreferencesProvider';
-import { usePreferences } from './src/preferences/PreferencesProvider';
+import { PreferencesProvider, usePreferences } from './src/preferences/PreferencesProvider';
 import { useApp } from './src/state/AppStore';
 import { useEntryIntents } from './src/navigation/useEntryIntents';
 import { setPlatformHeader } from './src/data/runtimePlatform';
@@ -54,14 +53,14 @@ export default function App() {
 }
 
 function AppSurface() {
-  const { palette } = usePreferences();
+  const { palette, dark } = usePreferences();
   const { openEntryRoute, refreshBootstrap, serverReady } = useApp();
   const resume = useCallback(() => { void refreshBootstrap(); }, [refreshBootstrap]);
   // 导航主题与应用夜色调色板对齐：native-tabs/native-stack 的场景底色、
   // 液态玻璃 Tab 取景都消费 theme.colors——缺省浅色主题会在切换时闪灰底。
   const navigationTheme = useMemo(
     () => ({
-      ...(DarkTheme as typeof DarkTheme),
+      ...((dark ? DarkTheme : DefaultTheme) as typeof DarkTheme),
       colors: {
         primary: palette.brand,
         background: palette.background,
@@ -71,7 +70,7 @@ function AppSurface() {
         notification: palette.brand,
       },
     }),
-    [palette],
+    [palette, dark],
   );
   // 入口意图解析必须在 NavigationContainer onReady 之后（否则 navigate 早于
   // mount 触发 dev LogBox「navigation 尚未初始化」竞态警告）。
