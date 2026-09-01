@@ -7,6 +7,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { radii, semantic } from "../../../theme/tokens";
 
 export type SheetOverlayProps = Readonly<{
@@ -46,13 +47,15 @@ const absoluteFill = {
  */
 export function SheetOverlay({
   onClose,
-  closeLabel = "关闭",
+  closeLabel = undefined,
   reducedMotion = false,
   bottomInset = 0,
   anchor = "bottom",
   topInset = 0,
   children,
 }: SheetOverlayProps) {
+  const { t } = useTranslation("common");
+  const resolvedCloseLabel = closeLabel ?? t("close");
   const enter = useRef(new Animated.Value(0)).current;
   const top = anchor === "top";
 
@@ -76,7 +79,7 @@ export function SheetOverlay({
   return (
     <View style={styles.screen}>
       <Pressable
-        accessibilityLabel={closeLabel}
+        accessibilityLabel={resolvedCloseLabel}
         accessibilityRole="button"
         style={styles.backdrop}
         onPress={onClose}

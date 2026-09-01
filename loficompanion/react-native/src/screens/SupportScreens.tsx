@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   AppButton, AppCard, ListRow, OfflineBanner, PageHeader,
 } from '../design-system/components';
@@ -10,31 +12,32 @@ import { styles } from '../theme/styles';
 import { spacing } from '../theme/tokens';
 
 export function SupportHomeScreen() {
+  const { t } = useTranslation('support');
   const { navigate } = useApp();
   const { help, tickets, loadHome, openTicket } = useSupport();
   useEffect(() => { void loadHome(); }, [loadHome]);
   return (
     <View style={styles.page}>
       <OfflineBanner />
-      <PageHeader title="帮助与反馈" />
+      <PageHeader title={t('homeTitle')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={localStyles.actions}>
           <AppButton
             analyticsId="support.new_ticket"
             icon="bell"
-            label="联系客服"
+            label={t('contactSupport')}
             onPress={() => navigate('support.newTicket')}
           />
           <AppButton
             analyticsId="support.feedback"
-            label="产品反馈"
+            label={t('productFeedback')}
             onPress={() => navigate('support.feedback')}
             variant="secondary"
           />
         </View>
-        <Text style={styles.sectionLabel}>我的工单</Text>
+        <Text style={styles.sectionLabel}>{t('myTickets')}</Text>
         <TicketList state={tickets} onOpen={(id) => void openTicket(id)} />
-        <Text style={styles.sectionLabel}>常见问题</Text>
+        <Text style={styles.sectionLabel}>{t('faq')}</Text>
         <HelpList state={help} onRetry={() => void loadHome()} />
       </ScrollView>
     </View>
@@ -42,12 +45,13 @@ export function SupportHomeScreen() {
 }
 
 export function TicketDetailScreen() {
+  const { t } = useTranslation('support');
   const { detail, busy, reply } = useSupport();
   const [message, setMessage] = useState('');
   if (detail.status !== 'success') {
     return (
       <View style={styles.page}>
-        <PageHeader title="工单详情" />
+        <PageHeader title={t('ticketDetailTitle')} />
         <StateMessage state={detail} />
       </View>
     );
@@ -56,34 +60,34 @@ export function TicketDetailScreen() {
     if (await reply(message)) setMessage('');
   };
   return (
-    <SupportPage title="工单详情">
+    <SupportPage title={t('ticketDetailTitle')}>
       <AppCard>
         <Text style={styles.heading}>{detail.data.subject}</Text>
         <Text style={styles.caption}>
-          {statusLabel(detail.data.status)} · {detail.data.queueId}
+          {statusLabel(detail.data.status, t)} · {detail.data.queueId}
         </Text>
       </AppCard>
       {detail.data.messages.map((item) => (
         <AppCard key={item.id}>
           <Text style={styles.caption}>
-            {item.authorType === 'user' ? '我' : '客服'} · {formatDate(item.createdAt)}
+            {item.authorType === 'user' ? t('authorUser') : t('authorSupport')} · {formatDate(item.createdAt)}
           </Text>
           <Text style={styles.body}>{item.body}</Text>
         </AppCard>
       ))}
       <TextInput
-        accessibilityLabel="回复内容"
+        accessibilityLabel={t('labelReply')}
         maxLength={2000}
         multiline
         onChangeText={setMessage}
-        placeholder="继续补充问题"
+        placeholder={t('placeholderReply')}
         style={[styles.input, localStyles.multiline]}
         textAlignVertical="top"
         value={message}
       />
       <AppButton
         disabled={busy || !message.trim()}
-        label={busy ? '发送中…' : '发送回复'}
+        label={busy ? t('sending') : t('sendReply')}
         onPress={() => void send()}
       />
     </SupportPage>
@@ -107,6 +111,7 @@ function TicketList({ state, onOpen }: Readonly<{
   state: AsyncState<readonly { id: string; subject: string; status: string }[]>;
   onOpen: (id: string) => void;
 }>) {
+  const { t } = useTranslation('support');
   if (state.status !== 'success') return <StateMessage state={state} />;
   return (
     <AppCard>
@@ -115,7 +120,7 @@ function TicketList({ state, onOpen }: Readonly<{
           key={ticket.id}
           label={ticket.subject}
           onPress={() => onOpen(ticket.id)}
-          value={statusLabel(ticket.status)}
+          value={statusLabel(ticket.status, t)}
         />
       ))}
     </AppCard>
@@ -139,23 +144,24 @@ function StateMessage<T>({ state, onRetry }: Readonly<{
   state: AsyncState<T>;
   onRetry?: () => void;
 }>) {
-  const message = state.status === 'loading' ? '加载中…'
-    : state.status === 'empty' ? '暂无内容'
-      : state.status === 'error' ? state.message : '请重新打开一个工单';
+  const { t } = useTranslation('support');
+  const message = state.status === 'loading' ? t('loading')
+    : state.status === 'empty' ? t('empty')
+      : state.status === 'error' ? state.message : t('reopenTicket');
   return (
     <AppCard>
       <Text style={styles.secondary}>{message}</Text>
       {onRetry && state.status === 'error'
-        ? <AppButton label="重试" onPress={onRetry} variant="secondary" /> : null}
+        ? <AppButton label={t('retry')} onPress={onRetry} variant="secondary" /> : null}
     </AppCard>
   );
 }
 
-function statusLabel(status: string) {
+function statusLabel(status: string, t: TFunction<'support'>) {
   return {
-    submitted: '已提交', triaged: '已分流', in_progress: '处理中',
-    waiting_for_user: '等待回复', waiting_for_support: '等待客服',
-    resolved: '已解决', closed: '已关闭',
+    submitted: t('statusSubmitted'), triaged: t('statusTriaged'), in_progress: t('statusInProgress'),
+    waiting_for_user: t('statusWaitingForUser'), waiting_for_support: t('statusWaitingForSupport'),
+    resolved: t('statusResolved'), closed: t('statusClosed'),
   }[status] ?? status;
 }
 

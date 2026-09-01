@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { AppButton, AppCard, ListRow, PageHeader } from '../design-system/components';
 import { BillingPlan, MembershipTier } from '../domain/models';
 import { useApp } from '../state/AppStore';
@@ -7,6 +9,7 @@ import { colors, membershipAccents, radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
 
 export function MembershipScreen() {
+  const { t } = useTranslation('membership');
   const { config, user, navigate, busy, setPendingPlanId, setPurchaseState } = useApp();
   const [selected, setSelected] = useState(config.plans[0]?.id ?? '');
   const selectedPlan = config.plans.find((plan) => plan.id === selected);
@@ -19,13 +22,13 @@ export function MembershipScreen() {
   };
   return (
     <View style={styles.page}>
-      <PageHeader title="会员中心" />
+      <PageHeader title={t('title')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <MembershipHero tiers={config.tiers.length} plans={config.plans.length} />
         {config.tiers.map((tier) => (
           <TierCard key={tier.id} tier={tier} current={user?.tierId === tier.id} />
         ))}
-        <Text style={styles.sectionLabel}>可订阅方案</Text>
+        <Text style={styles.sectionLabel}>{t('sectionPlans')}</Text>
         {config.plans.map((plan, index) => (
           <PlanCard
             key={plan.id}
@@ -39,58 +42,60 @@ export function MembershipScreen() {
           <>
             {selectedPlan?.provider === 'mock' ? (
               <AppCard>
-                <Text style={styles.secondary}>当前为演示支付，不会调用真实商店或支付渠道。</Text>
+                <Text style={styles.secondary}>{t('mockNotice')}</Text>
               </AppCard>
             ) : null}
             <AppButton
               disabled={busy}
               label={busy
-                ? '正在确认…'
+                ? t('confirming')
                 : !user
-                  ? '登录后订阅'
+                  ? t('signInToSubscribe')
                   : selectedPlan?.provider === 'mock'
-                    ? '演示下单（非真实支付）'
-                    : '确认订阅'}
+                    ? t('mockOrder')
+                    : t('confirmSubscribe')}
               icon="crown"
               onPress={() => buy()}
             />
           </>
-        ) : <Text style={styles.secondary}>当前 App 暂未配置可售方案。</Text>}
+        ) : <Text style={styles.secondary}>{t('emptyPlans')}</Text>}
         {/* P1-A S16 轻量补充（计划 Task 3）：Plus 皮肤目录价值文案 + 商店联动
             入口——Plus 精选皮肤由 catalog.premium.active 权益键解锁。 */}
         <ListRow
-          label="浏览 Plus 皮肤目录"
-          value="Plus 会员解锁官方精选皮肤"
+          label={t('browsePlusSkins')}
+          value={t('plusSkinValue')}
           icon="palette"
           onPress={() => navigate('store.home')}
         />
-        <ListRow label="查看订单记录" route="membership.orders" icon="gift" />
+        <ListRow label={t('viewOrders')} route="membership.orders" icon="gift" />
       </ScrollView>
     </View>
   );
 }
 
 function MembershipHero({ tiers, plans }: Readonly<{ tiers: number; plans: number }>) {
+  const { t } = useTranslation('membership');
   return (
     <View style={localStyles.proHero}>
       <Text style={localStyles.proLabel}>MEMBERSHIP</Text>
-      <Text style={localStyles.proTitle}>按产品动态组合等级</Text>
-      <Text style={localStyles.proBody}>当前配置包含 {tiers} 个等级与 {plans} 个方案。</Text>
+      <Text style={localStyles.proTitle}>{t('heroTitle')}</Text>
+      <Text style={localStyles.proBody}>{t('heroBody', { tiers, plans })}</Text>
     </View>
   );
 }
 
 function TierCard({ tier, current }: Readonly<{ tier: MembershipTier; current: boolean }>) {
+  const { t } = useTranslation('membership');
   return (
     <AppCard>
       <View style={localStyles.tierHeading}>
         <Text style={styles.heading}>{tier.name}</Text>
         <Text style={current ? localStyles.currentTag : styles.caption}>
-          {current ? '当前等级' : tier.recommended ? '推荐' : ''}
+          {current ? t('tierCurrent') : tier.recommended ? t('tierRecommended') : ''}
         </Text>
       </View>
       <Text style={styles.secondary}>{tier.summary}</Text>
-      <Text style={styles.caption}>{tier.entitlements.length} 项已配置权益</Text>
+      <Text style={styles.caption}>{t('entitlementsCount', { n: tier.entitlements.length })}</Text>
     </AppCard>
   );
 }
@@ -101,27 +106,28 @@ function PlanCard({ accent, plan, selected, select }: Readonly<{
   selected: boolean;
   select: () => void;
 }>) {
+  const { t } = useTranslation('membership');
   return (
     <AppCard>
       <ListRow
         label={plan.name}
-        value={formatPrice(plan)}
+        value={formatPrice(plan, t)}
         onPress={select}
         icon={selected ? 'check' : 'crown'}
         iconColor={accent}
       />
       <Text style={styles.caption}>
-        {selected ? '已选择此方案' : `支付渠道：${plan.provider}`}
+        {selected ? t('planSelected') : t('planProvider', { provider: plan.provider })}
       </Text>
     </AppCard>
   );
 }
 
-export function formatPrice(plan: BillingPlan) {
+export function formatPrice(plan: BillingPlan, t: TFunction<'membership'>) {
   const price = new Intl.NumberFormat('zh-CN', {
     style: 'currency', currency: plan.currency,
   }).format(plan.priceMinor / 100);
-  const period = { month: '月', year: '年', lifetime: '终身', one_time: '次' }[plan.interval];
+  const period = t(`interval.${plan.interval}`);
   return `${price}/${period}`;
 }
 

@@ -1,5 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { AppIcon, IconName } from '../design-system/AppIcon';
 import { NotificationItem } from '../domain/models';
 import { usePreferences } from '../preferences/PreferencesProvider';
@@ -11,11 +13,14 @@ export function NotificationCard({
   onPress,
 }: Readonly<{ item: NotificationItem; onPress: () => void }>) {
   const { palette } = usePreferences();
+  const { t } = useTranslation('common');
   const unread = !item.readAt;
   return (
     <Pressable
-      accessibilityHint={item.route ? '打开相关页面' : '标记为已读'}
-      accessibilityLabel={`${unread ? '未读通知' : '通知'}：${item.title}`}
+      accessibilityHint={item.route ? t('openPage') : t('markAsRead')}
+      accessibilityLabel={unread
+        ? t('unreadNotice', { title: item.title })
+        : t('notice', { title: item.title })}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -35,12 +40,12 @@ export function NotificationCard({
           <Text numberOfLines={1} style={[styles.body, cardStyles.title]}>
             {item.title}
           </Text>
-          {unread ? <View accessibilityLabel="未读" style={cardStyles.unreadDot} /> : null}
+          {unread ? <View accessibilityLabel={t('unread')} style={cardStyles.unreadDot} /> : null}
         </View>
         <Text numberOfLines={2} style={[styles.secondary, cardStyles.message]}>
           {item.body}
         </Text>
-        <Text style={styles.caption}>{relativeTime(item.createdAt)}</Text>
+        <Text style={styles.caption}>{relativeTime(item.createdAt, t)}</Text>
       </View>
       {item.route ? (
         <AppIcon name="chevron-right" color={palette.textSecondary} size={18} />
@@ -63,16 +68,16 @@ function notificationColor(type: string) {
   return colors.info;
 }
 
-function relativeTime(value: string) {
+function relativeTime(value: string, t: TFunction<'common'>) {
   const timestamp = new Date(value).getTime();
   const difference = Math.max(0, Date.now() - timestamp);
   const minutes = Math.floor(difference / 60_000);
-  if (minutes < 1) return '刚刚';
-  if (minutes < 60) return `${minutes} 分钟前`;
+  if (minutes < 1) return t('justNow');
+  if (minutes < 60) return t('minutesAgo', { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return t('hoursAgo', { n: hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} 天前`;
+  if (days < 7) return t('daysAgo', { n: days });
   return new Date(value).toLocaleDateString('zh-CN');
 }
 

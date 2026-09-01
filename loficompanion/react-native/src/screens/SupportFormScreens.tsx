@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Text, TextInput } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { AppButton } from '../design-system/components';
 import { SelectField } from '../design-system/SelectField';
 import { useApp } from '../state/AppStore';
@@ -10,6 +11,7 @@ import { styles } from '../theme/styles';
 import { SupportPage } from './SupportScreens';
 
 export function NewTicketScreen() {
+  const { t } = useTranslation('support');
   const { config } = useApp();
   const { busy, createTicket } = useSupport();
   const [category, setCategory] = useState(config.support.categories[0]?.id ?? 'technical');
@@ -18,30 +20,30 @@ export function NewTicketScreen() {
   const [message, setMessage] = useState('');
   const valid = subject.trim().length >= 4 && message.trim().length >= 4;
   return (
-    <SupportPage title="联系客服">
-      <Text style={styles.heading}>告诉我们遇到了什么</Text>
-      <Text style={styles.secondary}>请先填写问题内容，我们会根据描述安排处理。</Text>
+    <SupportPage title={t('contactSupport')}>
+      <Text style={styles.heading}>{t('newTicketHeading')}</Text>
+      <Text style={styles.secondary}>{t('newTicketIntro')}</Text>
       <TextInput
-        accessibilityLabel="问题标题"
+        accessibilityLabel={t('labelSubject')}
         maxLength={100}
         onChangeText={setSubject}
-        placeholder="简要说明问题"
+        placeholder={t('placeholderSubject')}
         style={styles.input}
         value={subject}
       />
       <TextInput
-        accessibilityLabel="问题详情"
+        accessibilityLabel={t('labelDetail')}
         maxLength={2000}
         multiline
         onChangeText={setMessage}
-        placeholder="描述发生步骤、预期结果与实际结果，请勿填写密码或验证码"
+        placeholder={t('placeholderDetail')}
         style={styles.input}
         textAlignVertical="top"
         value={message}
       />
-      <Text style={styles.sectionLabel}>补充信息（可选）</Text>
+      <Text style={styles.sectionLabel}>{t('optionalInfo')}</Text>
       <SelectField
-        label="问题分类"
+        label={t('labelCategory')}
         onChange={setCategory}
         options={config.support.categories.map((item) => ({
           value: item.id,
@@ -50,19 +52,19 @@ export function NewTicketScreen() {
         value={category}
       />
       <SelectField
-        label="紧急程度"
+        label={t('labelSeverity')}
         onChange={setSeverity}
         options={[
-          { value: 'normal', label: '普通' },
-          { value: 'high', label: '较高' },
-          { value: 'urgent', label: '紧急' },
+          { value: 'normal', label: t('severityNormal') },
+          { value: 'high', label: t('severityHigh') },
+          { value: 'urgent', label: t('severityUrgent') },
         ]}
         value={severity}
       />
       <AppButton
         disabled={!valid || busy}
         icon="check"
-        label={busy ? '提交中…' : '提交工单'}
+        label={busy ? t('submitting') : t('submitTicket')}
         onPress={() => void createTicket({ category, severity, subject, message })}
       />
     </SupportPage>
@@ -70,6 +72,7 @@ export function NewTicketScreen() {
 }
 
 export function ProductFeedbackScreen() {
+  const { t } = useTranslation('support');
   const { back } = useApp();
   const { busy, submitFeedback } = useSupport();
   const [category, setCategory] = useState<
@@ -83,52 +86,52 @@ export function ProductFeedbackScreen() {
     if (await submitFeedback({ category, title, body, rating, screenshots })) back();
   };
   const categories = [
-    ['suggestion', '产品建议'], ['experience', '体验问题'],
-    ['feature_request', '功能需求'], ['other', '其他'],
+    ['suggestion', t('categorySuggestion')], ['experience', t('categoryExperience')],
+    ['feature_request', t('categoryFeatureRequest')], ['other', t('categoryOther')],
   ] as const;
   return (
-    <SupportPage title="产品反馈">
-      <Text style={styles.heading}>你的意见很重要</Text>
-      <Text style={styles.secondary}>先写下想法或遇到的问题，分类与评分可以稍后选择。</Text>
+    <SupportPage title={t('productFeedback')}>
+      <Text style={styles.heading}>{t('feedbackHeading')}</Text>
+      <Text style={styles.secondary}>{t('feedbackIntro')}</Text>
       <TextInput
-        accessibilityLabel="反馈标题"
+        accessibilityLabel={t('labelFeedbackTitle')}
         maxLength={100}
         onChangeText={setTitle}
-        placeholder="反馈标题"
+        placeholder={t('placeholderFeedbackTitle')}
         style={styles.input}
         value={title}
       />
       <TextInput
-        accessibilityLabel="反馈详情"
+        accessibilityLabel={t('labelFeedbackBody')}
         maxLength={3000}
         multiline
         onChangeText={setBody}
-        placeholder="告诉我们哪里可以做得更好"
+        placeholder={t('placeholderFeedbackBody')}
         style={styles.input}
         textAlignVertical="top"
         value={body}
       />
       <FeedbackScreenshots value={screenshots} onChange={setScreenshots} />
-      <Text style={styles.sectionLabel}>补充信息（可选）</Text>
+      <Text style={styles.sectionLabel}>{t('optionalInfo')}</Text>
       <SelectField
-        label="反馈类型"
+        label={t('labelFeedbackType')}
         onChange={setCategory}
         options={categories.map(([value, label]) => ({ value, label }))}
         value={category}
       />
       <SelectField
-        label="体验评分"
+        label={t('labelRating')}
         onChange={setRating}
         options={[5, 4, 3, 2, 1].map((value) => ({
           value,
-          label: `${value} 分`,
+          label: t('ratingOption', { n: value }),
         }))}
         value={rating}
       />
       <AppButton
         disabled={busy || title.trim().length < 4 || body.trim().length < 4}
         icon="check"
-        label={busy ? '提交中…' : '提交反馈'}
+        label={busy ? t('submitting') : t('submitFeedback')}
         onPress={() => void submit()}
       />
     </SupportPage>

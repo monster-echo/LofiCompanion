@@ -1,5 +1,6 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { AppButton } from '../design-system/components';
@@ -26,10 +27,11 @@ export function FeedbackScreenshots({
 }>) {
   const { showToast } = useApp();
   const { palette } = usePreferences();
+  const { t } = useTranslation('support');
   const choose = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      showToast('需要相册权限才能添加问题截图', 'error');
+      showToast(t('screenshotPermissionDenied'), 'error');
       return;
     }
     const remaining = maximumScreenshots - value.length;
@@ -52,7 +54,7 @@ export function FeedbackScreenshots({
   return (
     <View style={screenshotStyles.section}>
       <View style={screenshotStyles.heading}>
-        <Text style={styles.sectionLabel}>问题截图</Text>
+        <Text style={styles.sectionLabel}>{t('screenshotsTitle')}</Text>
         <Text style={styles.caption}>{value.length}/{maximumScreenshots}</Text>
       </View>
       {value.length ? (
@@ -63,7 +65,7 @@ export function FeedbackScreenshots({
               style={[screenshotStyles.previewCard, { backgroundColor: palette.surface }]}
             >
               <Image
-                accessibilityLabel={`问题截图 ${index + 1}`}
+                accessibilityLabel={t('screenshotA11y', { n: index + 1 })}
                 source={{ uri: screenshot.data }}
                 style={screenshotStyles.preview}
               />
@@ -72,18 +74,18 @@ export function FeedbackScreenshots({
                 onPress={() => remove(index)}
                 style={screenshotStyles.remove}
               >
-                <Text style={screenshotStyles.removeText}>移除</Text>
+                <Text style={screenshotStyles.removeText}>{t('removeScreenshot')}</Text>
               </Pressable>
             </View>
           ))}
         </View>
       ) : (
-        <Text style={styles.secondary}>可上传最多 3 张截图，帮助我们定位问题。</Text>
+        <Text style={styles.secondary}>{t('screenshotsHint', { n: maximumScreenshots })}</Text>
       )}
       {value.length < maximumScreenshots ? (
         <AppButton
           icon="image"
-          label="添加问题截图"
+          label={t('addScreenshot')}
           onPress={() => void choose()}
           variant="secondary"
         />
