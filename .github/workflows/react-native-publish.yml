@@ -37,6 +37,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: loficompanion/react-native/package-lock.json
+
+      # eas build 上传前会在本地解析 app.config.js（config plugins），必须有 node_modules
+      - name: 安装依赖
+        run: npm ci --legacy-peer-deps
 
       - name: 版本一致性校验（tag 必须等于 package.json 版本）
         run: |
