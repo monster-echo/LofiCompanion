@@ -49,7 +49,7 @@ export function GroupDetailScreen() {
   }
 
   if (loaded.state.status === 'loading') {
-    return <StateShell onBack={back} title=""><Text style={styles.stateText}>正在加载…</Text></StateShell>;
+    return <StateShell onBack={back} title=""><Text style={styles.stateText}>{t('loading')}</Text></StateShell>;
   }
   if (loaded.state.status === 'error') {
     return (

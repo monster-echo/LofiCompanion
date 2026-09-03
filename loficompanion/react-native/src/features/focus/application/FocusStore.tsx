@@ -90,8 +90,8 @@ export interface FocusApi {
     acknowledgeCompletions(): void;
     /** 专注页静音开关 → 音乐控制器（focusQuickPrefs.muted 的落地点） */
     setMusicMuted(muted: boolean): void;
-    /** 拉取远端皮肤目录并物化到注册表（挂载/登录态切换/购买成功后调用） */
-    refreshSkins(signedIn: boolean): void;
+    /** 拉取远端皮肤目录并物化到注册表（挂载/购买成功后调用；免费皮肤访客也可拉） */
+    refreshSkins(): void;
   };
 }
 
@@ -100,7 +100,7 @@ function toFocusApi(
   state: FocusState,
   music: MusicController,
   skins: readonly SkinManifest[],
-  refreshSkins: (signedIn: boolean) => void,
+  refreshSkins: () => void,
 ): FocusApi {
   return {
     activeSession: state.activeSession,
@@ -146,16 +146,6 @@ export function FocusProvider({ children }: Readonly<{ children: ReactNode }>): 
   // 远端皮肤目录（P0-B）：注册表是内置+远端的可观察合并视图，
   // getManifests 让 orchestrate 的选肤/恢复实时看到新皮肤
   const [registry] = useState(() => createSkinRegistry(BUILT_IN_SKINS));
-  const refreshSkins = useCallback(
-    (signedIn: boolean) => {
-      if (!signedIn) {
-        registry.setRemote([]);
-        return;
-      }
-      void fetchRemoteSkins().then((remote) => registry.setRemote(remote));
-    },
-    [registry],
-  );
   const { signedIn } = useApp();
 
   const [controller] = useState<FocusController>(() => {
@@ -174,6 +164,16 @@ export function FocusProvider({ children }: Readonly<{ children: ReactNode }>): 
   });
   // toFocusApi 需要：静音开关直达控制器（setMusicMuted）
   const [music] = useState<MusicController>(() => getMusicController());
+
+  const refreshSkins = useCallback(() => {
+    // 云端皮肤目录对访客开放（免费 manifest 匿名可取，付费由服务端 401 门禁）；
+    // 目录拉取失败时仓储内部回退磁盘缓存（离线可用已拉取的皮肤）
+    void fetchRemoteSkins().then((remote) => {
+      registry.setRemote(remote);
+      // 上次选择的云端皮肤此刻可解析时自动切回（冷启动暂落默认皮肤的场景）
+      controller.reattachSkinCatalog();
+    });
+  }, [controller, registry]);
 
   useEffect(() => {
     void controller.restore(Date.now());
@@ -196,9 +196,9 @@ export function FocusProvider({ children }: Readonly<{ children: ReactNode }>): 
     };
   }, [controller]);
 
-  // 远端皮肤目录：挂载与登录态切换时拉取（访客清空远端侧，仅剩内置）
+  // 远端皮肤目录：挂载与登录态切换时拉取（购买解锁后详情页也会再拉一轮）
   useEffect(() => {
-    refreshSkins(signedIn);
+    refreshSkins();
   }, [refreshSkins, signedIn]);
 
   const skins = useSyncExternalStore(registry.subscribe, registry.getAll);

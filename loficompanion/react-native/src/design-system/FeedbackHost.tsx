@@ -48,7 +48,7 @@ export function FeedbackHost() {
             <Text style={[styles.secondary, feedbackStyles.center]}>{confirm?.message}</Text>
             <View style={feedbackStyles.actions}>
               <View style={feedbackStyles.action}>
-                <AppButton label="取消" variant="secondary" onPress={closeConfirm} />
+                <AppButton label={t('cancel')} variant="secondary" onPress={closeConfirm} />
               </View>
               <View style={feedbackStyles.action}>
                 <AppButton

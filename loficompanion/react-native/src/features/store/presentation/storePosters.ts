@@ -1,12 +1,13 @@
-import { findSkinManifest } from '../../skins/domain/registry';
+import { findSkinManifestByIdOrSlug } from '../../skins/domain/registry';
 import { stateAsset } from '../../skins/domain/resolve';
+import type { SkinManifest } from '../../skins/domain/types';
 import type { CompanionState } from '../../skins/domain/types';
 
 /**
- * 商店海报查找（P1-A Task 3；P1 皮肤扩展起解析全部内置皮肤）。三套内置皮肤
- * （rainy-study-room / sunny-classroom / midnight-workstation）的资源包随包
- * 分发，按注册表解析本地海报；目录外皮肤返回 null，由 UI 渲染主题化占位
- * （不使用虚构截图）。非 Metro 环境 poster 为 0，同样按缺失处理。
+ * 商店海报查找（P1-A Task 3；P2 皮肤云端化后从皮肤注册表解析）。注册表 =
+ * 内置默认皮肤（require number）+ 已拉取缓存的云端皮肤（本地缓存文件 uri，
+ * RN Image 原生支持）；未拉取/目录外的皮肤返回 null，由 UI 渲染主题化占位
+ * （不使用虚构截图）。非 Metro 环境内置 poster 为 0，同样按缺失处理。
  */
 
 /** S15 四态切换（doc-08 §16：ready/focus/drink/complete） */
@@ -17,20 +18,17 @@ export const DETAIL_PREVIEW_STATES: readonly CompanionState[] = [
   'completed',
 ];
 
-export const PREVIEW_STATE_LABELS: Readonly<Record<string, string>> = {
-  ready: '准备',
-  focusing: '专注',
-  drinking: '喝水',
-  completed: '完成',
-};
-
-export function storePoster(slug: string, state: CompanionState): number | null {
-  const manifest = findSkinManifest(slug);
+export function storePoster(
+  skins: readonly SkinManifest[],
+  slug: string,
+  state: CompanionState,
+): number | { readonly uri: string } | null {
+  const manifest = findSkinManifestByIdOrSlug(skins, slug);
   if (!manifest) return null;
   try {
     const poster = stateAsset(manifest, state).poster;
-    // 商店预览只面向内置皮肤（远端皮肤的预览在画廊内直接读缓存文件）
-    return typeof poster === 'number' ? poster || null : null;
+    if (typeof poster === 'number') return poster || null;
+    return poster;
   } catch {
     return null;
   }

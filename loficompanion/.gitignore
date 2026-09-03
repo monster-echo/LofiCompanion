@@ -15,4 +15,3 @@ ios/
 android/
 **/GoogleService-Info.plist
 **/google-services.json
-!**/google-services.json

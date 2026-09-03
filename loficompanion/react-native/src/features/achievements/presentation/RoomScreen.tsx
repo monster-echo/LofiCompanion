@@ -1,17 +1,23 @@
-import React, { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { AppIcon } from '../../../design-system/AppIcon';
-import { useApp } from '../../../state/AppStore';
-import { mediaControl } from '../../../design-system/derivedTokens';
-import { usePreferences } from '../../../preferences/PreferencesProvider';
-import { useThemeStyles } from '../../../theme/useThemeStyles';
-import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
-import { useFocus } from '../../focus/application/FocusStore';
-import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
-import { useTranslation } from 'react-i18next';
-import { ACHIEVEMENT_DEFS, type RoomItemId } from '../domain/rules';
-import { getMusicController } from '../../music/data/expoAudioMusicController';
+import React, { useCallback, useState } from "react";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { AppIcon } from "../../../design-system/AppIcon";
+import { useApp } from "../../../state/AppStore";
+import { mediaControl } from "../../../design-system/derivedTokens";
+import { usePreferences } from "../../../preferences/PreferencesProvider";
+import { useThemeStyles } from "../../../theme/useThemeStyles";
+import { radii, space, type, type ThemeColors } from "../../../theme/tokens";
+import { useFocus } from "../../focus/application/FocusStore";
+import { ImmersiveMediaSurface } from "../../skins/presentation/ImmersiveMediaSurface";
+import { useTranslation } from "react-i18next";
+import { ACHIEVEMENT_DEFS, type RoomItemId } from "../domain/rules";
+import { getMusicController } from "../../music/data/expoAudioMusicController";
 
 /**
  * S09 我的陪伴房间（doc-08 §10）。媒体/房间占顶部至约 66%；已解锁收藏物
@@ -34,7 +40,7 @@ const CALLOUT_WIDTH = 210;
 /** 热点锚点：中心对齐媒体区域的固定比例位置（StyleProp，热点位置逐物固定） */
 function hotspotAnchorStyle(spot: { x: number; y: number }) {
   return {
-    position: 'absolute' as const,
+    position: "absolute" as const,
     left: `${spot.x * 100}%` as `${number}%`,
     top: `${spot.y * 100}%` as `${number}%`,
     width: HOTSPOT_SIZE,
@@ -46,7 +52,7 @@ function hotspotAnchorStyle(spot: { x: number; y: number }) {
 
 export function RoomScreen() {
   const focus = useFocus();
-  const { t } = useTranslation('achievements');
+  const { t } = useTranslation("achievements");
   const { back } = useApp();
   const { width: windowWidth } = useWindowDimensions();
   const { palette } = usePreferences();
@@ -63,7 +69,8 @@ export function RoomScreen() {
   );
 
   const unlockedItems = focus.roomItems.filter(
-    (item, index, all) => all.findIndex((other) => other.itemId === item.itemId) === index,
+    (item, index, all) =>
+      all.findIndex((other) => other.itemId === item.itemId) === index,
   );
 
   return (
@@ -81,13 +88,19 @@ export function RoomScreen() {
           const spot = HOTSPOTS[item.itemId];
           if (!spot) return null;
           const open = openItemId === item.itemId;
-          const def = ACHIEVEMENT_DEFS.find((candidate) => candidate.rewardItemId === item.itemId);
+          const def = ACHIEVEMENT_DEFS.find(
+            (candidate) => candidate.rewardItemId === item.itemId,
+          );
           // callout 中心夹在媒体 30%–70%，避免面板被屏幕边缘裁切
           const calloutOffset = Math.round(
             (Math.min(0.7, Math.max(0.3, spot.x)) - spot.x) * windowWidth,
           );
           return (
-            <View key={item.itemId} pointerEvents="box-none" style={hotspotAnchorStyle(spot)}>
+            <View
+              key={item.itemId}
+              pointerEvents="box-none"
+              style={hotspotAnchorStyle(spot)}
+            >
               {/* callout：surfaceRaised、圆角 12、caption；上下避让热点 */}
               {open ? (
                 <View
@@ -97,13 +110,15 @@ export function RoomScreen() {
                     spot.y < 0.5 ? styles.calloutBelow : styles.calloutAbove,
                   ]}
                   accessibilityRole="text"
-                  accessibilityLabel={`${t(`item.${item.itemId}`)}，${t('calloutSource', { name: def ? t(`rule.${def.ruleKey}.name`) : '' })}`}
+                  accessibilityLabel={`${t(`item.${item.itemId}`)}，${t("calloutSource", { name: def ? t(`rule.${def.ruleKey}.name`) : "" })}`}
                 >
                   <Text style={styles.calloutName} numberOfLines={1}>
                     {t(`item.${item.itemId}`)}
                   </Text>
                   <Text style={styles.calloutSource} numberOfLines={1}>
-                    {t('calloutSource', { name: def ? t(`rule.${def.ruleKey}.name`) : '' })}
+                    {t("calloutSource", {
+                      name: def ? t(`rule.${def.ruleKey}.name`) : "",
+                    })}
                   </Text>
                 </View>
               ) : null}
@@ -121,20 +136,20 @@ export function RoomScreen() {
 
       {/* 底部：说明 + 布置房间（P0-B） */}
       <View style={styles.bottom}>
-        <Text style={styles.bottomTitle}>{t('roomTitle')}</Text>
-        <Text style={styles.bottomCaption}>{t('roomCaption')}</Text>
+        <Text style={styles.bottomTitle}>{t("roomTitle")}</Text>
+        <Text style={styles.bottomCaption}>{t("roomCaption")}</Text>
         <View style={styles.arrangeRow}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={t('arrangeAction')}
+            accessibilityLabel={t("arrangeAction")}
             disabled
             accessibilityState={{ disabled: true }}
             style={styles.arrangeButton}
           >
-            <Text style={styles.arrangeButtonText}>{t('arrangeAction')}</Text>
+            <Text style={styles.arrangeButtonText}>{t("arrangeAction")}</Text>
           </Pressable>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{t('arrangeComingSoon')}</Text>
+            <Text style={styles.badgeText}>{t("arrangeComingSoon")}</Text>
           </View>
         </View>
       </View>
@@ -142,7 +157,7 @@ export function RoomScreen() {
       {/* 返回：悬浮于媒体左上（44×44，媒体控件底） */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={t('backLabel')}
+        accessibilityLabel={t("backLabel")}
         onPress={back}
         style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
       >
@@ -152,106 +167,107 @@ export function RoomScreen() {
   );
 }
 
-const makeStyles = (p: ThemeColors) => StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: p.canvas,
-  },
-  media: {
-    height: '66%',
-    overflow: 'hidden',
-    backgroundColor: p.surfaceInset,
-  },
-  hotspot: {
-    width: HOTSPOT_SIZE,
-    height: HOTSPOT_SIZE,
-    borderRadius: radii.round,
-  },
-  callout: {
-    position: 'absolute',
-    left: '50%',
-    width: CALLOUT_WIDTH,
-    borderRadius: radii.control,
-    backgroundColor: p.surfaceRaised,
-    borderWidth: 1,
-    borderColor: p.borderStandard,
-    paddingHorizontal: space.x3,
-    paddingVertical: space.x2,
-    gap: 2,
-  },
-  calloutBelow: {
-    top: HOTSPOT_SIZE + space.x2,
-  },
-  calloutAbove: {
-    bottom: HOTSPOT_SIZE + space.x2,
-  },
-  calloutName: {
-    ...type.label,
-    color: p.textPrimary,
-  },
-  calloutSource: {
-    ...type.caption,
-    color: p.textSecondary,
-  },
-  bottom: {
-    flex: 1,
-    paddingHorizontal: space.x4,
-    paddingTop: space.x6,
-    paddingBottom: space.x3,
-    gap: space.x1,
-  },
-  bottomTitle: {
-    ...type.title3,
-    color: p.textPrimary,
-  },
-  bottomCaption: {
-    ...type.body,
-    color: p.textSecondary,
-  },
-  arrangeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.x3,
-    marginTop: space.x4,
-  },
-  arrangeButton: {
-    minHeight: 48,
-    paddingHorizontal: space.x4,
-    borderRadius: radii.control,
-    borderWidth: 1,
-    borderColor: p.borderStandard,
-    alignItems: 'center',
-    justifyContent: 'center',
-    opacity: 0.45, // doc-07 §7.3 禁用态保持可读
-  },
-  arrangeButtonText: {
-    ...type.bodyStrong,
-    color: p.textPrimary,
-  },
-  badge: {
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: p.borderStandard,
-    paddingHorizontal: space.x2,
-    paddingVertical: space.x1,
-  },
-  badgeText: {
-    ...type.caption,
-    color: p.textMuted,
-  },
-  backButton: {
-    position: 'absolute',
-    top: space.x2,
-    left: space.x2,
-    width: 44,
-    height: 44,
-    borderRadius: radii.round,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: mediaControl,
-  },
-  pressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.98 }],
-  },
-});
+const makeStyles = (p: ThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: p.canvas,
+    },
+    media: {
+      height: "66%",
+      overflow: "hidden",
+      backgroundColor: p.surfaceInset,
+    },
+    hotspot: {
+      width: HOTSPOT_SIZE,
+      height: HOTSPOT_SIZE,
+      borderRadius: radii.round,
+    },
+    callout: {
+      position: "absolute",
+      left: "50%",
+      width: CALLOUT_WIDTH,
+      borderRadius: radii.control,
+      backgroundColor: p.surfaceRaised,
+      borderWidth: 1,
+      borderColor: p.borderStandard,
+      paddingHorizontal: space.x3,
+      paddingVertical: space.x2,
+      gap: 2,
+    },
+    calloutBelow: {
+      top: HOTSPOT_SIZE + space.x2,
+    },
+    calloutAbove: {
+      bottom: HOTSPOT_SIZE + space.x2,
+    },
+    calloutName: {
+      ...type.label,
+      color: p.textPrimary,
+    },
+    calloutSource: {
+      ...type.caption,
+      color: p.textSecondary,
+    },
+    bottom: {
+      flex: 1,
+      paddingHorizontal: space.x4,
+      paddingTop: space.x6,
+      paddingBottom: space.x3,
+      gap: space.x1,
+    },
+    bottomTitle: {
+      ...type.title3,
+      color: p.textPrimary,
+    },
+    bottomCaption: {
+      ...type.body,
+      color: p.textSecondary,
+    },
+    arrangeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: space.x3,
+      marginTop: space.x4,
+    },
+    arrangeButton: {
+      minHeight: 48,
+      paddingHorizontal: space.x4,
+      borderRadius: radii.control,
+      borderWidth: 1,
+      borderColor: p.borderStandard,
+      alignItems: "center",
+      justifyContent: "center",
+      opacity: 0.45, // doc-07 §7.3 禁用态保持可读
+    },
+    arrangeButtonText: {
+      ...type.bodyStrong,
+      color: p.textPrimary,
+    },
+    badge: {
+      borderRadius: radii.round,
+      borderWidth: 1,
+      borderColor: p.borderStandard,
+      paddingHorizontal: space.x2,
+      paddingVertical: space.x1,
+    },
+    badgeText: {
+      ...type.caption,
+      color: p.textMuted,
+    },
+    backButton: {
+      position: "absolute",
+      top: space.x2,
+      left: space.x2,
+      width: 44,
+      height: 44,
+      borderRadius: radii.round,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: mediaControl,
+    },
+    pressed: {
+      opacity: 0.82,
+      transform: [{ scale: 0.98 }],
+    },
+  });

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,7 +15,8 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import { apiClient } from '../../../data/apiClient';
 import type { SkinProductRemote } from '../../../data/apiClient';
 import { AppIcon } from '../../../design-system/AppIcon';
-import { MockPaymentProvider } from '../../../payment/mockPaymentProvider';
+import { createPaymentProvider } from '../../../payment/paymentFactory';
+import { IapError } from '../../../payment/iapPaymentProvider';
 import type { RootParamList } from '../../../navigation/navigationRef';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
@@ -42,10 +44,10 @@ import {
 /**
  * S15 皮肤详情与购买（doc-08 §16，P1-A Task 3）。push 页、未登录可浏览：
  * 顶部媒体预览 390 可切 ready/focus/drink/complete 四态；信息区依次为
- * 名称 / 官方标识 / 状态数 / 音轨 / 离线大小（估算）/ 商用说明；价格来自
- * 服务端（加载中按钮骨架不可点）。主 CTA：paid →「¥X 永久解锁」（确认
- * sheet → 幂等下单 → mock 验证 → 解锁反馈）；premium →「加入 Plus」（Plus
- * 订阅流未上线，点击给「即将上线」反馈——偏离已记录）；已拥有 →「立即使用」。
+ * 名称 / 官方标识 / 状态数 / 商用说明；价格来自服务端（加载中按钮骨架不可
+ * 点）。主 CTA：paid →「$X 永久解锁」（确认 sheet → 幂等下单 → 按订单
+ * provider 走原生 IAP 验证 → 解锁反馈）；premium →「加入 Plus」（Plus 订阅
+ * 流未上线，点击给「即将上线」反馈——偏离已记录）；已拥有 →「立即使用」。
  * 购买 pending 防重复点击；中断（网络/进程终止）后凭本地 lastOrderId 记录
  * 在下次进入时轮询查单恢复终态（docs/05 §5）。
  */
@@ -89,7 +91,8 @@ export function SkinDetailScreen() {
     // 价格目录公开；权益仅登录后拉取（失败按未拥有降级，不阻塞页面）
     let keys: readonly string[] = [];
     if (signedIn) {
-      try { keys = (await apiClient.entitlements()).keys; } catch { /* 降级 */ }
+      // 会员键（auth）∪ 皮肤键（biz）聚合
+      try { keys = await apiClient.ownedEntitlementKeys(); } catch { /* 降级 */ }
     }
     setOwnedKeys(keys);
     const { products } = await apiClient.skinProducts();
@@ -154,7 +157,8 @@ export function SkinDetailScreen() {
 
   useEffect(() => { void runRecovery(); }, [runRecovery]);
 
-  // —— 购买流：幂等下单 → 记录 lastOrderId → mock 支付 → 验证 → 解锁反馈
+  // —— 购买流（对齐 useDataActions.purchase 范式）：幂等下单 → 记录 lastOrderId →
+  // 按订单 provider 选 mock/原生 IAP → 验证 → 权益入账后 finish → 解锁反馈
   const confirmPurchase = useCallback(async (target: SkinProductRemote) => {
     setSheetOpen(false);
     setCtaPhase('purchasing');
@@ -164,10 +168,22 @@ export function SkinDetailScreen() {
         newSkinOrderIdempotencyKey(),
       );
       await pendingOrders.save(skinSlug, order.orderId);
-      const provider = new MockPaymentProvider();
-      const result = await provider.purchase(target.id);
-      const verified = await apiClient.verifyPurchase(order.orderId, result.receipt);
+      const provider = createPaymentProvider(order);
+      let result;
+      try {
+        result = await provider.purchase(order.storeProductId);
+      } catch (error) {
+        // 用户取消购买：静默回 idle，清本地记录（服务端 pending 单无害）
+        if (error instanceof IapError && error.kind === 'cancelled') {
+          await pendingOrders.clear(skinSlug).catch(() => undefined);
+          return;
+        }
+        throw error;
+      }
+      const verified = await apiClient.verifySkinOrder(order.orderId, result.receipt);
       if (verified.status === 'success') {
+        // 权益已入账后才 finish 交易（未 finish 的交易可自愈重试）
+        await provider.finish?.(result).catch(() => undefined);
         await pendingOrders.clear(skinSlug);
         setOwnedKeys((keys) => keys.includes(target.entitlementKey)
           ? keys
@@ -193,9 +209,11 @@ export function SkinDetailScreen() {
       return;
     }
     try {
-      const provider = new MockPaymentProvider();
+      const provider = createPaymentProvider({
+        provider: Platform.OS === 'ios' ? 'apple' : 'google',
+      });
       const receipts = (await provider.restore()).map((item) => item.receipt);
-      const { entitlements } = await apiClient.restore(receipts);
+      const { entitlements } = await apiClient.restoreSkinPurchases(receipts);
       setOwnedKeys((keys) => {
         const merged = new Set(keys);
         for (const key of entitlements) merged.add(key);
@@ -208,7 +226,7 @@ export function SkinDetailScreen() {
     }
   }, [navigate, product, showToast, signedIn]);
 
-  // 已拥有：注册表（内置+已下载远端）内的皮肤直接应用并回首页；仍缺失时
+  // 已拥有：注册表（内置+已拉取云端）内的皮肤直接应用并回首页；仍缺失时
   // 先触发一轮远端拉取再重试一次（购买后清单尚未就位的场景），还不行才
   // 诚实反馈而非静默失败。
   const useOwnedSkin = useCallback(() => {
@@ -220,14 +238,16 @@ export function SkinDetailScreen() {
       return true;
     };
     if (apply()) return;
-    focus.actions.refreshSkins(signedIn);
+    focus.actions.refreshSkins();
     // 拉取是异步的：给一轮事件循环后重试（P0 简化，不引入 loading 态）
     setTimeout(() => {
       if (!apply()) showToast(t('manifestPending'), 'info');
     }, 1500);
-  }, [back, focus.actions, showToast, skinSlug, signedIn]);
+  }, [back, focus.actions, showToast, skinSlug]);
 
-  const previewPoster = storePoster(skinSlug, previewState);
+  const previewPoster = storePoster(focus.skins, skinSlug, previewState);
+  // 信息区状态数：皮肤清单已就位时用真实状态数
+  const skinManifest = findSkinManifestByIdOrSlug(focus.skins, skinSlug);
   const previewWidth = windowWidth;
 
   const busy = ctaPhase !== 'idle';
@@ -328,9 +348,9 @@ export function SkinDetailScreen() {
               <AppIcon name="crown" color={palette.membershipGold} size={16} />
               <Text style={styles.creatorText}>{t('officialCreator')}</Text>
             </View>
-            <InfoRow label={t('includesStates')} value={t('stateCount', { n: 6 })} />
-            <InfoRow label={t('audioLabel')} value={t('audioTrack')} />
-            <InfoRow label={t('offlineLabel')} value={t('offlineSize')} />
+            {skinManifest ? (
+              <InfoRow label={t('includesStates')} value={t('stateCount', { n: skinManifest.states.length })} />
+            ) : null}
             <Text style={styles.commercialNote}>{t('commercialNote')}</Text>
           </View>
         </ScrollView>
@@ -395,9 +415,9 @@ export function SkinDetailScreen() {
         <SheetOverlay onClose={() => setSheetOpen(false)}>
           <Text style={styles.sheetTitle}>{t('confirmTitle')}</Text>
           <View style={styles.sheetRows}>
-            <InfoRow label="商品" value={product.skinName} />
-            <InfoRow label="价格" value={priceLabel ?? ''} />
-            <InfoRow label="属性" value={t('confirmPermanent')} />
+            <InfoRow label={t('confirmProduct')} value={product.skinName} />
+            <InfoRow label={t('confirmPrice')} value={priceLabel ?? ''} />
+            <InfoRow label={t('confirmType')} value={t('confirmPermanent')} />
           </View>
           <Pressable
             accessibilityRole="button"

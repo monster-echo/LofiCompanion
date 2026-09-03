@@ -76,6 +76,7 @@ export function AppButton({
 export function OfflineBanner() {
   const { online, refreshBootstrap } = useApp();
   const { palette } = usePreferences();
+  const { t } = useTranslation('common');
   if (online) return null;
   return (
     <Pressable
@@ -85,7 +86,7 @@ export function OfflineBanner() {
     >
       <AppIcon name="alert" color={palette.warning} size={18} />
       <Text style={[componentStyles.offlineText, { color: palette.text }]}>
-        当前离线，正在使用本地配置 · 点击重试
+        {t('offlineBanner')}
       </Text>
     </Pressable>
   );

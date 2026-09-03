@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { rainyStudyRoomManifest as manifest } from '../../skins/domain/rainyStudyRoom.generated';
-import { sunnyClassroomManifest } from '../../skins/domain/sunnyClassroom.generated';
 import type { SkinManifest } from '../../skins/domain/types';
 import type { AchievementRuleKey } from '../../achievements/domain/rules';
 import { createAchievementRepository } from '../../achievements/data/achievementRepository';
@@ -9,6 +8,14 @@ import { createFocusRepository } from '../data/focusRepository';
 import type { StorageDriver } from '../data/storageDriver';
 import type { FocusMusicEffects } from '../../music/domain/musicController';
 import { createFocusController } from './orchestrate';
+
+/** 阳光教室替身（P2 皮肤云端化后不再内置；多皮肤测试只需第二套清单形态） */
+const sunnyClassroomManifest: SkinManifest = {
+  ...manifest,
+  id: 'sunny-classroom-v1',
+  slug: 'sunny-classroom',
+  name: '阳光教室',
+};
 
 /**
  * FocusStore 编排测试（P0-A Task 7）。React 上下文无法在 node 环境渲染，

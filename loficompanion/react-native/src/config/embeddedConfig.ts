@@ -72,7 +72,6 @@ export const embeddedConfig: RuntimeConfig = {
       locale: 'zh-CN',
       revision: 'embedded-1',
       title: '隐私政策',
-      content: '离线状态下显示随 App 发布的隐私政策快照。',
       requiresReconsent: false,
     },
   ],

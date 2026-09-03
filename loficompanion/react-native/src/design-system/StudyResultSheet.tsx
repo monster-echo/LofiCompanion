@@ -138,13 +138,13 @@ export function StudyResultSheet({
                 <AppIcon name="check-circle" color={palette.success} size={28} />
               </View>
               <View style={styles.resultText}>
-                <Text style={styles.resultTitle}>专注 {sessionMinutes} 分钟</Text>
-                <Text style={styles.resultMeta}>今日累计 {todayMinutes} 分钟</Text>
+                <Text style={styles.resultTitle}>{t('sessionMinutes', { n: sessionMinutes })}</Text>
+                <Text style={styles.resultMeta}>{t('todayTotal', { n: todayMinutes })}</Text>
               </View>
             </View>
 
             <View style={styles.weekBlock}>
-              <Text style={styles.weekLabel}>本周目标</Text>
+              <Text style={styles.weekLabel}>{t('weekGoal')}</Text>
               <View style={styles.weekTrack}>
                 <View
                   style={[
@@ -154,7 +154,7 @@ export function StudyResultSheet({
                 />
               </View>
               <Text style={styles.weekValue}>
-                {weekMinutes}/{weekTarget} 分钟
+                {t('weekProgress', { done: weekMinutes, target: weekTarget })}
               </Text>
             </View>
 
@@ -166,7 +166,7 @@ export function StudyResultSheet({
                   size={20}
                 />
                 <Text style={styles.achievementText} numberOfLines={1}>
-                  获得：{newAchievement.name}
+                  {t('achievementEarned', { name: newAchievement.name })}
                 </Text>
               </View>
             ) : null}

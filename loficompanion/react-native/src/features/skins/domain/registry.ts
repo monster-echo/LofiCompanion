@@ -1,28 +1,18 @@
-import { midnightWorkstationManifest } from './midnightWorkstation.generated';
 import { rainyStudyRoomManifest } from './rainyStudyRoom.generated';
-import { sunnyClassroomManifest } from './sunnyClassroom.generated';
 import type { SkinManifest } from './types';
 
 /**
- * 内置皮肤注册表（P1 皮肤扩展）。包内分发全部清单，随包零下载；
- * 解锁语义由 accessType + 服务端权益键共同决定（store/domain/storeCatalog.ts），
- * 运行时选择入口在 FocusController.selectSkin。
+ * 皮肤注册表（P2 皮肤云端化后收敛）：默认皮肤雨夜书房随包内置（安装即用、
+ * 首启零下载）；其余皮肤全部由 biz-server 下发（remoteSkinsRepository 拉取
+ * 后持久缓存）。解锁语义由 accessType + 服务端权益键共同决定
+ * （store/domain/storeCatalog.ts），运行时选择入口在 FocusController.selectSkin。
  */
 
-/** 内置皮肤（首位为默认皮肤，免费区/列表排序依赖此顺序） */
-export const BUILT_IN_SKINS: readonly SkinManifest[] = [
-  rainyStudyRoomManifest,
-  sunnyClassroomManifest,
-  midnightWorkstationManifest,
-];
+/** 内置皮肤（默认皮肤；paid 项由服务端商品行定价） */
+export const BUILT_IN_SKINS: readonly SkinManifest[] = [rainyStudyRoomManifest];
 
 /** 默认皮肤：未选择过/存量数据损坏时落回雨夜书房 */
 export const DEFAULT_SKIN_MANIFEST: SkinManifest = rainyStudyRoomManifest;
-
-/** 按 manifest id 或 slug 查内置皮肤（选择仓储存 id；商店路由带 slug）。 */
-export function findSkinManifest(idOrSlug: string): SkinManifest | undefined {
-  return findSkinManifestByIdOrSlug(BUILT_IN_SKINS, idOrSlug);
-}
 
 /** 在给定清单（内置+远端合并视图）中按 id 或 slug 查皮肤。 */
 export function findSkinManifestByIdOrSlug(

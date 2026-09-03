@@ -12,6 +12,11 @@ const publishSchema = z.object({
   priceMinor: z.number().int().positive().optional(),
   currency: z.string().min(1).max(8).optional(),
   entitlementKey: z.string().min(1).max(120).optional(),
+  // 支付配置透传（auth 商品行登记用）：provider 是启用标识（'mock'=模拟支付，
+  // 'store'=原生商店 IAP；真实适配器由 auth 按客户端平台分流）；storeProductIds
+  // 为平台 SKU 映射（apple/google/hms），ASC/Play 商品就绪后重发布即激活 IAP。
+  provider: z.enum(['mock', 'store', 'apple', 'google', 'hms']).optional(),
+  storeProductIds: z.record(z.string().max(8), z.string().min(1).max(200)).optional(),
 });
 
 // POST /api/v1/admin/skins/publish —— 皮肤发布（免审核发新皮肤的写入通道）。

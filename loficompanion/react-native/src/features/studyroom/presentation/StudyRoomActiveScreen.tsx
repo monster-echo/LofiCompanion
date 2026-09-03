@@ -26,10 +26,11 @@ import { useMusicLibrary } from '../../music/application/useMusicLibrary';
 import { useFocus } from '../../focus/application/FocusStore';
 import { useFocusQuickPrefs } from '../../focus/presentation/focusQuickPrefs';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
+import { DEFAULT_SKIN_MANIFEST, findSkinManifestByIdOrSlug } from '../../skins/domain/registry';
 import { SheetOverlay } from '../../focus/presentation/SheetOverlay';
 import { useStudyRoom, useStudyRoomState } from '../application/StudyRoomStore';
 import { roomForId, roomName, type StudyRoomId } from '../domain/rooms';
-import { DanmakuLayer } from './DanmakuLayer';
+import { DanmakuLayer, type DanmakuBand } from './DanmakuLayer';
 import { DanmakuInputBar } from './DanmakuInputBar';
 
 /**
@@ -44,6 +45,14 @@ const WEAKEN_AFTER_MS = 5000;
 const RESTORE_MS = 160;
 const WEAKEN_MS = 600;
 
+/** 弹幕位置三档循环顺序（快捷设置点击切换） */
+const BAND_CYCLE: readonly DanmakuBand[] = ['center', 'top', 'bottom'];
+const BAND_LABEL_KEY: Record<DanmakuBand, 'danmakuBandCenter' | 'danmakuBandTop' | 'danmakuBandBottom'> = {
+  top: 'danmakuBandTop',
+  center: 'danmakuBandCenter',
+  bottom: 'danmakuBandBottom',
+};
+
 export function StudyRoomActiveScreen() {
   const controller = useStudyRoom();
   const state = useStudyRoomState();
@@ -56,19 +65,22 @@ export function StudyRoomActiveScreen() {
   // 影像 chrome 仍用模块级 semantic 主题无关层
   const sheetStyles = useThemeStyles(makeSheetStyles);
   // 减少动态是无障碍全局偏好（FocusProvider 注入），房间页与专注页同源
-  const { reducedMotion } = useFocus();
+  const { reducedMotion, skins } = useFocus();
   const { muted, setMuted, keepAwake, setKeepAwake } = useFocusQuickPrefs();
   useMusicLibrary(signedIn);
 
   const [quickMenu, setQuickMenu] = useState(false);
   const [screenReader, setScreenReader] = useState(false);
   const [weakened, setWeakened] = useState(false);
+  const [danmakuBand, setDanmakuBand] = useState<DanmakuBand>('center');
   const chrome = useRef(new Animated.Value(1)).current;
   const weakenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 路由参数 roomId → 房间定义（未知 id 落回默认房间）
+  // 路由参数 roomId → 房间定义（未知 id 落回默认房间）；房间媒体从皮肤注册表
+  // 解析（云端皮肤未拉取到时暂用默认皮肤兜底，拉取到达后自动切换）
   const roomId = (route.params as { roomId?: string } | undefined)?.roomId;
   const room = roomForId(roomId ?? '');
+  const roomManifest = findSkinManifestByIdOrSlug(skins, room.id) ?? DEFAULT_SKIN_MANIFEST;
   const roomDisplayName = roomName(room, locale);
 
   // 进房 = 建连（弹幕/presence）+ 音乐在场（ambient：无需专注会话）；退出全部释放
@@ -180,13 +192,13 @@ export function StudyRoomActiveScreen() {
         <View style={styles.screen}>
           <StatusBar hidden animated={false} />
           <ImmersiveMediaSurface
-            manifest={room.manifest}
+            manifest={roomManifest}
             state="ready"
             reducedMotion={reducedMotion}
             style={styles.mediaFill}
           />
 
-          <DanmakuLayer reducedMotion={reducedMotion} />
+          <DanmakuLayer reducedMotion={reducedMotion} band={danmakuBand} />
 
           {/* 左上：退出 + 房间名 + 在线数 */}
           <Animated.View style={[styles.topLeft, { top: insets.top + 8, opacity: chrome }]}>
@@ -267,6 +279,22 @@ export function StudyRoomActiveScreen() {
                   <Text style={[sheetStyles.menuStateText, muted && sheetStyles.menuStateTextOn]}>
                     {muted ? t('onState') : t('offState')}
                   </Text>
+                </View>
+              </Pressable>
+              {/* 弹幕位置三档循环：点击在中部/顶部/底部间切换（弹幕本身常显） */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('danmakuPositionLabel')}
+                accessibilityValue={{ text: t(BAND_LABEL_KEY[danmakuBand]) }}
+                onPress={() =>
+                  setDanmakuBand(BAND_CYCLE[(BAND_CYCLE.indexOf(danmakuBand) + 1) % BAND_CYCLE.length])
+                }
+                style={({ pressed }) => [sheetStyles.menuRow, pressed && styles.pressed]}
+              >
+                <AppIcon name="palette" color={palette.textSecondary} size={18} />
+                <Text style={sheetStyles.menuRowLabel}>{t('danmakuPositionLabel')}</Text>
+                <View style={sheetStyles.menuStatePill}>
+                  <Text style={sheetStyles.menuStateText}>{t(BAND_LABEL_KEY[danmakuBand])}</Text>
                 </View>
               </Pressable>
             </SheetOverlay>

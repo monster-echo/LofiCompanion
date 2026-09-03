@@ -28,4 +28,20 @@ export const common = {
   unreadNotice: 'Unread notification: {{title}}',
   notice: 'Notification: {{title}}',
   unread: 'Unread',
+  // Main tab labels (doc-08 §1)
+  tabs: {
+    focus: 'Focus',
+    studyRoom: 'Study Room',
+    achievements: 'Achievements',
+    profile: 'Me',
+  },
+  // Focus stats results (StudyResultSheet / WeeklyProgressCard)
+  sessionMinutes: 'Focused {{n}} min',
+  todayTotal: '{{n}} min today',
+  weekGoal: 'Weekly goal',
+  weekProgress: '{{done}}/{{target}} min',
+  weekFocusTitle: '{{n}} min this week',
+  weekTargetValue: 'Goal {{n}} min',
+  achievementEarned: 'Earned: {{name}}',
+  offlineBanner: "Offline — using local config · tap to retry",
 } as const;

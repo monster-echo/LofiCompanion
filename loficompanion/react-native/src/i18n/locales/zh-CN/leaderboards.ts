@@ -103,4 +103,8 @@ export const leaderboards = {
   settlementViewRoom: '查看房间',
   settlementNextWeek: '下周继续',
   settlementPending: '上周结算还未生成',
+  // 建组/入组兜底与通用加载态
+  createFailed: '创建失败',
+  joinFailed: '加入失败',
+  loading: '正在加载…',
 } as const;

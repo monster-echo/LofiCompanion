@@ -12,12 +12,11 @@ import { apiClient } from '../../../data/apiClient';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
-import { skinDisplayName } from '../../skins/domain/registry';
 import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { useFocus } from '../../focus/application/FocusStore';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
-import { BUILT_IN_SKINS, findSkinManifest } from '../../skins/domain/registry';
+import { findSkinManifestByIdOrSlug, skinDisplayName } from '../../skins/domain/registry';
 import {
   buildStoreSections,
   type StoreSkinCard,
@@ -37,9 +36,8 @@ import { i18n } from '../../../i18n/core';
 const CARD_WIDTH = 176;
 const POSTER_HEIGHT = 104;
 
-// 暂时隐藏「永久购买」分区：付费主题尚未设计（2026-08）。主题就绪后改回
-// false 即可恢复，目录/详情/下单链路均保留未动。
-const PAID_SECTION_HIDDEN = true;
+// 「永久购买」分区已上线（首个付费皮肤：深夜工作台 $0.99 单买）。
+const PAID_SECTION_HIDDEN = false;
 
 // RN 0.86 已移除 StyleSheet.absoluteFillObject，统一用显式填充。
 // Fabric 下 Image 不吃「仅四边 inset」的 absolute 定位，须显式给宽高（见 ImmersiveMediaSurface）
@@ -70,10 +68,11 @@ export function SkinStoreScreen() {
   const [ownedKeys, setOwnedKeys] = useState<readonly string[]>([]);
 
   const { state, reload } = useAsyncRefresh(async () => {
-    // 目录公开；权益仅登录后拉取（失败不阻塞目录——按未拥有降级重拉一次）
+    // 目录公开；权益仅登录后拉取（失败不阻塞目录——按未拥有降级重拉一次）。
+    // 会员键（auth）∪ 皮肤键（biz）聚合
     let keys: readonly string[] = [];
     try {
-      if (signedIn) keys = (await apiClient.entitlements()).keys;
+      if (signedIn) keys = await apiClient.ownedEntitlementKeys();
     } catch { /* 已拥有标记降级为未拥有，目录仍可浏览 */ }
     setOwnedKeys(keys);
     const { products } = await apiClient.skinProducts();
@@ -84,17 +83,23 @@ export function SkinStoreScreen() {
     if (state.status !== 'ready') return null;
     return buildStoreSections({
       products: state.data.products,
-      // 三套内置皮肤全免费、随包分发，列免费区头部（doc-01 PRD）
-      localSkins: BUILT_IN_SKINS.map((skin) => ({
-        id: skin.id,
-        slug: skin.slug,
-        name: skin.name,
-        stateCount: skin.states.length,
-      })),
+      // 免费皮肤列免费区头部（注册表：内置默认 + 已拉取缓存的云端皮肤）；
+      // 付费皮肤不走本地直通，由服务端商品行进「永久购买」区——价格与权益
+      // 判定以服务端为唯一来源
+      localSkins: focus.skins
+        .filter((skin) => skin.accessType === 'free')
+        .map((skin) => ({
+          id: skin.id,
+          slug: skin.slug,
+          name: skinDisplayName(skin, locale),
+          stateCount: skin.states.length,
+        })),
       ownedKeys,
       selectedSkinSlug: focus.skin.slug,
+      stateCountFor: (slug) =>
+        findSkinManifestByIdOrSlug(focus.skins, slug)?.states.length,
     });
-  }, [focus.skin, ownedKeys, state]);
+  }, [focus.skins, focus.skin, locale, ownedKeys, state]);
 
   const visibleSections = useMemo(() => {
     if (!sections) return null;
@@ -108,8 +113,8 @@ export function SkinStoreScreen() {
 
   const onPressCard = (card: StoreSkinCard) => {
     if (card.accessType === 'free') {
-      // 本地内置皮肤：直接应用并回首页（已在用则仅返回）；远端免费皮肤进详情（清单未随包）
-      const local = findSkinManifest(card.slug);
+      // 已拉取清单的免费皮肤：直接应用并回首页（已在用则仅返回）；其余进详情页
+      const local = findSkinManifestByIdOrSlug(focus.skins, card.slug);
       if (local) {
         if (local.id !== focus.skin.id) focus.actions.selectSkin(local.id);
         back();
@@ -208,12 +213,13 @@ function CurrentSkinBanner({
   width,
 }: Readonly<{ slug: string; name: string; width: number }>) {
   const { t } = useTranslation('store');
+  const focus = useFocus();
   const styles = useThemeStyles(makeStyles);
-  const poster = storePoster(slug, 'ready');
+  const poster = storePoster(focus.skins, slug, 'ready');
   return (
     <View
       style={[styles.banner, { width }]}
-      accessibilityLabel={`当前皮肤 ${name}，${t('inUse')}`}
+      accessibilityLabel={t('currentSkinA11y', { name, tail: t('inUse') })}
       accessibilityRole="text"
     >
       {poster ? (
@@ -275,8 +281,10 @@ function StoreCard({
 }: Readonly<{ card: StoreSkinCard; width: number; onPress: () => void }>) {
   const { t } = useTranslation('store');
   const { palette } = usePreferences();
+  const focus = useFocus();
   const styles = useThemeStyles(makeStyles);
-  const poster = storePoster(card.slug, 'ready');
+  const poster = storePoster(focus.skins, card.slug, 'ready');
+  const statesText = card.stateCount === null ? null : t('stateCount', { n: card.stateCount });
   const priceText = card.accessType === 'free'
     ? t('priceFree')
     : card.priceLabel ?? t('plusLabel');
@@ -285,7 +293,7 @@ function StoreCard({
       accessibilityRole="button"
       accessibilityLabel={t('skinCardA11y', {
         name: card.name,
-        count: card.stateCount,
+        count: card.stateCount ?? 0,
         tail: card.owned ? t('ownedBadge') : priceText,
       })}
       onPress={onPress}
@@ -318,7 +326,7 @@ function StoreCard({
       </View>
       <View style={styles.cardInfo}>
         <Text style={styles.cardName} numberOfLines={1}>{card.name}</Text>
-        <Text style={styles.cardStates}>{t('stateCount', { n: card.stateCount })}</Text>
+        {statesText ? <Text style={styles.cardStates}>{statesText}</Text> : null}
         <View
           style={[
             styles.pricePill,
@@ -342,12 +350,14 @@ function StoreCard({
 
 /** 价格加载中骨架（doc-08 §15：失败前占位，不可点） */
 function SectionsSkeleton({ windowWidth }: Readonly<{ windowWidth: number }>) {
+  const { t } = useTranslation('store');
   const styles = useThemeStyles(makeStyles);
   const cardWidth = Math.min(CARD_WIDTH, (windowWidth - space.x4 * 2 - space.x3) / 2);
+  const titles = [t('sectionFree'), ...(PAID_SECTION_HIDDEN ? [] : [t('sectionPaid')]), t('sectionPremium')];
   return (
     <>
       {/* 骨架分区与实际分区保持一致（永久购买隐藏期间不出现） */}
-      {(['免费', ...(PAID_SECTION_HIDDEN ? [] : ['永久购买']), 'Plus 精选'] as const).map((title) => (
+      {titles.map((title) => (
         <View key={title} style={styles.section}>
           <Text style={styles.sectionTitle}>{title}</Text>
           <View style={styles.skeletonRow}>

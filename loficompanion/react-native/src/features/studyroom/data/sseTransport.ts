@@ -82,7 +82,8 @@ export function createSseTransport(deps: SseTransportDeps = {}): StudyRoomTransp
           : (new EventSource(args.url, {
               headers: args.token ? { Authorization: `Bearer ${args.token}` } : {},
             }) as unknown as SseSourceLike);
-      } catch {
+      } catch (error) {
+        console.info('[studyroom-sse] create source failed', error);
         onStatus?.('closed');
         return;
       }
@@ -90,9 +91,11 @@ export function createSseTransport(deps: SseTransportDeps = {}): StudyRoomTransp
       if (current === null) return;
       roomId = new URL(args.url).searchParams.get('room');
       onStatus('connecting');
+      console.info('[studyroom-sse] connect', roomId, args.token ? 'authed' : 'guest');
 
       source.addEventListener('open', () => {
         if (current !== source) return;
+        console.info('[studyroom-sse] open', roomId);
         onStatus?.('open');
       });
       source.addEventListener('message', (event) => {
@@ -101,10 +104,12 @@ export function createSseTransport(deps: SseTransportDeps = {}): StudyRoomTransp
         if (payload === null || payload === undefined) return;
         const parsed = parseServerEvent(payload);
         if (parsed !== null) onEvent?.(parsed);
+        else console.info('[studyroom-sse] unparsed frame', String(payload).slice(0, 120));
       });
       // 掐断内部重连：error/close 一律把连接交还 controller（重读 token 走退避）
       const finish = () => {
         if (current !== source) return;
+        console.info('[studyroom-sse] stream ended', roomId);
         const emitClosed = onStatus;
         teardown();
         emitClosed?.('closed');

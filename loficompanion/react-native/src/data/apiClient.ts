@@ -248,11 +248,24 @@ export interface SkinOrderRemote {
   priceMinor: number;
   currency: string;
   status: string;
+  /** 支付通道（mock/apple/...）：客户端据此选 mock/原生 IAP provider */
   provider: string;
+  /** 本平台商店 SKU（mock 时为商品 id）；purchase 入参 */
+  storeProductId: string;
   createdAt: string;
   completedAt: string | null;
   /** 皮肤权益是否已生效（中断恢复轮询的终态判据） */
   entitled: boolean;
+}
+
+// —— 公开法务（P5 起按需读取：bootstrap 只带元数据，正文走专用通道）——
+export interface PublicLegalDocRemote {
+  type: 'privacy' | 'terms' | 'subscription';
+  locale: 'zh-CN' | 'en-US';
+  revision: string;
+  title: string;
+  content: string;
+  requiresReconsent: boolean;
 }
 
 export const apiClient = {
@@ -357,7 +370,36 @@ export const apiClient = {
     jsonOptions('POST', { receipts }),
   ),
   membershipCurrent: () => request<MembershipCurrent>('/api/v1/membership/current'),
+  /** 公开法务文档（按需）：type/locale 可选，缺省返回全部；正文仅在此通道下发。 */
+  publicLegal: (params: { type?: string; locale?: string } = {}) => {
+    const query = new URLSearchParams({
+      app: APP_ID,
+      env: APP_ENVIRONMENT || 'production',
+      ...(params.type ? { type: params.type } : {}),
+      ...(params.locale ? { locale: params.locale } : {}),
+    });
+    return request<{ docs: readonly PublicLegalDocRemote[] }>(
+      `/api/v1/public/legal?${query.toString()}`,
+    );
+  },
+
   entitlements: () => request<{ keys: readonly string[] }>('/api/v1/membership/entitlements'),
+  // 聚合「已拥有」权益键：会员 Plus 键（auth）∪ 皮肤键（biz）。单侧失败降级
+  // 为空集（不阻塞另一侧——商店/画廊判拥有可用的最宽集合）。
+  ownedEntitlementKeys: async (): Promise<readonly string[]> => {
+    const [membership, skins] = await Promise.allSettled([
+      apiClient.entitlements(),
+      apiClient.skinEntitlements(),
+    ]);
+    const set = new Set<string>();
+    if (membership.status === 'fulfilled') {
+      for (const key of membership.value.keys) set.add(key);
+    }
+    if (skins.status === 'fulfilled') {
+      for (const key of skins.value.entitlements) set.add(key);
+    }
+    return [...set];
+  },
   deleteAccount: (password: string) => request<{ deleted: boolean }>(
     '/api/v1/me/deletion',
     jsonOptions('DELETE', { password, confirmation: 'DELETE' }),
@@ -397,10 +439,11 @@ export const apiClient = {
       '/api/v1/sync/migrate',
       jsonOptions('POST', { sessions }),
     ),
-  // —— LofiCompanion P1-A：皮肤商店（docs/04 §3）。目录公开可浏览（S14 未登录
-  // 可看价格）；下单幂等键 = 客户端 uuid；验证复用 /purchases/verify（服务端
-  // 检测 skin_orders 绑定自动委托皮肤订单流程）；查单用于中断恢复轮询。——
-  skinProducts: () => request<{ products: readonly SkinProductRemote[] }>(
+  // —— LofiCompanion P1-A：皮肤商店（docs/04 §3；P4 起商店域全部走 biz-server）。
+  // 目录公开可浏览（S14 未登录可看价格）；下单幂等键 = 客户端 uuid；验证走
+  // biz 的 /purchases/verify（skin-only，会员 verify 仍在 auth）；查单用于中断
+  // 恢复轮询。——
+  skinProducts: () => requestBiz<{ products: readonly SkinProductRemote[] }>(
     '/api/v1/store/skin-products',
   ),
   // —— P0-B：服务器分发皮肤（走 biz-server）。目录公开可浏览；manifest 免费
@@ -411,7 +454,7 @@ export const apiClient = {
     requestBiz<SkinManifestRemote>(
       `/api/v1/skins/${encodeURIComponent(skinIdOrSlug)}/manifest`,
     ),
-  createSkinOrder: (skinId: string, idempotencyKey: string) => request<SkinOrderRemote>(
+  createSkinOrder: (skinId: string, idempotencyKey: string) => requestBiz<SkinOrderRemote>(
     '/api/v1/store/skin-orders',
     {
       ...jsonOptions('POST', { skinId }),
@@ -423,7 +466,22 @@ export const apiClient = {
     },
   ),
   getSkinOrder: (orderId: string) =>
-    request<SkinOrderRemote>(`/api/v1/store/skin-orders/${orderId}`),
+    requestBiz<SkinOrderRemote>(`/api/v1/store/skin-orders/${orderId}`),
+  // 皮肤订单验证（biz；与下方会员 verifyPurchase 分流——皮肤所有权归 biz）。
+  verifySkinOrder: (orderId: string, receipt: unknown) => requestBiz<SkinOrderRemote>(
+    '/api/v1/purchases/verify',
+    jsonOptions('POST', { orderId, receipt }),
+  ),
+  // 皮肤恢复购买（biz）：原生 restore 收据补发皮肤权益，返回已拥有皮肤权益键。
+  restoreSkinPurchases: (receipts: unknown[]) => requestBiz<{ entitlements: readonly string[] }>(
+    '/api/v1/purchases/restore',
+    jsonOptions('POST', { receipts }),
+  ),
+  // 已拥有皮肤权益键（skin.official.*）。会员 Plus 键走 auth 的 entitlements()；
+  // 商店/画廊判拥有时聚合两侧。
+  skinEntitlements: () => requestBiz<{ entitlements: readonly string[] }>(
+    '/api/v1/store/skin-entitlements',
+  ),
   // —— LofiCompanion P0-C：好友邀请码/小组/榜单/隐私（docs/04 §3，走 biz-server）——
   // 我的邀请码（幂等，无则生成——服务端为 POST）。
   myInviteCode: () => requestBiz<{ code: string }>('/api/v1/friends/invitations', { method: 'POST' }),
@@ -583,7 +641,9 @@ async function sendRequest<T>(
     throw serviceUnavailableError();
   }
   if (response.status === 401 && !retried && await refreshSession()) {
-    return sendRequest<T>(path, options, true);
+    // 401 重试必须携带原 base：biz 请求刷新 token 后仍要打回 biz，
+    // 否则分离部署时（BIZ_API_URL ≠ API_URL）重试会错打到 auth 基址
+    return sendRequest<T>(path, options, true, base);
   }
   const body = await parseResponse<T>(response);
   if (!response.ok || 'error' in body) {

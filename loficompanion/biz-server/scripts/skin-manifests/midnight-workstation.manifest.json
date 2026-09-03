@@ -1,0 +1,143 @@
+{
+  "slug": "midnight-workstation",
+  "name": "深夜工作台",
+  "nameEn": "Midnight Workstation",
+  "accessType": "paid",
+  "defaultState": "ready",
+  "themeTokens": {
+    "accent": "#8B7FE8",
+    "surface": "#12141F"
+  },
+  "animation": {
+    "crossfadeMs": 500,
+    "focalZoom": 1
+  },
+  "wellness": {
+    "autoDrink": {
+      "enabled": true,
+      "minIntervalMinutes": 20,
+      "maxIntervalMinutes": 32
+    }
+  },
+  "states": [
+    {
+      "state": "ready",
+      "posterUrl": "ready.jpg",
+      "videoUrl": "videos/ready.mp4",
+      "videoLoop": true,
+      "focalPointX": 0.5,
+      "focalPointY": 0.38,
+      "durationMs": 4000
+    },
+    {
+      "state": "focusing",
+      "posterUrl": "focusing.jpg",
+      "videoUrl": "videos/focusing.mp4",
+      "videoLoop": true,
+      "focalPointX": 0.5,
+      "focalPointY": 0.38,
+      "durationMs": 4000
+    },
+    {
+      "state": "paused",
+      "posterUrl": "paused.jpg",
+      "videoUrl": "videos/paused.mp4",
+      "videoLoop": true,
+      "focalPointX": 0.5,
+      "focalPointY": 0.38,
+      "durationMs": 4000
+    },
+    {
+      "state": "drinking",
+      "posterUrl": "drinking.jpg",
+      "videoUrl": "videos/drinking.mp4",
+      "videoLoop": false,
+      "focalPointX": 0.5,
+      "focalPointY": 0.38,
+      "durationMs": 4000
+    },
+    {
+      "state": "resting",
+      "posterUrl": "resting.jpg",
+      "videoUrl": "videos/resting.mp4",
+      "videoLoop": true,
+      "focalPointX": 0.5,
+      "focalPointY": 0.38,
+      "durationMs": 4000
+    },
+    {
+      "state": "completed",
+      "posterUrl": "completed.jpg",
+      "videoUrl": "videos/completed.mp4",
+      "videoLoop": false,
+      "focalPointX": 0.5,
+      "focalPointY": 0.38,
+      "durationMs": 4000
+    }
+  ],
+  "eventMappings": [
+    {
+      "eventType": "session.ready",
+      "priority": 60,
+      "interruptible": true,
+      "cooldownSeconds": 0,
+      "returnState": "ready"
+    },
+    {
+      "eventType": "focus.started",
+      "priority": 80,
+      "interruptible": false,
+      "cooldownSeconds": 0,
+      "returnState": "focusing"
+    },
+    {
+      "eventType": "focus.loop",
+      "priority": 10,
+      "interruptible": true,
+      "cooldownSeconds": 0,
+      "returnState": "focusing"
+    },
+    {
+      "eventType": "wellness.drink",
+      "priority": 70,
+      "interruptible": false,
+      "cooldownSeconds": 60,
+      "returnState": "focusing"
+    },
+    {
+      "eventType": "focus.paused",
+      "priority": 90,
+      "interruptible": true,
+      "cooldownSeconds": 0,
+      "returnState": "paused"
+    },
+    {
+      "eventType": "break.started",
+      "priority": 80,
+      "interruptible": false,
+      "cooldownSeconds": 0,
+      "returnState": "resting"
+    },
+    {
+      "eventType": "focus.resumed",
+      "priority": 90,
+      "interruptible": false,
+      "cooldownSeconds": 0,
+      "returnState": "focusing"
+    },
+    {
+      "eventType": "focus.completed",
+      "priority": 100,
+      "interruptible": false,
+      "cooldownSeconds": 0,
+      "returnState": "ready"
+    }
+  ],
+  "priceMinor": 99,
+  "currency": "USD",
+  "provider": "store",
+  "storeProductIds": {
+    "apple": "tech.zhongbei.loficompanion.theme.midnight",
+    "google": "tech.zhongbei.loficompanion.theme.midnight"
+  }
+}

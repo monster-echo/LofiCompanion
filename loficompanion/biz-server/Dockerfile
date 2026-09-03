@@ -28,6 +28,8 @@ RUN addgroup --system --gid 1001 nodejs \
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Apple 根证书（IAP verify 用；process.cwd()/certs 读取）——无文件时 verify 报未配置
+COPY --from=builder --chown=nextjs:nodejs /app/certs ./certs
 
 USER nextjs
 

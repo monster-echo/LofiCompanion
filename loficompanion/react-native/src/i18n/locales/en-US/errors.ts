@@ -21,4 +21,7 @@ export const errors = {
   requestFailed: 'Request failed',
   badResponse: 'Server returned unrecognized data',
   networkUnreachable: "Can't reach the server — check your connection and retry",
+  // Global error boundary fallback
+  boundaryTitle: 'This page can\'t be displayed right now',
+  boundaryHint: 'The error has been logged — please restart the app.',
 } as const;

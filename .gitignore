@@ -3,3 +3,6 @@
 # Firebase 客户端配置：EAS 经文件环境变量 GOOGLE_SERVICES_JSON 注入，不入 git
 loficompanion/react-native/google-services.json
 loficompanion/react-native/GoogleService-Info.plist
+
+# 本地工具会话目录
+.context/

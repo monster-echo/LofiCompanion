@@ -29,4 +29,20 @@ export const common = {
   unreadNotice: '未读通知：{{title}}',
   notice: '通知：{{title}}',
   unread: '未读',
+  // 主 Tab 标签（doc-08 §1）
+  tabs: {
+    focus: '专注',
+    studyRoom: '自习室',
+    achievements: '成就',
+    profile: '我的',
+  },
+  // 专注统计结果（StudyResultSheet / WeeklyProgressCard）
+  sessionMinutes: '专注 {{n}} 分钟',
+  todayTotal: '今日累计 {{n}} 分钟',
+  weekGoal: '本周目标',
+  weekProgress: '{{done}}/{{target}} 分钟',
+  weekFocusTitle: '本周专注 {{n}} 分钟',
+  weekTargetValue: '目标 {{n}} 分钟',
+  achievementEarned: '获得：{{name}}',
+  offlineBanner: '当前离线，正在使用本地配置 · 点击重试',
 } as const;

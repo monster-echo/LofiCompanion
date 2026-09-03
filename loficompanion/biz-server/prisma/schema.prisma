@@ -217,3 +217,64 @@ model StudyRoomMessage {
   @@index([room_id, id])
   @@map("study_room_messages")
 }
+
+// ── 皮肤商店（P4 自基础设施 auth 迁入；skin.official.* 所有权数据归 biz）────
+
+// 商品行：价格/SKU/权益键是商店目录与门禁依据。provider 是业务启用标识
+//（'mock'=模拟支付仅开发；'store'=原生商店 IAP，验证按客户端平台分流）。
+model SkinProduct {
+  id                String @id
+  skin_id           String @map("skin_id")
+  slug              String
+  skin_name         String @map("skin_name")
+  access_type       String @default("paid") @map("access_type")
+  entitlement_key   String @map("entitlement_key")
+  store_product_ids String @default("{}") @map("store_product_ids")
+  price_minor       Int    @map("price_minor")
+  currency          String @default("USD")
+  status            String @default("active")
+  provider          String @default("store")
+  created_at        String @map("created_at")
+  updated_at        String @map("updated_at")
+
+  @@unique([skin_id])
+  @@map("skin_products")
+}
+
+// 皮肤订单：自包含生命周期（不复用基础设施 orders 表）。同 (user, 幂等键) 同单；
+// status: pending → processing → success | failed（refunded 预留）。
+model SkinOrder {
+  id                   String  @id
+  user_id              String  @map("user_id")
+  skin_id              String  @map("skin_id")
+  entitlement_key      String  @map("entitlement_key")
+  idempotency_key      String  @map("idempotency_key")
+  amount_minor         Int     @map("amount_minor")
+  currency             String
+  provider             String
+  store_product_id     String  @default("") @map("store_product_id")
+  status               String  @default("pending")
+  store_transaction_id String  @default("") @map("store_transaction_id")
+  receipt_hash         String  @default("") @map("receipt_hash")
+  created_at           String  @map("created_at")
+  completed_at         String? @map("completed_at")
+
+  @@unique([user_id, idempotency_key])
+  @@index([user_id, status])
+  @@map("skin_orders")
+}
+
+// 皮肤权益（所有权数据）：皮肤为非消耗型买断，expires_at 恒空（保留列对齐
+// 通用权益形态）；退款撤销置 active=false。
+model SkinEntitlement {
+  id              String  @id
+  user_id         String  @map("user_id")
+  entitlement_key String  @map("entitlement_key")
+  source_order_id String  @map("source_order_id")
+  active          Boolean @default(true)
+  expires_at      String? @map("expires_at")
+  created_at      String  @map("created_at")
+
+  @@unique([user_id, entitlement_key])
+  @@map("skin_entitlements")
+}

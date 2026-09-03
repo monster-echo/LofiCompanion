@@ -51,7 +51,8 @@ export type BillingPlan = Readonly<{
   priceMinor: number;
   originalPriceMinor?: number;
   currency: string;
-  provider: 'mock' | 'apple' | 'google' | 'wechat' | 'alipay';
+  /** 启用标识：'mock'=模拟支付；'store'=原生商店 IAP（客户端按平台分流） */
+  provider: 'mock' | 'store' | 'apple' | 'google' | 'wechat' | 'alipay';
   storeProductMapping?: StoreProductMapping;
 }>;
 
@@ -103,7 +104,6 @@ export type RuntimeConfig = Readonly<{
     locale: 'zh-CN' | 'en-US';
     revision: string;
     title: string;
-    content: string;
     requiresReconsent: boolean;
   }>>;
   settingsPolicy: Readonly<Record<string, Readonly<{

@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppCard, ListRow, PageHeader } from '../design-system/components';
+import { apiClient } from '../data/apiClient';
 import {
   LegalDocument,
   privacyPolicy,
   subscriptionTerms,
   termsOfService,
 } from '../legal/legalDocuments';
-import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { useTranslation } from 'react-i18next';
 import { styles } from '../theme/styles';
@@ -24,35 +24,52 @@ interface ResolvedLegal {
   localeTag: 'zh-CN' | 'en-US';
 }
 
-function useResolvedLegal(type: LegalType): ResolvedLegal {
-  const { config } = useApp();
-  const { locale } = usePreferences();
-  const entry = config.legal.find((doc) => doc.type === type && doc.locale === locale)
-    ?? config.legal.find((doc) => doc.type === type && doc.locale === 'zh-CN');
-  if (entry) {
-    return {
-      title: entry.title,
-      revision: entry.revision,
-      localeTag: entry.locale,
-      sections: [{
-        title: '',
-        paragraphs: entry.content.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean),
-      }],
-    };
-  }
+function bundledResolved(type: LegalType): ResolvedLegal {
   const bundled: LegalDocument =
     type === 'privacy' ? privacyPolicy
       : type === 'terms' ? termsOfService
         : subscriptionTerms;
   return {
     title: bundled.title,
-    revision: '2026-07-30',
+    revision: bundled.effectiveDate,
     localeTag: 'zh-CN',
     sections: bundled.sections.map((section) => ({
       title: section.title,
       paragraphs: section.bullets ? [...section.paragraphs, ...section.bullets] : section.paragraphs,
     })),
   };
+}
+
+/** 法务正文按需读取（P5 启动轻量化）：bootstrap 只带元数据，正文在页面打开时
+ *  经公开通道拉取。挂载即渲染内置文书（零等待、离线可用），服务端版本（语言
+ *  优先级：当前语言 → zh-CN → 首篇）到达后整体替换。 */
+function useResolvedLegal(type: LegalType): ResolvedLegal {
+  const { locale } = usePreferences();
+  const [resolved, setResolved] = useState<ResolvedLegal>(() => bundledResolved(type));
+  useEffect(() => {
+    let mounted = true;
+    setResolved(bundledResolved(type)); // 类型/语言切换先回内置，防止串页残影
+    apiClient.publicLegal({ type })
+      .then(({ docs }) => {
+        if (!mounted || docs.length === 0) return;
+        const entry = docs.find((doc) => doc.locale === locale)
+          ?? docs.find((doc) => doc.locale === 'zh-CN')
+          ?? docs[0];
+        if (!entry) return;
+        setResolved({
+          title: entry.title,
+          revision: entry.revision,
+          localeTag: entry.locale,
+          sections: [{
+            title: '',
+            paragraphs: entry.content.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean),
+          }],
+        });
+      })
+      .catch(() => undefined); // 离线/失败：保留内置文书
+    return () => { mounted = false; };
+  }, [type, locale]);
+  return resolved;
 }
 
 export function LegalIndexScreen() {

@@ -61,7 +61,8 @@ export function SkinGalleryScreen() {
         setProductsBySlug(bySlug);
       } catch { /* 离线浏览：无价格胶囊 */ }
       try {
-        const { keys } = await apiClient.entitlements();
+        // 会员键（auth）∪ 皮肤键（biz）聚合，皮肤判拥有两域都看
+        const keys = await apiClient.ownedEntitlementKeys();
         if (mounted) setEntitlementKeys(keys);
       } catch { /* 未登录/离线：按未拥有处理 */ }
     })();

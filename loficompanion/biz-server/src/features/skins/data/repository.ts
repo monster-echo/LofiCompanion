@@ -1,22 +1,24 @@
 import { Prisma } from '@prisma/client';
 import { ApiError } from '@/lib/http';
 import { getDb } from '@/db';
-import { getServiceToken } from '@/lib/service-token';
 import { AUTH_BASE_URL, getAppId } from '@/env';
 import type { AdminScope } from '@/lib/admin-auth';
 import { signUpload } from './storage';
+import { upsertSkinProduct } from '@/features/store/data/product-repository';
+import { listActiveSkinEntitlementKeys } from '@/features/store/data/entitlement-service';
 
 // 皮肤目录数据访问 + 发布服务（Prisma 搬迁自 loficompanion/server
 // skin-repository / skin-publish-service，docs/04 §3、P0-B/P1-A）：
 // - 目录未登录可浏览（docs/08 S14），路由层不要求鉴权；付费/订阅皮肤的
 //   manifest 按 P1-A 门禁：paid → 需 `skin.official.{slug}` 权益、premium →
 //   需 `catalog.premium.active`（docs/05 §4）。免费皮肤永不设门禁。
-//   biz 差异：无本地商品/权益表 → 权益键用确定性约定（与 auth 侧发布回退
-//   一致），权益查询转发用户 Bearer 到 auth /membership/entitlements。
+//   P4 皮肤商店迁入后门禁本地化：paid 查本地 skin_entitlements（所有权数据
+//   归 biz）；premium 仍转发用户 Bearer 到 auth /membership/entitlements
+//  （Plus 是基础设施会员域）。
 // - 发布：manifest 版本只增不改（docs/04 §2），同 (skin_id, version) 冲突即
 //   409；manifest 内 id/slug/name/accessType/manifestVersion 服务端盖章；
 //   posterUrl 只收裸 objectKey 且必须带本 app 租户前缀（堵租户前缀绕过）。
-//   paid 皮肤发布成功后调 auth 内部端点登记商品行（支付域归 auth）。
+//   paid 皮肤发布成功后本地 upsert 商品行（商店域已随 P4 迁入 biz）。
 
 export interface SkinSummary {
   id: string;
@@ -99,6 +101,7 @@ export async function getCurrentManifest(
   if (skin.access_type !== 'free') {
     await assertSkinEntitlement(skin.slug, skin.access_type, auth);
   }
+
   return {
     skinId: skin.id,
     slug: skin.slug,
@@ -118,12 +121,15 @@ async function assertSkinEntitlement(
   if (!auth) {
     throw new ApiError(401, 'UNAUTHORIZED', '请先登录后再获取付费皮肤');
   }
-  // 确定性权益键约定（biz 无商品表；与 auth 侧发布登记的回退键一致）：
-  // paid → skin.official.{slug}；premium → catalog.premium.active。
+  // 确定性权益键约定：paid → skin.official.{slug}；premium → catalog.premium.active。
   const entitlementKey = accessType === 'premium'
     ? 'catalog.premium.active'
     : `skin.official.${slug}`;
-  const keys = await fetchUserEntitlementKeys(auth.authorization);
+  // P4 商店域迁入：paid 的所有权数据在本地 skin_entitlements；premium 是会员
+  // 域权益，仍转发 auth 查询。
+  const keys = accessType === 'paid'
+    ? await listActiveSkinEntitlementKeys(auth.userId)
+    : await fetchUserEntitlementKeys(auth.authorization);
   if (!keys.includes(entitlementKey)) {
     throw new ApiError(403, 'SKIN_NOT_ENTITLED', `尚未获得皮肤权益：${entitlementKey}`);
   }
@@ -161,6 +167,11 @@ export interface PublishSkinInput {
   currency?: string;
   /** paid 权益键；缺省 `skin.official.{slug}`（与门禁回退逻辑一致） */
   entitlementKey?: string;
+  /** 支付启用标识（auth 商品行）：'mock'=模拟支付；'store'=原生商店 IAP
+   *  （真实适配器由 auth verify 按客户端平台分流）；缺省 mock */
+  provider?: 'mock' | 'store' | 'apple' | 'google' | 'hms';
+  /** 平台商店 SKU 映射（apple/google/hms）；auth upsert 未提供时保留现值 */
+  storeProductIds?: Record<string, string>;
 }
 
 export interface PublishSkinResult {
@@ -172,6 +183,7 @@ export interface PublishSkinResult {
 interface ManifestStateLike {
   state?: unknown;
   posterUrl?: unknown;
+  videoUrl?: unknown;
   focalPointX?: unknown;
   focalPointY?: unknown;
   durationMs?: unknown;
@@ -204,6 +216,23 @@ function validateInput(input: PublishSkinInput): void {
         'INVALID_POSTER_URL',
         `posterUrl 必须以租户前缀 ${tenantPrefix} 开头: ${state.posterUrl}`,
       );
+    }
+    // videoUrl 可选（纯海报状态合法）；携带时与 posterUrl 同纪律：裸 objectKey
+    // + 本 app 租户前缀（发布脚本直传视频后改写为完整 key）。
+    if (state.videoUrl !== undefined) {
+      if (typeof state.videoUrl !== 'string' || state.videoUrl.length === 0) {
+        throw new ApiError(400, 'INVALID_MANIFEST', 'manifest.states[*].videoUrl 必须是非空字符串');
+      }
+      if (/^https?:/i.test(state.videoUrl) || /^s3:\/\//i.test(state.videoUrl)) {
+        throw new ApiError(400, 'INVALID_POSTER_URL', `videoUrl 必须是裸 objectKey: ${state.videoUrl}`);
+      }
+      if (!state.videoUrl.toLowerCase().startsWith(tenantPrefix)) {
+        throw new ApiError(
+          400,
+          'INVALID_POSTER_URL',
+          `videoUrl 必须以租户前缀 ${tenantPrefix} 开头: ${state.videoUrl}`,
+        );
+      }
     }
     if (
       typeof state.focalPointX !== 'number' ||
@@ -240,38 +269,24 @@ export async function signSkinAssetUpload(
   });
 }
 
-/** paid 皮肤商品行登记（支付域归 auth）：发布事务提交后调用；失败抛 502
- *  STORE_REGISTRATION_FAILED（可重试）——发布已落库，重发只会 bump 版本。 */
+/** paid 皮肤商品行登记（P4 起商店域在 biz：本地 upsert，不再远调 auth）。 */
 async function registerPaidProduct(
   skinId: string,
   input: PublishSkinInput,
 ): Promise<void> {
-  const token = await getServiceToken('store:write');
-  let response: Response;
-  try {
-    response = await fetch(`${AUTH_BASE_URL}/api/v1/internal/store/skin-products`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        skinId,
-        slug: input.slug,
-        skinName: input.name,
-        accessType: 'paid',
-        entitlementKey: input.entitlementKey ?? `skin.official.${input.slug}`,
-        priceMinor: input.priceMinor ?? 0,
-        currency: input.currency ?? 'CNY',
-      }),
-      cache: 'no-store',
-    });
-  } catch {
-    throw new ApiError(502, 'STORE_REGISTRATION_FAILED', '商品目录登记失败，请重试发布', true);
-  }
-  if (!response.ok) {
-    throw new ApiError(502, 'STORE_REGISTRATION_FAILED', '商品目录登记失败，请重试发布', true);
-  }
+  await upsertSkinProduct({
+    skinId,
+    slug: input.slug,
+    skinName: input.name,
+    accessType: 'paid',
+    entitlementKey: input.entitlementKey ?? `skin.official.${input.slug}`,
+    priceMinor: input.priceMinor ?? 0,
+    currency: input.currency ?? 'USD',
+    ...(input.provider !== undefined ? { provider: input.provider } : {}),
+    ...(input.storeProductIds !== undefined
+      ? { storeProductIds: input.storeProductIds }
+      : {}),
+  });
 }
 
 export async function publishSkin(

@@ -127,7 +127,7 @@ export function LeaderboardHomeScreen() {
       setGroupName('');
       await adoptGroup(created, t('groupCreated', { name: created.name }));
     } catch (error) {
-      showToast(error instanceof Error ? error.message : '创建失败', 'error');
+      showToast(error instanceof Error ? error.message : t('createFailed'), 'error');
     } finally {
       setGroupBusy(false);
     }
@@ -135,7 +135,7 @@ export function LeaderboardHomeScreen() {
   const joinGroupByCode = async () => {
     const code = joinCode.trim();
     if (!code || groupBusy) {
-      if (!code) showToast('输入小组加入码', 'info');
+      if (!code) showToast(t('joinGroupPlaceholder'), 'info');
       return;
     }
     setGroupBusy(true);
@@ -144,7 +144,7 @@ export function LeaderboardHomeScreen() {
       setJoinCode('');
       await adoptGroup(joined, t('groupJoined', { name: joined.name }));
     } catch (error) {
-      showToast(error instanceof Error ? error.message : '加入失败', 'error');
+      showToast(error instanceof Error ? error.message : t('joinFailed'), 'error');
     } finally {
       setGroupBusy(false);
     }
@@ -554,7 +554,7 @@ function LoadingHint() {
   const styles = useThemeStyles(makeStyles);
   return (
     <View style={styles.stateWrap}>
-      <Text style={styles.stateText}>正在加载…</Text>
+      <Text style={styles.stateText}>{t('loading')}</Text>
     </View>
   );
 }

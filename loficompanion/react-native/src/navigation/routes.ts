@@ -56,5 +56,4 @@ export type AppRoute =
   | 'settings.subscriptionTerms'
   | 'settings.about'
   | 'settings.deleteAccount'
-  | 'notifications.center'
-  | 'states.gallery';
+  | 'notifications.center';

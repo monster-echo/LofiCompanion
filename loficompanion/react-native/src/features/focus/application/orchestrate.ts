@@ -144,6 +144,8 @@ export interface FocusController {
   complete(now: number): void;
   abandon(now: number): void;
   selectSkin(skinId: string): void;
+  /** 远端皮肤目录到达后的重挂载：可解析上次选择时自动切回 */
+  reattachSkinCatalog(): void;
   tick(now: number): void;
   acknowledgeCompletions(): void;
   setReducedMotion(reducedMotion: boolean): void;
@@ -514,6 +516,13 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     void track(repo.clearActive()).catch(noop);
   }
 
+  /** 远端目录就位后的重挂载（P2 皮肤云端化）：上次选择的皮肤现在可解析时切回
+   *  （冷启动时远端未就绪暂落默认皮肤；目录到达由 FocusStore 调用本方法）。 */
+  function reattachSkinCatalog(): void {
+    const target = resolveManifest(state.selectedSkinId) ?? registry()[0];
+    if (target && target.id !== currentManifest.id) selectSkin(target.id);
+  }
+
   function selectSkin(skinId: string): void {
     // 注册表未命中的 id 直接忽略（防止选中无清单的皮肤）
     const target = resolveManifest(skinId);
@@ -592,6 +601,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     complete,
     abandon,
     selectSkin,
+    reattachSkinCatalog,
     tick,
     acknowledgeCompletions,
     setReducedMotion,

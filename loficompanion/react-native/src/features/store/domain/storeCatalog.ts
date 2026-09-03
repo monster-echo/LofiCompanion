@@ -11,14 +11,14 @@ import type { SkinOrderRemote, SkinProductRemote } from '../../../data/apiClient
 export type StoreAccessType = 'free' | 'paid' | 'premium';
 
 export interface StoreSkinCard {
-  /** 服务端 skin id（skin-{slug}）；内置免费皮肤用本地清单 id */
+  /** 服务端 skin id（skin-{slug}）；本地清单皮肤用清单 id */
   skinId: string;
   slug: string;
   name: string;
   accessType: StoreAccessType;
-  /** 包含状态数（卡片展示「6 个状态」） */
-  stateCount: number;
-  /** 价格标签文案（paid：¥X；free/premium 为 null——Plus 标签由 UI 按 accessType 渲染） */
+  /** 包含状态数（皮肤清单未就位为 null——卡片隐藏状态行） */
+  stateCount: number | null;
+  /** 价格标签文案（paid：¥X/$X；free/premium 为 null——Plus 标签由 UI 按 accessType 渲染） */
   priceLabel: string | null;
   owned: boolean;
   inUse: boolean;
@@ -30,7 +30,7 @@ export interface StoreSections {
   premium: readonly StoreSkinCard[];
 }
 
-/** 本地内置皮肤的最小描述（域层不依赖 manifest 渲染） */
+/** 本地免费内置皮肤的最小描述（域层不依赖 manifest 渲染） */
 export interface LocalSkinInfo {
   id: string;
   slug: string;
@@ -40,17 +40,20 @@ export interface LocalSkinInfo {
 
 export type BuildCardsInput = Readonly<{
   products: readonly SkinProductRemote[];
-  /** 本地内置皮肤（全免费、已拥有；免费区头部按此顺序展示） */
+  /** 本地清单免费皮肤（已拥有；免费区头部按此顺序展示；付费皮肤由调用方
+   *  留给服务端商品行，价格/权益判定以服务端为唯一来源） */
   localSkins: readonly LocalSkinInfo[];
   /** 已登录用户的服务端权益键（未登录为空数组——未登录可浏览，仅本地免费皮肤视为已拥有） */
   ownedKeys: readonly string[];
   /** 当前使用中的皮肤 slug（本地选择仓储） */
   selectedSkinSlug: string;
+  /** slug → 真实状态数（皮肤注册表解析；未命中卡片隐藏状态行） */
+  stateCountFor?: (slug: string) => number | undefined;
 }>;
 
-/** 分单价签：1200 分 CNY → ¥12；非整数分保留两位（¥12.50）。 */
+/** 分单价签：1200 分 CNY → ¥12；99 分 USD → $0.99；其余币种带 ISO 码前缀。 */
 export function formatPrice(priceMinor: number, currency: string): string {
-  const symbol = currency === 'CNY' ? '¥' : `${currency} `;
+  const symbol = currency === 'CNY' ? '¥' : currency === 'USD' ? '$' : `${currency} `;
   const value = priceMinor / 100;
   const text = Number.isInteger(value) ? String(value) : value.toFixed(2);
   return `${symbol}${text}`;
@@ -72,7 +75,7 @@ export function buildStoreSections(input: BuildCardsInput): StoreSections {
       slug: product.slug,
       name: product.skinName,
       accessType,
-      stateCount: 6,
+      stateCount: input.stateCountFor?.(product.slug) ?? null,
       priceLabel: accessType === 'paid'
         ? formatPrice(product.priceMinor, product.currency)
         : null,
@@ -81,7 +84,7 @@ export function buildStoreSections(input: BuildCardsInput): StoreSections {
     };
   });
 
-  // 本地内置免费皮肤排在免费区头部（已拥有；使用中标记跟随本地选择）
+  // 本地清单免费皮肤排在免费区头部（已拥有；使用中标记跟随本地选择）
   const localCards = input.localSkins.map<StoreSkinCard>((skin) => ({
     skinId: skin.id,
     slug: skin.slug,

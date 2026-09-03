@@ -1,0 +1,17 @@
+{
+  "name": "loficompanion-video-gen",
+  "private": true,
+  "version": "1.0.0",
+  "description": "MiniMax H3 皮肤海报 → 可循环氛围视频 生成管线",
+  "type": "module",
+  "bin": {
+    "video-gen": "./generate.js"
+  },
+  "scripts": {
+    "gen": "node generate.js",
+    "dry": "node generate.js --dry-run"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

@@ -21,4 +21,7 @@ export const errors = {
   requestFailed: '服务请求失败',
   badResponse: '服务返回了无法识别的数据',
   networkUnreachable: '无法连接服务器，请检查网络后重试',
+  // 全局错误边界兜底
+  boundaryTitle: '页面暂时无法显示',
+  boundaryHint: '错误已经记录，请重新启动应用。',
 } as const;

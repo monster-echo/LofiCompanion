@@ -5,6 +5,7 @@ import { createNativeBottomTabNavigator } from '@react-navigation/bottom-tabs/un
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { ImageSourcePropType } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
+import { useTranslation } from 'react-i18next';
 import type { RootParamList } from './navigationRef';
 
 import { AuthScreen, AuthMode } from '../screens/AuthScreens';
@@ -25,7 +26,6 @@ import {
   SubscriptionTermsScreen,
   TermsOfServiceScreen,
 } from '../screens/LegalScreens';
-import { StateGalleryScreen } from '../screens/StateGalleryScreen';
 import { AboutScreen, NotificationsScreen, OrdersScreen } from '../screens/DataScreens';
 import { SupportHomeScreen, TicketDetailScreen } from '../screens/SupportScreens';
 import { NewTicketScreen, ProductFeedbackScreen } from '../screens/SupportFormScreens';
@@ -69,8 +69,8 @@ type TabDef = Readonly<{
   sfIdle: SFSymbol;
   /** Android 原生 Tab 图标：三倍图位图，原生按 active/inactive tint 自动染色 */
   image: ImageSourcePropType;
-  zh: string;
-  en: string;
+  /** 标签文案 key（common ns `tabs.*`，随界面语言切换） */
+  labelKey: 'focus' | 'studyRoom' | 'achievements' | 'profile';
 }>;
 
 // doc-08 §1：主 Tab 根页——专注 / 自习室 / 成就 / 我的（排行暂不提供）
@@ -81,8 +81,7 @@ const TABS: readonly TabDef[] = [
     sfFocused: 'drop.fill',
     sfIdle: 'drop',
     image: require('../../assets/icons/tabbar/droplet.png'),
-    zh: '专注',
-    en: 'Focus',
+    labelKey: 'focus',
   },
   {
     name: 'studyroom.home',
@@ -90,8 +89,7 @@ const TABS: readonly TabDef[] = [
     sfFocused: 'person.2.fill',
     sfIdle: 'person.2',
     image: require('../../assets/icons/tabbar/studyroom.png'),
-    zh: '自习室',
-    en: 'Study Room',
+    labelKey: 'studyRoom',
   },
   {
     name: 'achievements.home',
@@ -99,8 +97,7 @@ const TABS: readonly TabDef[] = [
     sfFocused: 'bookmark.fill',
     sfIdle: 'bookmark',
     image: require('../../assets/icons/tabbar/bookmark.png'),
-    zh: '成就',
-    en: 'Achievements',
+    labelKey: 'achievements',
   },
   {
     name: 'profile.home',
@@ -108,8 +105,7 @@ const TABS: readonly TabDef[] = [
     sfFocused: 'person.fill',
     sfIdle: 'person',
     image: require('../../assets/icons/tabbar/user.png'),
-    zh: '我的',
-    en: 'Me',
+    labelKey: 'profile',
   },
 ];
 
@@ -121,7 +117,8 @@ const TABS: readonly TabDef[] = [
  * 图标：iOS 用 SF Symbols（选中实心、未选中描边）；Android 用位图原生染色。
  */
 function MainTabs() {
-  const { locale, palette } = usePreferences();
+  const { palette } = usePreferences();
+  const { t } = useTranslation('common');
   return (
     <NativeTab.Navigator
       initialRouteName="home"
@@ -137,7 +134,7 @@ function MainTabs() {
           name={tab.name}
           component={TAB_COMPONENTS[tab.name]}
           options={{
-            tabBarLabel: locale === 'en-US' ? tab.en : tab.zh,
+            tabBarLabel: t(`tabs.${tab.labelKey}`),
             tabBarIcon: ({ focused }) =>
               Platform.OS === 'ios'
                 ? { type: 'sfSymbol', name: focused ? tab.sfFocused : tab.sfIdle }
@@ -172,19 +169,21 @@ function AuthRoute() {
   return <AuthScreen mode={AUTH_MODES[route.name] ?? 'signIn'} />;
 }
 
-const PREF_KIND: Record<string, { kind: PreferenceKind; title: string }> = {
-  'settings.notifications': { kind: 'notifications', title: '通知设置' },
-  'settings.general': { kind: 'general', title: '通用设置' },
-  'settings.privacy': { kind: 'privacy', title: '隐私设置' },
-  'settings.appearance': { kind: 'appearance', title: '外观主题' },
-  'settings.language': { kind: 'language', title: '语言' },
+// 偏好设置页标题走 settings ns（与设置列表入口文案同 key，单一来源）
+const PREF_KIND: Record<string, { kind: PreferenceKind; titleKey: 'notifications' | 'general' | 'privacy' | 'appearance' | 'language' }> = {
+  'settings.notifications': { kind: 'notifications', titleKey: 'notifications' },
+  'settings.general': { kind: 'general', titleKey: 'general' },
+  'settings.privacy': { kind: 'privacy', titleKey: 'privacy' },
+  'settings.appearance': { kind: 'appearance', titleKey: 'appearance' },
+  'settings.language': { kind: 'language', titleKey: 'language' },
 };
 
 function PreferenceRoute() {
   const route = useRoute();
+  const { t } = useTranslation('settings');
   const cfg = PREF_KIND[route.name];
   return (
-    <PreferenceScreen kind={cfg?.kind ?? 'general'} title={cfg?.title ?? ''} />
+    <PreferenceScreen kind={cfg?.kind ?? 'general'} title={cfg ? t(cfg.titleKey) : ''} />
   );
 }
 
@@ -291,7 +290,6 @@ export function RootNavigator() {
       <Stack.Screen name="support.feedback" component={ProductFeedbackScreen} />
       <Stack.Screen name="settings.about" component={AboutScreen} />
       <Stack.Screen name="settings.deleteAccount" component={DeleteAccountScreen} />
-      <Stack.Screen name="states.gallery" component={StateGalleryScreen} />
     </Stack.Navigator>
   );
 }

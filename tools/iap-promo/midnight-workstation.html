@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  /* App Store Connect IAP 促销图（1024×1024，不透明）。
+     重新生成：Chrome headless 截图本文件（见同目录 README 命令）。
+     刻意不标价格——ASC 各区价格不同，促销图不放价。 */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1024px; height: 1024px; background: #0d0f1a; overflow: hidden; }
+  .stage { position: relative; width: 1024px; height: 1024px; }
+  .art {
+    position: absolute; inset: 0;
+    width: 1024px; height: 1024px;
+    object-fit: cover;
+    /* 1290×2796 竖版海报的方形取景：人脸落在上三分线（原 crop top≈720） */
+    object-position: 50% 48%;
+  }
+  .scrim {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(180deg, rgba(8,10,24,0) 52%, rgba(8,10,24,0.62) 76%, rgba(8,10,24,0.92) 100%),
+      linear-gradient(0deg, rgba(8,10,24,0.22), rgba(8,10,24,0) 22%);
+  }
+  .text { position: absolute; left: 72px; right: 72px; bottom: 64px; }
+  .accent {
+    width: 56px; height: 8px; border-radius: 4px;
+    background: #8B7FE8; /* 皮肤 themeTokens.accent */
+    margin-bottom: 28px;
+  }
+  .name {
+    font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", sans-serif;
+    font-size: 92px; font-weight: 700; color: #ffffff;
+    letter-spacing: 4px; line-height: 1.1;
+    text-shadow: 0 4px 24px rgba(0,0,0,0.45);
+  }
+  .name-en {
+    margin-top: 16px;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+    font-size: 30px; font-weight: 500; color: rgba(255,255,255,0.78);
+    letter-spacing: 10px; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <img class="art" src="file:///Volumes/MacMiniDisk/workspace/LofiCompanion/loficompanion/react-native/assets/skins/midnight-workstation/ready.jpg">
+    <div class="scrim"></div>
+    <div class="text">
+      <div class="accent"></div>
+      <div class="name">深夜工作台</div>
+      <div class="name-en">Midnight Workstation</div>
+    </div>
+  </div>
+</body>
+</html>

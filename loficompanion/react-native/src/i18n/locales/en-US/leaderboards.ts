@@ -102,4 +102,8 @@ export const leaderboards = {
   settlementViewRoom: 'View room',
   settlementNextWeek: 'Continue next week',
   settlementPending: 'Last week’s settlement isn’t ready yet',
+  // Group create/join fallbacks and generic loading state
+  createFailed: "Couldn't create the group",
+  joinFailed: "Couldn't join the group",
+  loading: 'Loading…',
 } as const;

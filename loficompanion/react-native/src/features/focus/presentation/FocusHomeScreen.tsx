@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   AccessibilityInfo,
   Pressable,
@@ -7,8 +7,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { CompanionState } from "../../skins/domain/types";
-import { BUILT_IN_SKINS } from "../../skins/domain/registry";
+import { apiClient } from "../../../data/apiClient";
+import type { SkinProductRemote } from "../../../data/apiClient";
+import type { CompanionState, SkinManifest } from "../../skins/domain/types";
 import { ImmersiveMediaSurface } from "../../skins/presentation/ImmersiveMediaSurface";
 import { AppIcon } from "../../../design-system/AppIcon";
 import { formatTimerSeconds } from "../../../design-system/FocusTimerRing";
@@ -31,24 +32,67 @@ export function FocusHomeScreen() {
   const { palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
   const focus = useFocus();
-  const { navigate, showToast } = useApp();
+  const { navigate, showToast, user } = useApp();
   const { t: tSkin } = useTranslation('skins');
   const { t } = useTranslation('focus');
   const insets = useSafeAreaInsets();
   const active = focus.activeSession;
   const firstRun = focus.today.minutes === 0 && focus.today.sessions === 0;
 
-  // 快切环绕：按注册表顺序 ±1，未选中过/数据异常从首位起算
+  // 快切判锁数据：公开商品目录 +（已登录时）权益键。拉取失败降级为不判锁
+  // （快切不被网络状态卡住；付费购买路径仍由画廊/商店详情把关）。
+  const [productsBySlug, setProductsBySlug] = useState<
+    Readonly<Record<string, SkinProductRemote>>
+  >({});
+  const [ownedKeys, setOwnedKeys] = useState<readonly string[]>([]);
+  const [ownedKnown, setOwnedKnown] = useState(user === null);
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      try {
+        const { products } = await apiClient.skinProducts();
+        if (!mounted) return;
+        const bySlug: Record<string, SkinProductRemote> = {};
+        for (const product of products) bySlug[product.slug] = product;
+        setProductsBySlug(bySlug);
+      } catch { /* 离线：无法判锁，快切保持可用 */ }
+      if (user === null) return;
+      try {
+        // 会员键（auth）∪ 皮肤键（biz）聚合，快切判锁两域都看
+        const keys = await apiClient.ownedEntitlementKeys();
+        if (!mounted) return;
+        setOwnedKeys(keys);
+        setOwnedKnown(true);
+      } catch { /* 权益未知：不判锁 */ }
+    })();
+    return () => { mounted = false; };
+  }, [user]);
+
+  // 未拥有的付费皮肤（未登录恒锁；登录后以权益键为准，未知时不判锁）
+  const isLocked = (skin: SkinManifest): boolean => {
+    if (skin.accessType !== "paid") return false;
+    if (user === null) return true;
+    if (!ownedKnown) return false;
+    const product = productsBySlug[skin.slug];
+    return product !== undefined && !ownedKeys.includes(product.entitlementKey);
+  };
+
+  // 快切环绕：按注册表顺序（内置默认 + 已拉取的云端皮肤）±1，未选中过/数据
+  // 异常从首位起算；跳过判锁皮肤
   const cycleSkin = (step: 1 | -1) => {
-    const total = BUILT_IN_SKINS.length;
+    const total = focus.skins.length;
     if (total < 2) return;
     const at = Math.max(
       0,
-      BUILT_IN_SKINS.findIndex((skin) => skin.id === focus.selectedSkinId),
+      focus.skins.findIndex((skin) => skin.id === focus.selectedSkinId),
     );
-    const next = BUILT_IN_SKINS[(at + step + total) % total];
-    focus.actions.selectSkin(next.id);
-    AccessibilityInfo.announceForAccessibility(next.name);
+    for (let i = 1; i <= total; i += 1) {
+      const next = focus.skins[((at + step * i) % total + total) % total];
+      if (isLocked(next)) continue;
+      focus.actions.selectSkin(next.id);
+      AccessibilityInfo.announceForAccessibility(next.name);
+      return;
+    }
   };
 
   // 有会话时媒体跟随陪伴状态（暂停/喝水动作可见）；无会话回 ready 基态
@@ -98,8 +142,8 @@ export function FocusHomeScreen() {
           />
         </Pressable>
 
-        {/* 右上皮肤快切（doc-08 §3）：≥2 套内置皮肤才显示，浮于媒体入口之上 */}
-        {BUILT_IN_SKINS.length > 1 && (
+        {/* 右上皮肤快切（doc-08 §3）：≥2 套可用皮肤才显示，浮于媒体入口之上 */}
+        {focus.skins.length > 1 && (
           <View style={styles.skinSwitcher} pointerEvents="box-none">
             <Pressable
               accessibilityRole="button"

@@ -10,6 +10,7 @@ import { useStudyRoom } from '../application/StudyRoomStore';
  * 弹幕是瞬态内容，不走 React 状态树——订阅 controller.onDanmaku 起 onAnimation
  * 滚动子弹；车道分配/并发上限在 ref 侧维护，避免高频 setState。
  * 减少动态：不横移，就位淡入淡出（doc-07 §10 精神）。
+ * band：弹幕带纵向位置三档（顶部/中部/底部），由快捷设置切换。
  */
 
 const LANE_COUNT = 5;
@@ -20,18 +21,32 @@ const HISTORY_MAX = 10;
 const CONCURRENT_LIMIT = 20;
 const CHAR_PX = 14; // 全角字≈fontSize，估算宽已按 0.55 折算半角
 
+export type DanmakuBand = 'top' | 'center' | 'bottom';
+
+/** 三档位置占屏高比例：顶部避开左上房间名/状态 chip，中部是原默认 */
+const BAND_TOP_RATIO: Record<DanmakuBand, number> = {
+  top: 0.2,
+  center: 0.36,
+  bottom: 0.62,
+};
+/** 底档下缘净空：输入条（min 92 + 44 高）+ 间距，小屏把弹幕带往上收 */
+const BAND_BOTTOM_CLEARANCE = 160;
+
 interface Bullet {
   readonly key: number;
   readonly text: string;
-  readonly nickname: string;
   readonly lane: number;
   readonly widthPx: number;
   readonly anim: Animated.Value;
+  readonly fade: Animated.Value;
 }
 
-export function DanmakuLayer({ reducedMotion }: Readonly<{ reducedMotion: boolean }>) {
+export function DanmakuLayer({
+  reducedMotion,
+  band = 'center',
+}: Readonly<{ reducedMotion: boolean; band?: DanmakuBand }>) {
   const controller = useStudyRoom();
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [bullets, setBullets] = useState<readonly Bullet[]>([]);
   const laneSlots = useRef<Array<{ lastStartMs: number } | null>>(
     Array.from({ length: LANE_COUNT }, () => null),
@@ -48,7 +63,7 @@ export function DanmakuLayer({ reducedMotion }: Readonly<{ reducedMotion: boolea
       setBullets((prev) => prev.filter((bullet) => bullet.key !== key));
     };
 
-    const spawn = (message: { content: string; nickname: string }) => {
+    const spawn = (message: { content: string }) => {
       if (cancelled) return;
       // 并发上限：丢最旧（动画收尾直接移除，不等其自然完成）
       const overflow = bulletsRef.current.length - CONCURRENT_LIMIT + 1;
@@ -61,23 +76,30 @@ export function DanmakuLayer({ reducedMotion }: Readonly<{ reducedMotion: boolea
       keyRef.current += 1;
       const key = keyRef.current;
       const anim = new Animated.Value(0);
-      const bullet: Bullet = { key, text: message.content, nickname: message.nickname, lane, widthPx, anim };
+      const fade = new Animated.Value(0);
+      const bullet: Bullet = {
+        key,
+        text: message.content,
+        lane,
+        widthPx,
+        anim,
+        fade,
+      };
       setBullets((prev) => [...prev, bullet]);
-      if (reducedMotion) {
-        // 就位淡入淡出，无横移
-        Animated.sequence([
-          Animated.timing(anim, { toValue: 1, duration: 200, useNativeDriver: true }),
-          Animated.delay(3600),
-          Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }),
-        ]).start(() => removeBullet(key));
-        return;
-      }
+      // 透明度独立于横移：进场 200ms 拉满、结尾 200ms 淡出，滚动全程文字不透明
+      //（此前 opacity 复用横移进度，0→1 跑满 9s，弹幕大半行程都是半透明）
+      Animated.sequence([
+        Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.delay(reducedMotion ? 3600 : SCROLL_MS - 400),
+        Animated.timing(fade, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start(() => removeBullet(key));
+      if (reducedMotion) return; // 就位淡入淡出，无横移
       Animated.timing(anim, {
         toValue: 1,
         duration: SCROLL_MS,
         easing: Easing.linear,
         useNativeDriver: true,
-      }).start(() => removeBullet(key));
+      }).start();
     };
 
     const pendingHistory: { current: DanmakuMessage[] } = { current: [] };
@@ -112,7 +134,11 @@ export function DanmakuLayer({ reducedMotion }: Readonly<{ reducedMotion: boolea
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controller, reducedMotion]);
 
-  const bandTop = '36%' as const;
+  const bandHeight = LANE_COUNT * LANE_HEIGHT;
+  const bandTop = Math.min(
+    Math.round(screenHeight * BAND_TOP_RATIO[band]),
+    screenHeight - bandHeight - BAND_BOTTOM_CLEARANCE,
+  );
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -127,12 +153,9 @@ export function DanmakuLayer({ reducedMotion }: Readonly<{ reducedMotion: boolea
           return (
             <Animated.View
               key={bullet.key}
-              style={[styles.bullet, { top: bullet.lane * LANE_HEIGHT, opacity: bullet.anim, transform: [{ translateX }] }]}
+              style={[styles.bullet, { top: bullet.lane * LANE_HEIGHT, opacity: bullet.fade, transform: [{ translateX }] }]}
             >
               <Text style={styles.bulletText} numberOfLines={1}>
-                {bullet.nickname !== '' ? (
-                  <Text style={styles.bulletNickname}>{bullet.nickname}：</Text>
-                ) : null}
                 {bullet.text}
               </Text>
             </Animated.View>
@@ -148,7 +171,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    height: LANE_COUNT * 30,
+    height: LANE_COUNT * LANE_HEIGHT,
   },
   bullet: {
     position: 'absolute',
@@ -162,11 +185,6 @@ const styles = StyleSheet.create({
   },
   bulletText: {
     color: semantic.textPrimary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  bulletNickname: {
-    color: semantic.textMuted,
     fontSize: 14,
     lineHeight: 20,
   },

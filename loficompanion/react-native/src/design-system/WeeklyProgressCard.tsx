@@ -53,9 +53,9 @@ export function WeeklyProgressCard({
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.title}>本周专注 {weekMinutes} 分钟</Text>
+        <Text style={styles.title}>{t('weekFocusTitle', { n: weekMinutes })}</Text>
         {targetMinutes > 0 ? (
-          <Text style={styles.target}>目标 {targetMinutes} 分钟</Text>
+          <Text style={styles.target}>{t('weekTargetValue', { n: targetMinutes })}</Text>
         ) : null}
       </View>
       <View style={styles.chart} onLayout={onLayout}>

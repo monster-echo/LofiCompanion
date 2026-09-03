@@ -16,6 +16,13 @@ const LOCAL: LocalSkinInfo = {
   stateCount: 6,
 };
 
+const CLOUD_SUNNY: LocalSkinInfo = {
+  id: 'sunny-classroom-v2',
+  slug: 'sunny-classroom',
+  name: 'Sunny Classroom',
+  stateCount: 6,
+};
+
 function product(overrides: Partial<SkinProductRemote>): SkinProductRemote {
   return {
     id: 'skin-product-x',
@@ -32,21 +39,27 @@ function product(overrides: Partial<SkinProductRemote>): SkinProductRemote {
   };
 }
 
-const SUNNY = product({
-  id: 'skin-product-sunny-classroom',
-  skinId: 'skin-sunny-classroom',
-  slug: 'sunny-classroom',
-  skinName: '阳光教室',
-  accessType: 'paid',
-  entitlementKey: 'skin.official.sunny-classroom',
-  priceMinor: 1200,
-});
-
+// 生产形态（docs/05 §8）：深夜工作台 $0.99 单买，IAP 商品 ID 双端同配
 const MIDNIGHT = product({
   id: 'skin-product-midnight-workstation',
   skinId: 'skin-midnight-workstation',
   slug: 'midnight-workstation',
   skinName: '深夜工作台',
+  accessType: 'paid',
+  entitlementKey: 'skin.official.midnight-workstation',
+  storeProductIds: {
+    apple: 'tech.zhongbei.loficompanion.theme.midnight',
+    google: 'tech.zhongbei.loficompanion.theme.midnight',
+  },
+  priceMinor: 99,
+  currency: 'USD',
+});
+
+const PREMIUM_PACK = product({
+  id: 'skin-product-plus-pack',
+  skinId: 'skin-plus-pack',
+  slug: 'plus-pack',
+  skinName: 'Plus 精选包',
   accessType: 'premium',
   entitlementKey: 'catalog.premium.active',
   priceMinor: 1800,
@@ -61,59 +74,76 @@ describe('formatPrice', () => {
     expect(formatPrice(1250, 'CNY')).toBe('¥12.50');
   });
 
-  it('非 CNY 币种带币种前缀', () => {
-    expect(formatPrice(990, 'USD')).toBe('USD 9.90');
+  it('USD 用 $ 符号（$0.99 单买皮肤）', () => {
+    expect(formatPrice(99, 'USD')).toBe('$0.99');
+    expect(formatPrice(990, 'USD')).toBe('$9.90');
+  });
+
+  it('其他币种带 ISO 码前缀', () => {
+    expect(formatPrice(450, 'EUR')).toBe('EUR 4.50');
   });
 });
 
 describe('buildStoreSections', () => {
-  it('三分区：本地免费皮肤排首位，付费/Plus 按服务端目录', () => {
+  it('三分区：本地清单免费皮肤排首位，付费/Plus 按服务端目录', () => {
     const sections = buildStoreSections({
-      products: [SUNNY, MIDNIGHT],
-      localSkins: [LOCAL],
+      products: [MIDNIGHT, PREMIUM_PACK],
+      localSkins: [LOCAL, CLOUD_SUNNY],
       ownedKeys: [],
       selectedSkinSlug: 'rainy-study-room',
     });
-    expect(sections.free.map((c) => c.slug)).toEqual(['rainy-study-room']);
-    expect(sections.paid.map((c) => c.slug)).toEqual(['sunny-classroom']);
-    expect(sections.premium.map((c) => c.slug)).toEqual(['midnight-workstation']);
+    expect(sections.free.map((c) => c.slug)).toEqual(['rainy-study-room', 'sunny-classroom']);
+    expect(sections.paid.map((c) => c.slug)).toEqual(['midnight-workstation']);
+    expect(sections.premium.map((c) => c.slug)).toEqual(['plus-pack']);
   });
 
-  it('多套本地内置皮肤按序排在免费区头部（doc-01 PRD：三套全免费）', () => {
+  it('付费皮肤（深夜工作台）走服务端商品行：paid 分区 + 权益键判拥有 + $0.99 价签', () => {
+    // 生产形态：localSkins 只传免费皮肤（内置默认 + 已拉取云端免费）；midnight
+    // 由商品行进「永久购买」区，价格与权益判定以服务端为唯一来源
     const sections = buildStoreSections({
-      products: [],
-      localSkins: [
-        LOCAL,
-        { id: 'sunny-classroom-v1', slug: 'sunny-classroom', name: '阳光教室', stateCount: 6 },
-        { id: 'midnight-workstation-v1', slug: 'midnight-workstation', name: '深夜工作台', stateCount: 6 },
-      ],
-      ownedKeys: [],
-      selectedSkinSlug: 'sunny-classroom',
+      products: [MIDNIGHT],
+      localSkins: [LOCAL],
+      ownedKeys: ['skin.official.midnight-workstation'],
+      selectedSkinSlug: 'rainy-study-room',
     });
-    expect(sections.free.map((c) => c.slug)).toEqual([
-      'rainy-study-room',
-      'sunny-classroom',
-      'midnight-workstation',
-    ]);
-    expect(sections.free[1]).toMatchObject({ owned: true, inUse: true, priceLabel: null });
-    expect(sections.paid).toEqual([]);
-    expect(sections.premium).toEqual([]);
+    expect(sections.paid.map((c) => c.slug)).toEqual(['midnight-workstation']);
+    expect(sections.paid[0]).toMatchObject({ owned: true, priceLabel: '$0.99' });
+    expect(sections.free.map((c) => c.slug)).toEqual(['rainy-study-room']);
   });
 
-  it('免费皮肤始终已拥有且无价格标签；付费卡价格来自服务端（¥12）', () => {
+  it('stateCountFor 命中真实状态数；未命中为 null（卡片隐藏状态行）', () => {
     const sections = buildStoreSections({
-      products: [SUNNY],
+      products: [MIDNIGHT],
+      localSkins: [LOCAL],
+      ownedKeys: [],
+      selectedSkinSlug: '',
+      stateCountFor: (slug) => (slug === 'midnight-workstation' ? 6 : undefined),
+    });
+    expect(sections.paid[0]!.stateCount).toBe(6);
+    expect(sections.free[0]!.stateCount).toBe(6); // 本地清单自带
+    const unknown = buildStoreSections({
+      products: [MIDNIGHT],
+      localSkins: [],
+      ownedKeys: [],
+      selectedSkinSlug: '',
+    });
+    expect(unknown.paid[0]!.stateCount).toBeNull();
+  });
+
+  it('免费皮肤始终已拥有且无价格标签；付费卡价格来自服务端', () => {
+    const sections = buildStoreSections({
+      products: [MIDNIGHT],
       localSkins: [LOCAL],
       ownedKeys: [],
       selectedSkinSlug: 'rainy-study-room',
     });
     expect(sections.free[0]).toMatchObject({ owned: true, inUse: true, priceLabel: null });
-    expect(sections.paid[0]).toMatchObject({ owned: false, priceLabel: '¥12' });
+    expect(sections.paid[0]).toMatchObject({ owned: false, priceLabel: '$0.99' });
   });
 
   it('Plus 目录卡不带价格标签（Plus 徽标由 UI 渲染，避免误导性标价）', () => {
     const sections = buildStoreSections({
-      products: [MIDNIGHT],
+      products: [PREMIUM_PACK],
       localSkins: [LOCAL],
       ownedKeys: [],
       selectedSkinSlug: '',
@@ -124,7 +154,7 @@ describe('buildStoreSections', () => {
 
   it('未登录（ownedKeys 空）仅本地免费皮肤已拥有；权益键命中即已拥有', () => {
     const guest = buildStoreSections({
-      products: [SUNNY, MIDNIGHT],
+      products: [MIDNIGHT, PREMIUM_PACK],
       localSkins: [LOCAL],
       ownedKeys: [],
       selectedSkinSlug: '',
@@ -133,9 +163,9 @@ describe('buildStoreSections', () => {
     expect(guest.premium[0]!.owned).toBe(false);
 
     const owner = buildStoreSections({
-      products: [SUNNY, MIDNIGHT],
+      products: [MIDNIGHT, PREMIUM_PACK],
       localSkins: [LOCAL],
-      ownedKeys: ['skin.official.sunny-classroom'],
+      ownedKeys: ['skin.official.midnight-workstation'],
       selectedSkinSlug: '',
     });
     expect(owner.paid[0]!.owned).toBe(true);
@@ -144,9 +174,9 @@ describe('buildStoreSections', () => {
 
   it('使用中标记跟随本地选择；已拥有计数含免费卡', () => {
     const sections = buildStoreSections({
-      products: [SUNNY],
+      products: [MIDNIGHT],
       localSkins: [LOCAL],
-      ownedKeys: ['skin.official.sunny-classroom'],
+      ownedKeys: ['skin.official.midnight-workstation'],
       selectedSkinSlug: 'rainy-study-room',
     });
     expect(sections.free[0]!.inUse).toBe(true);

@@ -55,6 +55,9 @@ export const semantic = {
   actionDisabled: '#3A6AAD',
   scrimTop: 'rgba(6,16,28,0.62)',
   scrimBottom: 'rgba(6,16,28,0.88)',
+  /** 影像之上的暗玻璃底（输入条/玻璃按钮等媒体 chrome）。主题无关——
+   *  海报永远是深色构图，两模式同值，不随亮暗翻转 */
+  mediaGlass: 'rgba(12,14,20,0.62)',
 } as const;
 
 /**
@@ -88,6 +91,7 @@ export const semanticLight = {
   actionDisabled: 'rgba(79,143,232,0.35)',
   scrimTop: 'rgba(6,16,28,0.62)',
   scrimBottom: 'rgba(6,16,28,0.88)',
+  mediaGlass: 'rgba(12,14,20,0.62)',
 } as const;
 
 /**

@@ -98,7 +98,7 @@ export function LeaderboardRulesScreen() {
         {/* 当前名次卡：P0 只显示当前名次与分钟（变化不实现） */}
         <View style={styles.rankCard}>
           {privacy.state.status === 'loading' || board.state.status === 'loading' ? (
-            <Text style={styles.cardCaption}>正在加载…</Text>
+            <Text style={styles.cardCaption}>{t('loading')}</Text>
           ) : privacy.state.status === 'error' || board.state.status === 'error' ? (
             <>
               <Text style={styles.cardCaption}>

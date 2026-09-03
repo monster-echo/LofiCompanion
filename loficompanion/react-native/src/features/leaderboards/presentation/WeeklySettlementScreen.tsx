@@ -68,7 +68,7 @@ export function WeeklySettlementScreen() {
       {/* 结果 sheet（S06 结果板同构：媒体表面色、圆角 24、CTA 固定） */}
       <View style={styles.sheet}>
         {loaded.state.status === 'loading' ? (
-          <Text style={styles.pendingText}>正在加载…</Text>
+          <Text style={styles.pendingText}>{t('loading')}</Text>
         ) : loaded.state.status === 'error' ? (
           <>
             <Text style={styles.pendingText}>{loaded.state.message}</Text>
