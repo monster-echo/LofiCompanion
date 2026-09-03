@@ -44,7 +44,6 @@
         "appleTeamId": "2VA9TC6SG4"
       },
       "android": {
-        "serviceAccountKeyPath": "/Volumes/MacMiniDisk/Users/echo/.secrets/play-upload-key.json",
         "track": "internal"
       }
     }
