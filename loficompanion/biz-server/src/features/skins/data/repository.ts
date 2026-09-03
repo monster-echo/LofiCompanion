@@ -81,6 +81,33 @@ export async function listPublishedSkins(): Promise<SkinSummary[]> {
   });
 }
 
+// 公开主题缩略图（GET /api/v1/skins/{id}/poster 用）：已发布且过审皮肤的
+// ready 态 poster objectKey。海报 objectKey 本就随公开目录下发，属营销资产，
+// 不走权益门禁；仅限已发布皮肤，未发布/未过审/无海报一律 null（404）。
+export async function getPublishedSkinPoster(skinIdOrSlug: string): Promise<string | null> {
+  const db = getDb();
+  const skin = await db.skin.findFirst({
+    where: {
+      OR: [{ id: skinIdOrSlug }, { slug: skinIdOrSlug }],
+      published_at: { not: null },
+      moderation_status: 'approved',
+    },
+  });
+  if (!skin) return null;
+  const manifest = await db.skinManifest.findUnique({
+    where: { skin_id_version: { skin_id: skin.id, version: skin.manifest_version } },
+  });
+  if (!manifest || typeof manifest.manifest !== 'string') return null;
+  const parsed = JSON.parse(manifest.manifest) as {
+    states?: Array<{ state?: string; posterUrl?: string }>;
+  };
+  const posterKey = parsed.states?.find((state) => state.state === 'ready')?.posterUrl ?? null;
+  if (!posterKey || /^https?:/i.test(posterKey) || /^s3:\/\//i.test(posterKey)) return null;
+  // 与发布通道同级纪律：只签本租户前缀对象（堵租户前缀绕过）
+  if (!posterKey.toLowerCase().startsWith(`${getAppId().toLowerCase()}/`)) return null;
+  return posterKey;
+}
+
 export async function getCurrentManifest(
   skinIdOrSlug: string,
   auth: ViewerAuth | null,

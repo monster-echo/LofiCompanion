@@ -50,7 +50,7 @@ type IconProps = Readonly<{
 /** 环形底座的图标在渲染处单独补 Circle，这里只存描边路径。 */
 const ringedIcons: ReadonlySet<string> = new Set(['globe', 'check-circle', 'help', 'clock']);
 
-const paths: Record<Exclude<IconName, 'user'>, string[]> = {
+const paths: Record<Exclude<IconName, 'user' | 'palette'>, string[]> = {
   alert: [
     'M10.3 3.8 2.4 18a2 2 0 0 0 1.8 3h15.6a2 2 0 0 0 1.8-3L13.7 3.8a2 2 0 0 0-3.4 0Z',
     'M12 9v4',
@@ -94,7 +94,6 @@ const paths: Record<Exclude<IconName, 'user'>, string[]> = {
   lock: ['M8 10V7a4 4 0 0 1 8 0v3'],
   minus: ['M5 12h14'],
   moon: ['M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'],
-  palette: ['M12 3a9 9 0 0 0 0 18h1.5a1.5 1.5 0 0 0 0-3H12a2 2 0 0 1 0-4h2a7 7 0 0 0 0-14h-2Z'],
   pause: ['M10 4.5v15', 'M14 4.5v15'],
   plant: [
     'M12 21v-7.5',
@@ -141,6 +140,25 @@ export function AppIcon({ name, color = 'currentColor', size = 24 }: IconProps) 
       <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Circle cx="12" cy="8" r="4" stroke={color} strokeWidth="2" />
         <Path d="M4 21a8 8 0 0 1 16 0" stroke={color} strokeWidth="2" />
+      </Svg>
+    );
+  }
+  if (name === 'palette') {
+    // lucide palette 原版几何：调色盘轮廓（含拇指孔弧）+ 4 个颜料点。
+    // 旧 path 两段弧圆心/半径错位，渲染成歪月牙（issue：More Themes 图标不正确）。
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2Z"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Circle cx="13.5" cy="6.5" r="1.2" fill={color} />
+        <Circle cx="17.5" cy="10.5" r="1.2" fill={color} />
+        <Circle cx="8.5" cy="7.5" r="1.2" fill={color} />
+        <Circle cx="6.5" cy="12.5" r="1.2" fill={color} />
       </Svg>
     );
   }

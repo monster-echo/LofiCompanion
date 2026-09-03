@@ -8,6 +8,7 @@ import {
 import { AsyncState } from '../state/asyncState';
 import { useApp } from '../state/AppStore';
 import { useSupport } from '../support/SupportStore';
+import { usePreferences } from '../preferences/PreferencesProvider';
 import { styles } from '../theme/styles';
 import { spacing } from '../theme/tokens';
 
@@ -46,6 +47,7 @@ export function SupportHomeScreen() {
 
 export function TicketDetailScreen() {
   const { t } = useTranslation('support');
+  const { palette } = usePreferences();
   const { detail, busy, reply } = useSupport();
   const [message, setMessage] = useState('');
   if (detail.status !== 'success') {
@@ -81,6 +83,7 @@ export function TicketDetailScreen() {
         multiline
         onChangeText={setMessage}
         placeholder={t('placeholderReply')}
+        placeholderTextColor={palette.placeholder}
         style={[styles.input, localStyles.multiline]}
         textAlignVertical="top"
         value={message}

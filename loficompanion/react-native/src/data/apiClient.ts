@@ -38,6 +38,13 @@ export function getBizApiBase() {
   return process.env.EXPO_PUBLIC_BIZ_API_URL?.trim() || getApiBase();
 }
 
+// 公开主题缩略图（biz 匿名端点，302 → 对象存储）：付费皮肤未购/未拉取时
+// manifest 解析不到海报，房间卡/商店卡/房间页以此兜底——保证每个主题有
+// 可见封面（不依赖权益，也不依赖皮肤清单是否已落盘）。
+export function skinPosterUrl(slug: string): string {
+  return `${getBizApiBase()}/api/v1/skins/${encodeURIComponent(slug)}/poster`;
+}
+
 function getApiBase() {
   return process.env.EXPO_PUBLIC_API_URL
     ?? (getPlatformHeader() === 'android' ? 'http://10.0.2.2:3210' : 'http://localhost:3210');

@@ -8,6 +8,7 @@ import {
 } from '../data/storage';
 import { AppUser } from '../domain/models';
 import { i18n } from '../i18n/core';
+import { telemetry } from '../telemetry/Telemetry';
 
 export type Credentials = Readonly<{
   email: string;
@@ -45,6 +46,7 @@ export function useAccountActions(input: Input) {
       input.onAuthenticated();
     };
     const authenticate = async (credentials: Credentials, create: boolean) => {
+      const method = create ? 'signup' : 'password';
       try {
         const result = await input.run(() => create
           ? apiClient.signUp(
@@ -55,8 +57,15 @@ export function useAccountActions(input: Input) {
           )
           : apiClient.signIn(credentials.email, credentials.password));
         await acceptSession(result, create ? i18n.t('errors:signUpSuccess') : i18n.t('errors:signInSuccess'));
+        telemetry.track('auth_result', { method, outcome: 'success' });
         return true;
-      } catch {
+      } catch (error) {
+        // 失败已由 run() 上报 app_error；此处补认证漏斗分类（成功/失败率可聚合）
+        telemetry.track('auth_result', {
+          method,
+          outcome: 'failed',
+          error_name: error instanceof Error ? error.name : 'unknown',
+        });
         return false;
       }
     };
@@ -67,6 +76,7 @@ export function useAccountActions(input: Input) {
         input.showToast(i18n.t('errors:credentialsCleared'), 'error');
       }
       await clearAuthStorage();
+      telemetry.track('auth_signout', { scope: 'this_device' });
       input.setUser(null);
       input.onSignedOut();
     };
@@ -78,6 +88,7 @@ export function useAccountActions(input: Input) {
       }
       await clearAuthStorage();
       await clearNonEssentialStorage();
+      telemetry.track('auth_signout', { scope: 'all_devices' });
       input.setUser(null);
       input.onSignedOut();
     };
@@ -88,8 +99,16 @@ export function useAccountActions(input: Input) {
         try {
           const result = await input.run(() => apiClient.socialSignIn(credentials));
           await acceptSession(result, i18n.t('errors:signInSuccess'));
+          telemetry.track('auth_result', { method: credentials.provider, outcome: 'success' });
           return true;
-        } catch { return false; }
+        } catch (error) {
+          telemetry.track('auth_result', {
+            method: credentials.provider,
+            outcome: 'failed',
+            error_name: error instanceof Error ? error.name : 'unknown',
+          });
+          return false;
+        }
       },
       requestPhoneCode: async (phone: string) => {
         try {
@@ -101,8 +120,16 @@ export function useAccountActions(input: Input) {
         try {
           const result = await input.run(() => apiClient.verifyPhoneCode(phone, code));
           await acceptSession(result, i18n.t('errors:phoneSignInSuccess'));
+          telemetry.track('auth_result', { method: 'phone', outcome: 'success' });
           return true;
-        } catch { return false; }
+        } catch (error) {
+          telemetry.track('auth_result', {
+            method: 'phone',
+            outcome: 'failed',
+            error_name: error instanceof Error ? error.name : 'unknown',
+          });
+          return false;
+        }
       },
       signOut,
       signOutAll,

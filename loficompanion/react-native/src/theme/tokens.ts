@@ -7,25 +7,31 @@ import type { TextStyle } from 'react-native';
 /**
  * 600 档 = 亮色语义加深档：暖纸白底上需更深的琥珀/草绿/珊瑚红才能达到
  * 图形 3:1 / 文字 4.5:1 对比；暗色板仍用 300/500 档。雾族 600 为亮色次文字。
+ *
+ * 2026-09 夜色阶可读性修订：原阶（950→800 相邻亮度差仅 ~3 L*）层级几乎
+ * 不可辨、8% 纸白边框在夜底上消失。新阶参考 iOS dark（0→1C→2C 的跳档
+ * 节奏 ≈ 每级 +5 L*）、X「Dim」蓝夜表面（#15202B/#192734/#22303C）、
+ * Material 3 dark 文字梯度（onSurfaceVariant 提到 L*≈80）——保持雨夜蓝相，
+ * 拉开层级、提亮次级文字。
  */
 export const primitives = {
   night: {
-    950: '#06101C',
-    900: '#091522',
-    850: '#0D1B2B',
-    800: '#122338',
-    700: '#1B3048',
+    950: '#070E18',
+    900: '#0D1624',
+    850: '#14202F',
+    800: '#1C2B3E',
+    700: '#283A50',
   },
   rain: { 500: '#4F8FE8', 400: '#6EA6F2', 600: '#3E79C9' },
   lamp: { 500: '#D7A85F', 600: '#B6852F' },
   paper: { 50: '#FAF8F3', 100: '#F3EFE7', 200: '#E7E1D4' },
-  mist: { 300: '#B4BECA', 500: '#7E8A99', 600: '#5B6472' },
+  mist: { 300: '#BFC8D4', 500: '#8C98A8', 600: '#5B6472' },
   leaf: { 500: '#63BF94', 600: '#3F9E74' },
   warning: { 500: '#D6A556', 600: '#A87F1E' },
   danger: { 500: '#D66C72', 600: '#C2454E' },
 } as const;
 
-/** doc-07 §4.2 语义映射（暗色）。值须与 docs/07 §4.2 表一致——勿再微调 */
+/** doc-07 §4.2 语义映射（暗色）。值须与 docs/07 §4.2 表一致（2026-09 修订版） */
 export const semantic = {
   canvas: primitives.night[900],
   canvasDeep: primitives.night[950],
@@ -35,6 +41,10 @@ export const semantic = {
   textPrimary: primitives.paper[100],
   textSecondary: primitives.mist[300],
   textMuted: primitives.mist[500],
+  /** 输入框占位文字：可见但明确「未填写」（表面混合后 ≈3.4:1，介于
+   *  Material 3 outline 与 iOS placeholder 之间）。此前无此 token，漏配处
+   *  走系统默认灰（亮色值），夜底上完全不可读（Bio 输入框问题根因）。 */
+  placeholder: 'rgba(243,239,231,0.40)',
   actionPrimary: primitives.rain[500],
   actionPressed: primitives.rain[600],
   actionFocus: primitives.rain[400],
@@ -48,9 +58,9 @@ export const semantic = {
   success: primitives.leaf[500],
   warning: primitives.warning[500],
   danger: primitives.danger[500],
-  borderSoft: 'rgba(243,239,231,0.08)',
-  borderStandard: 'rgba(243,239,231,0.12)',
-  borderEmphasis: 'rgba(110,166,242,0.50)',
+  borderSoft: 'rgba(243,239,231,0.12)',
+  borderStandard: 'rgba(243,239,231,0.18)',
+  borderEmphasis: 'rgba(110,166,242,0.60)',
   /** 禁用态主操作底色（原 derivedTokens.disabledContainer 字面量升级） */
   actionDisabled: '#3A6AAD',
   scrimTop: 'rgba(6,16,28,0.62)',
@@ -75,6 +85,7 @@ export const semanticLight = {
   textPrimary: '#10161F',
   textSecondary: primitives.mist[600],
   textMuted: primitives.mist[500],
+  placeholder: 'rgba(16,22,31,0.34)',
   actionPrimary: primitives.rain[500],
   actionPressed: primitives.rain[600],
   actionFocus: primitives.rain[400],

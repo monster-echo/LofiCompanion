@@ -30,4 +30,7 @@ export const studyroom = {
   rejectedTooLong: "Comments are limited to 42 characters",
   cooldownHint: "Easy now — try again in {{s}}s",
   sendFailed: "Couldn't send — try again in a moment",
+  // Poster fallback for locked themes
+  themeLockedHint: "Theme locked — tap to open the store",
+  themeLockedCta: "Unlock this theme in the store",
 } as const;

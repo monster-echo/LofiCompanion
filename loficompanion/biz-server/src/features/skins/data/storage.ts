@@ -1,4 +1,4 @@
-import { S3Client, HeadBucketCommand, CreateBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, HeadBucketCommand, CreateBucketCommand, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ApiError } from '@/lib/http';
 
@@ -140,4 +140,13 @@ function urlFor(bucket: string, key: string): string {
   if (PUBLIC_BASE) return `${PUBLIC_BASE}/${bucket}/${key}`;
   // 无公网基址：不透明引用，客户端经 GET /urls?key= 解析。
   return `s3://${bucket}/${key}`;
+}
+
+// 主题缩略图（GET /api/v1/skins/{id}/poster）专用：为已发布皮肤的 poster
+// objectKey 签短时效 presigned GET。配置 S3_PUBLIC_BASE 时返回永久公网
+// URL（桶策略自担），否则返回签名 URL——对象桶保持私有。
+export async function signReadUrl(key: string, expiresIn = 3600): Promise<string> {
+  if (PUBLIC_BASE) return `${PUBLIC_BASE}/${bucketForApp()}/${key}`;
+  const command = new GetObjectCommand({ Bucket: bucketForApp(), Key: key });
+  return getSignedUrl(client(), command, { expiresIn });
 }

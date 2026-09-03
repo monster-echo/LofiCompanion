@@ -4,3 +4,6 @@ node_modules/
 .env.local
 *.tsbuildinfo
 .dev-jwt-key.pem
+
+# Next.js 服务无 expo 配置；CLI 在此目录误跑会生成空 app.json
+app.json

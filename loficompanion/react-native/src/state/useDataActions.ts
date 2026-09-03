@@ -15,6 +15,7 @@ import { createPaymentProvider } from '../payment/paymentFactory';
 import { IapError } from '../payment/iapPaymentProvider';
 import { i18n } from '../i18n/core';
 import { Platform } from 'react-native';
+import { telemetry } from '../telemetry/Telemetry';
 import type { PurchaseState } from './AppStore';
 
 type Run = <T>(operation: () => Promise<T>) => Promise<T>;
@@ -83,16 +84,22 @@ export function useDataActions(
     },
     purchase: async (planId: string) => {
       setPurchaseState({ kind: 'loading' });
+      // 购买漏斗（IAP 五节点）：initiated → success/failed/cancelled；
+      // 此前除 run() 泛化 app_error 外零埋点，取消还会被误报成错误。
+      telemetry.track('purchase_initiated', { plan_id: planId, platform: Platform.OS });
       try {
         const idempotencyKey = `rn-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const order = await run(() => apiClient.createOrder(planId, idempotencyKey));
         const provider = createPaymentProvider(order);
         let result;
         try {
-          result = await run(() => provider.purchase(order.storeProductId));
+          // 不经 run()：native 购买页不是 API 调用，走 run 会把用户取消
+          // 误报为 app_error（online 态/错误横幅也不适用）
+          result = await provider.purchase(order.storeProductId);
         } catch (error) {
           // 用户取消购买：静默回 idle，不报错误
           if (error instanceof IapError && error.kind === 'cancelled') {
+            telemetry.track('purchase_cancelled', { plan_id: planId, platform: Platform.OS });
             setPurchaseState({ kind: 'idle' });
             return false;
           }
@@ -106,11 +113,27 @@ export function useDataActions(
         setPurchaseState(verified.status === 'success'
           ? { kind: 'success', order: verified }
           : { kind: 'failed', order: verified });
+        telemetry.track(
+          verified.status === 'success' ? 'purchase_success' : 'purchase_failed',
+          verified.status === 'success'
+            ? { plan_id: planId, platform: Platform.OS, order_id: order.orderId }
+            : {
+              plan_id: planId, platform: Platform.OS,
+              order_id: order.orderId, reason: 'verify_failed',
+            },
+        );
         if (verified.status === 'success') {
           try { setUser((await run(apiClient.bootstrap)).user); } catch { /* best-effort */ }
         }
         return verified.status === 'success';
       } catch (error) {
+        telemetry.track('purchase_failed', {
+          plan_id: planId,
+          platform: Platform.OS,
+          reason: error instanceof IapError ? `iap_${error.kind}`
+            : error instanceof ApiClientError ? (error.status === 0 ? 'offline' : 'api_error')
+              : 'exception',
+        });
         if (error instanceof ApiClientError) {
           setPurchaseState(error.status === 0
             ? { kind: 'offline' }
@@ -127,8 +150,18 @@ export function useDataActions(
     restorePurchases: async () => {
       const provider = createPaymentProvider({ provider: Platform.OS === 'ios' ? 'apple' : 'google' });
       const receipts = (await run(() => provider.restore())).map((item) => item.receipt);
-      if (receipts.length === 0) return false;
+      if (receipts.length === 0) {
+        telemetry.track('purchase_restore_result', {
+          platform: Platform.OS, receipt_count: 0, entitled_count: 0,
+        });
+        return false;
+      }
       const { entitlements } = await run(() => apiClient.restore(receipts));
+      telemetry.track('purchase_restore_result', {
+        platform: Platform.OS,
+        receipt_count: receipts.length,
+        entitled_count: entitlements.length,
+      });
       if (entitlements.length > 0) {
         try { setUser((await run(apiClient.bootstrap)).user); } catch { /* best-effort */ }
         return true;

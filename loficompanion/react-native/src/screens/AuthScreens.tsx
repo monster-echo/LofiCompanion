@@ -236,7 +236,6 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
                 onPress={() => navigate('settings.privacyPolicy')}
                 style={{ color: palette.brand }}
               >{t('privacyLabel')}</Text>
-              {t('consentSuffix')}
             </Text>
           </View>
         </View>

@@ -98,6 +98,7 @@ function settingValue(
 
 export function AccountSecurityScreen() {
   const { user, changePassword, busy, navigate, showToast } = useApp();
+  const { palette } = usePreferences();
   const { t } = useTranslation('settings');
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -122,6 +123,7 @@ export function AccountSecurityScreen() {
           accessibilityLabel={t('currentPassword')}
           onChangeText={setCurrent}
           placeholder={t('currentPassword')}
+          placeholderTextColor={palette.placeholder}
           secureTextEntry
           style={styles.input}
           value={current}
@@ -130,6 +132,7 @@ export function AccountSecurityScreen() {
           accessibilityLabel={t('newPassword')}
           onChangeText={setNext}
           placeholder={t('newPasswordHint')}
+          placeholderTextColor={palette.placeholder}
           secureTextEntry
           style={styles.input}
           value={next}

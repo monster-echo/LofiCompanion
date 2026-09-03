@@ -100,6 +100,9 @@ type AppContextValue = Readonly<{
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+// app_start 只在本次进程首次 bootstrap 打点（成功/失败各一个维度值）。
+let appStartTracked = false;
+
 export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   const feedback = useFeedbackState();
   const [user, setUser] = useState<AppUser | null>(null);
@@ -144,8 +147,16 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
       setServerReady(true);
       void telemetry.configure(payload.config);
       await saveCachedConfig(payload.config);
+      if (!appStartTracked) {
+        appStartTracked = true;
+        telemetry.track('app_start', { server_ready: true });
+      }
     } catch {
       setOnline(false);
+      if (!appStartTracked) {
+        appStartTracked = true;
+        telemetry.track('app_start', { server_ready: false });
+      }
     }
   }, []);
 
@@ -156,6 +167,12 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     const timer = setInterval(() => void refreshBootstrap(), config.cacheTtlSeconds * 1000);
     return () => clearInterval(timer);
   }, [config.cacheTtlSeconds, refreshBootstrap]);
+
+  // 用户级「匿名分析」开关联动采集器（服务级开关走 bootstrap 的 telemetry.configure）
+  const analyticsOptIn = user?.settings.analyticsEnabled !== false;
+  useEffect(() => {
+    telemetry.setUserAnalyticsEnabled(analyticsOptIn);
+  }, [analyticsOptIn]);
 
   const run = useCallback(async <T,>(operation: () => Promise<T>) => {
     setBusy(true);
@@ -229,12 +246,16 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     },
     onSignedOut: () => {
       setPurchaseState({ kind: 'idle' });
-      replace('home');
+      // 直接复位到登录页（原 replace('home') 会先闪一帧首页，再由
+      // ProfileScreens 的访客直达 effect 二次 reset 到登录页）。闭包里的
+      // user 仍是登出前的非空值，故不经 guardRoute，直接整栈重建。
+      resetToRoutes(['auth.signIn']);
     },
     showToast: feedback.showToast,
   });
   useEffect(() => {
     registerSessionExpiredHandler(() => {
+      telemetry.track('auth_session_expired');
       setUser(null);
       void clearAuthStorage();
       resetToRoutes(['auth.signIn']);

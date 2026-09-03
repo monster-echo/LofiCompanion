@@ -24,6 +24,10 @@ const backoffMs = [2000, 5000, 15000, 30000, 60000] as const;
 class Telemetry {
   private config = disabledConfig();
   private configVersion = 0;
+  // 用户级「匿名分析」开关（user.settings.analyticsEnabled）。服务端
+  // config.telemetry 是服务级开关；用户关掉后产品分析事件（含后端队列与
+  // Firebase）必须立即停止采集，仅错误上报保留（合规：设置页承诺）。
+  private userAnalyticsAllowed = true;
   private anonymousId = '';
   private readonly sessionId = createId('session');
   private currentScreen: string | null = null;
@@ -60,6 +64,11 @@ class Telemetry {
     }
   }
 
+  /** 由 AppStore 随 user.settings.analyticsEnabled 调用（默认 true=允许）。 */
+  setUserAnalyticsEnabled(value: boolean) {
+    this.userAnalyticsAllowed = value;
+  }
+
   screen(screenId: string) {
     if (this.currentScreen === screenId) return;
     if (this.currentScreen) {
@@ -75,6 +84,9 @@ class Telemetry {
 
   track(name: string, properties: Properties = {}, screenId = this.currentScreen) {
     if (!this.config.enabled) return;
+    // 错误上报不受用户分析开关约束（故障监控 ≠ 产品分析），其余事件在
+    // 用户关闭「匿名分析」后全部停采（不再入后端队列/Firebase）。
+    if (!this.userAnalyticsAllowed && name !== 'app_error') return;
     const event: QueuedEvent = {
       eventId: createId('evt'),
       name,

@@ -146,6 +146,7 @@ function Avatar({ avatarUrl, label }: Readonly<{ avatarUrl?: string | null; labe
 
 export function EditProfileScreen() {
   const { user, updateProfile, busy, showToast } = useApp();
+  const { palette } = usePreferences();
   const { t } = useTranslation('profile');
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
@@ -201,6 +202,7 @@ export function EditProfileScreen() {
           multiline
           onChangeText={setBio}
           placeholder={t('bioPlaceholder')}
+          placeholderTextColor={palette.placeholder}
           style={[styles.input, profileStyles.bioInput]}
           value={bio}
         />

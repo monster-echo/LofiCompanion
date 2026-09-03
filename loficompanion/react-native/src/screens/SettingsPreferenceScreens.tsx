@@ -119,6 +119,7 @@ function preferenceLabel(kind: PreferenceKind, t: TFunction<'settings'>) {
 
 export function DeleteAccountScreen() {
   const { deleteAccount, busy, replace, showConfirm } = useApp();
+  const { palette } = usePreferences();
   const { t } = useTranslation('settings');
   const [password, setPassword] = useState('');
   const requestDeletion = () => showConfirm({
@@ -136,6 +137,7 @@ export function DeleteAccountScreen() {
           accessibilityLabel={t('currentPassword')}
           onChangeText={setPassword}
           placeholder={t('currentPassword')}
+          placeholderTextColor={palette.placeholder}
           secureTextEntry
           style={styles.input}
           value={password}

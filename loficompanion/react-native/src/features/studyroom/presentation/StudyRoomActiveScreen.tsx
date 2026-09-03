@@ -4,6 +4,7 @@ import {
   Animated,
   BackHandler,
   Easing,
+  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -22,6 +23,8 @@ import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { radii, semantic, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { getMusicController } from '../../music/data/expoAudioMusicController';
+import { telemetry } from '../../../telemetry/Telemetry';
+import { skinPosterUrl } from '../../../data/apiClient';
 import { useMusicLibrary } from '../../music/application/useMusicLibrary';
 import { useFocus } from '../../focus/application/FocusStore';
 import { useFocusQuickPrefs } from '../../focus/presentation/focusQuickPrefs';
@@ -56,7 +59,7 @@ const BAND_LABEL_KEY: Record<DanmakuBand, 'danmakuBandCenter' | 'danmakuBandTop'
 export function StudyRoomActiveScreen() {
   const controller = useStudyRoom();
   const state = useStudyRoomState();
-  const { back, showToast, signedIn } = useApp();
+  const { back, showToast, signedIn, navigate } = useApp();
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation('studyroom');
@@ -64,8 +67,10 @@ export function StudyRoomActiveScreen() {
   // sheet（快捷设置）是主题化 UI 层：内容令牌走主题（亮色暖纸白面板+暗字）；
   // 影像 chrome 仍用模块级 semantic 主题无关层
   const sheetStyles = useThemeStyles(makeSheetStyles);
-  // 减少动态是无障碍全局偏好（FocusProvider 注入），房间页与专注页同源
-  const { reducedMotion, skins } = useFocus();
+  // 减少动态是无障碍全局偏好（FocusProvider 注入），房间页与专注页同源；
+  // companion 状态机同源复用：人物随当前专注会话流转（专注中=伏案写字），
+  // 硬编码 'ready' 会让人物永远保持待机（issue：自习室人物不写字）。
+  const { reducedMotion, skins, companion } = useFocus();
   const { muted, setMuted, keepAwake, setKeepAwake } = useFocusQuickPrefs();
   useMusicLibrary(signedIn);
 
@@ -77,20 +82,29 @@ export function StudyRoomActiveScreen() {
   const weakenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 路由参数 roomId → 房间定义（未知 id 落回默认房间）；房间媒体从皮肤注册表
-  // 解析（云端皮肤未拉取到时暂用默认皮肤兜底，拉取到达后自动切换）
+  // 解析。未购/未拉取的付费皮肤 manifest 不存在——此前静默回落雨夜书房会
+  // 「进 Midnight 房间看到的却是雨夜素材」，现在改为公开海报 + 解锁引导。
   const roomId = (route.params as { roomId?: string } | undefined)?.roomId;
   const room = roomForId(roomId ?? '');
-  const roomManifest = findSkinManifestByIdOrSlug(skins, room.id) ?? DEFAULT_SKIN_MANIFEST;
+  const roomSkin = findSkinManifestByIdOrSlug(skins, room.id);
+  const roomManifest = roomSkin ?? DEFAULT_SKIN_MANIFEST;
   const roomDisplayName = roomName(room, locale);
 
   // 进房 = 建连（弹幕/presence）+ 音乐在场（ambient：无需专注会话）；退出全部释放
+  const enteredAt = useRef(0);
   useFocusEffect(
     useCallback(() => {
       controller.actions.enter((roomId ?? room.id) as StudyRoomId);
       const music = getMusicController();
       music.setScreenActive(true);
       music.setAmbientActive(true);
+      enteredAt.current = Date.now();
+      telemetry.track('studyroom_enter', { room_id: roomId ?? room.id });
       return () => {
+        telemetry.track('studyroom_leave', {
+          room_id: roomId ?? room.id,
+          duration_ms: enteredAt.current ? Date.now() - enteredAt.current : 0,
+        });
         music.setAmbientActive(false);
         music.setScreenActive(false);
         controller.actions.leave();
@@ -183,7 +197,10 @@ export function StudyRoomActiveScreen() {
   return (
     <Modal
       presentationStyle="fullScreen"
-      animationType="fade"
+      // 双层模态（native-stack fullScreenModal 内再叠 RN Modal）下 fade 会在
+      // 退出时瞬间移除独立窗口、露出底层 dismiss 动画的黑底——返回黑屏的
+      // 根因。与 FocusActiveScreen 同解：内层不用动画（animationType="none"）。
+      animationType="none"
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={wake}
@@ -191,12 +208,32 @@ export function StudyRoomActiveScreen() {
       <TouchableWithoutFeedback onPress={wake}>
         <View style={styles.screen}>
           <StatusBar hidden animated={false} />
-          <ImmersiveMediaSurface
-            manifest={roomManifest}
-            state="ready"
-            reducedMotion={reducedMotion}
-            style={styles.mediaFill}
-          />
+          {roomSkin ? (
+            <ImmersiveMediaSurface
+              manifest={roomManifest}
+              state={companion.playing ? companion.playing.state : companion.state}
+              reducedMotion={reducedMotion}
+              style={styles.mediaFill}
+            />
+          ) : (
+            <>
+              <Image
+                source={{ uri: skinPosterUrl(room.id) }}
+                style={styles.mediaFill}
+                resizeMode="cover"
+                blurRadius={2}
+              />
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={t('themeLockedCta')}
+                onPress={() => navigate('store.skinDetail', { skinSlug: room.id })}
+                style={styles.lockedPill}
+              >
+                <AppIcon name="lock" color={semantic.onMedia} size={14} />
+                <Text style={styles.lockedPillText}>{t('themeLockedHint')}</Text>
+              </Pressable>
+            </>
+          )}
 
           <DanmakuLayer reducedMotion={reducedMotion} band={danmakuBand} />
 
@@ -392,6 +429,25 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.82,
     transform: [{ scale: 0.98 }],
+  },
+  // 未解锁主题的海报兜底态：中央引导 pill（压在固定暗色媒体层上，用 onMedia）
+  lockedPill: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: 120,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.x1,
+    borderRadius: radii.round,
+    backgroundColor: 'rgba(13,27,43,0.62)',
+    borderWidth: 1,
+    borderColor: semantic.borderEmphasis,
+    paddingHorizontal: space.x3,
+    paddingVertical: space.x2,
+  },
+  lockedPillText: {
+    ...type.label,
+    color: semantic.onMedia,
   },
 });
 

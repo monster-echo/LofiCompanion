@@ -30,4 +30,7 @@ export const studyroom = {
   rejectedTooLong: '弹幕最多 42 个字',
   cooldownHint: '休息一下，{{s}}s 后再发',
   sendFailed: '弹幕发送失败，请稍后再试',
+  // 未解锁主题的海报兜底态
+  themeLockedHint: '该主题尚未解锁，点击前往商店',
+  themeLockedCta: '前往商店解锁主题',
 } as const;

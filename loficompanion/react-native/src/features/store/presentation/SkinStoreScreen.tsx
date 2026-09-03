@@ -23,6 +23,7 @@ import {
 } from '../domain/storeCatalog';
 import { useTranslation } from 'react-i18next';
 import { storePoster } from './storePosters';
+import { skinPosterUrl } from '../../../data/apiClient';
 import { i18n } from '../../../i18n/core';
 
 /**
@@ -283,7 +284,9 @@ function StoreCard({
   const { palette } = usePreferences();
   const focus = useFocus();
   const styles = useThemeStyles(makeStyles);
-  const poster = storePoster(focus.skins, card.slug, 'ready');
+  // 未拉取/未购的皮肤用 biz 公开海报兜底，不再渲染图标占位
+  const poster = storePoster(focus.skins, card.slug, 'ready')
+    ?? { uri: skinPosterUrl(card.slug) };
   const statesText = card.stateCount === null ? null : t('stateCount', { n: card.stateCount });
   const priceText = card.accessType === 'free'
     ? t('priceFree')

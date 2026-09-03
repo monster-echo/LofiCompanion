@@ -7,12 +7,14 @@ import { useApp } from '../state/AppStore';
 import { FeedbackScreenshots } from '../support/FeedbackScreenshots';
 import type { FeedbackScreenshot } from '../support/FeedbackScreenshots';
 import { useSupport } from '../support/SupportStore';
+import { usePreferences } from '../preferences/PreferencesProvider';
 import { styles } from '../theme/styles';
 import { SupportPage } from './SupportScreens';
 
 export function NewTicketScreen() {
   const { t } = useTranslation('support');
   const { config } = useApp();
+  const { palette } = usePreferences();
   const { busy, createTicket } = useSupport();
   const [category, setCategory] = useState(config.support.categories[0]?.id ?? 'technical');
   const [severity, setSeverity] = useState<'normal' | 'high' | 'urgent'>('normal');
@@ -28,6 +30,7 @@ export function NewTicketScreen() {
         maxLength={100}
         onChangeText={setSubject}
         placeholder={t('placeholderSubject')}
+        placeholderTextColor={palette.placeholder}
         style={styles.input}
         value={subject}
       />
@@ -37,6 +40,7 @@ export function NewTicketScreen() {
         multiline
         onChangeText={setMessage}
         placeholder={t('placeholderDetail')}
+        placeholderTextColor={palette.placeholder}
         style={styles.input}
         textAlignVertical="top"
         value={message}
@@ -74,6 +78,7 @@ export function NewTicketScreen() {
 export function ProductFeedbackScreen() {
   const { t } = useTranslation('support');
   const { back } = useApp();
+  const { palette } = usePreferences();
   const { busy, submitFeedback } = useSupport();
   const [category, setCategory] = useState<
     'suggestion' | 'experience' | 'feature_request' | 'other'
@@ -98,6 +103,7 @@ export function ProductFeedbackScreen() {
         maxLength={100}
         onChangeText={setTitle}
         placeholder={t('placeholderFeedbackTitle')}
+        placeholderTextColor={palette.placeholder}
         style={styles.input}
         value={title}
       />
@@ -107,6 +113,7 @@ export function ProductFeedbackScreen() {
         multiline
         onChangeText={setBody}
         placeholder={t('placeholderFeedbackBody')}
+        placeholderTextColor={palette.placeholder}
         style={styles.input}
         textAlignVertical="top"
         value={body}

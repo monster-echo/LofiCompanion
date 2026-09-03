@@ -8,16 +8,16 @@ describe('doc-07 §4.1 原语', () => {
   it('与文档原语表逐项一致', () => {
     expect(primitives).toEqual({
       night: {
-        950: '#06101C',
-        900: '#091522',
-        850: '#0D1B2B',
-        800: '#122338',
-        700: '#1B3048',
+        950: '#070E18',
+        900: '#0D1624',
+        850: '#14202F',
+        800: '#1C2B3E',
+        700: '#283A50',
       },
       rain: { 500: '#4F8FE8', 400: '#6EA6F2', 600: '#3E79C9' },
       lamp: { 500: '#D7A85F', 600: '#B6852F' },
       paper: { 50: '#FAF8F3', 100: '#F3EFE7', 200: '#E7E1D4' },
-      mist: { 300: '#B4BECA', 500: '#7E8A99', 600: '#5B6472' },
+      mist: { 300: '#BFC8D4', 500: '#8C98A8', 600: '#5B6472' },
       leaf: { 500: '#63BF94', 600: '#3F9E74' },
       warning: { 500: '#D6A556', 600: '#A87F1E' },
       danger: { 500: '#D66C72', 600: '#C2454E' },
@@ -26,29 +26,30 @@ describe('doc-07 §4.1 原语', () => {
 });
 
 describe('doc-07 §4.2 语义映射', () => {
-  it('与文档语义表逐项一致', () => {
+  it('与文档语义表逐项一致（2026-09 夜色可读性修订）', () => {
     expect(semantic).toEqual({
-      canvas: '#091522',
-      canvasDeep: '#06101C',
-      surface: '#0D1B2B',
-      surfaceRaised: '#122338',
-      surfaceInset: '#06101C',
+      canvas: '#0D1624',
+      canvasDeep: '#070E18',
+      surface: '#14202F',
+      surfaceRaised: '#1C2B3E',
+      surfaceInset: '#070E18',
       textPrimary: '#F3EFE7',
-      textSecondary: '#B4BECA',
-      textMuted: '#7E8A99',
+      textSecondary: '#BFC8D4',
+      textMuted: '#8C98A8',
+      placeholder: 'rgba(243,239,231,0.40)',
       actionPrimary: '#4F8FE8',
       actionPressed: '#3E79C9',
       actionFocus: '#6EA6F2',
       onAction: '#FFFFFF',
       onMedia: '#F3EFE7',
-      onMediaSecondary: '#B4BECA',
+      onMediaSecondary: '#BFC8D4',
       achievement: '#D7A85F',
       success: '#63BF94',
       warning: '#D6A556',
       danger: '#D66C72',
-      borderSoft: 'rgba(243,239,231,0.08)',
-      borderStandard: 'rgba(243,239,231,0.12)',
-      borderEmphasis: 'rgba(110,166,242,0.50)',
+      borderSoft: 'rgba(243,239,231,0.12)',
+      borderStandard: 'rgba(243,239,231,0.18)',
+      borderEmphasis: 'rgba(110,166,242,0.60)',
       actionDisabled: '#3A6AAD',
       scrimTop: 'rgba(6,16,28,0.62)',
       scrimBottom: 'rgba(6,16,28,0.88)',
@@ -66,13 +67,14 @@ describe('doc-07 §4.2 语义映射', () => {
       surfaceInset: '#EFE7D8',
       textPrimary: '#10161F',
       textSecondary: '#5B6472',
-      textMuted: '#7E8A99',
+      textMuted: '#8C98A8',
+      placeholder: 'rgba(16,22,31,0.34)',
       actionPrimary: '#4F8FE8',
       actionPressed: '#3E79C9',
       actionFocus: '#6EA6F2',
       onAction: '#FFFFFF',
       onMedia: '#F3EFE7',
-      onMediaSecondary: '#B4BECA',
+      onMediaSecondary: '#BFC8D4',
       achievement: '#B6852F',
       success: '#3F9E74',
       warning: '#A87F1E',
@@ -89,7 +91,7 @@ describe('doc-07 §4.2 语义映射', () => {
 
   it('关键语义锚点', () => {
     expect(semantic.actionPrimary).toBe('#4F8FE8');
-    expect(semantic.borderEmphasis).toBe('rgba(110,166,242,0.50)');
+    expect(semantic.borderEmphasis).toBe('rgba(110,166,242,0.60)');
   });
 });
 
@@ -120,13 +122,13 @@ describe('doc-07 §6.2 字级', () => {
 
 describe('colors 夜色取值', () => {
   it('语义替换后的取值', () => {
-    expect(colors.background).toBe('#091522');
-    expect(colors.surface).toBe('#0D1B2B');
-    expect(colors.surfaceRaised).toBe('#122338');
-    expect(colors.surfaceMuted).toBe('#06101C');
+    expect(colors.background).toBe('#0D1624');
+    expect(colors.surface).toBe('#14202F');
+    expect(colors.surfaceRaised).toBe('#1C2B3E');
+    expect(colors.surfaceMuted).toBe('#070E18');
     expect(colors.text).toBe('#F3EFE7');
-    expect(colors.textSecondary).toBe('#B4BECA');
-    expect(colors.border).toBe('rgba(243,239,231,0.08)');
+    expect(colors.textSecondary).toBe('#BFC8D4');
+    expect(colors.border).toBe('rgba(243,239,231,0.12)');
     expect(colors.brand).toBe('#4F8FE8');
     expect(colors.brandPressed).toBe('#3E79C9');
     expect(colors.brandSoft).toBe('rgba(79,143,232,0.16)');

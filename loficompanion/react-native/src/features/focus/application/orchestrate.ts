@@ -8,6 +8,7 @@ import {
   resumeSession,
 } from '../domain/engine';
 import { validateSessionInput } from '../domain/validate';
+import { telemetry } from '../../../telemetry/Telemetry';
 import type { ActivityType, FocusSessionDoc } from '../domain/types';
 import { summarize } from '../data/summarize';
 import type { StudySummary } from '../data/summarize';
@@ -452,6 +453,11 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     });
     dispatchCompanion('focus.started', now);
     deps.music?.sessionStarted();
+    // 专注漏斗起点（核心转化：开始→完成时长此前完全不可观测）
+    telemetry.track('focus_session_start', {
+      activity: doc.activity,
+      planned_seconds: doc.plannedSeconds,
+    });
     void track(repo.saveActive(doc)).catch(noop);
     return { ok: true };
   }
@@ -464,6 +470,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     commit({ activeSession: paused });
     dispatchCompanion('focus.paused', now);
     deps.music?.paused();
+    telemetry.track('focus_session_pause', { activity: paused.activity });
     void track(repo.saveActive(paused)).catch(noop);
   }
 
@@ -481,6 +488,7 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     commit({ activeSession: resumed, nextAutoDrinkAt });
     dispatchCompanion('focus.resumed', now);
     deps.music?.resumed();
+    telemetry.track('focus_session_resume', { activity: resumed.activity });
     void track(repo.saveActive(resumed)).catch(noop);
   }
 
@@ -491,6 +499,11 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
     if (completed === doc) return;
     dispatchCompanion('focus.completed', now);
     deps.music?.sessionEnded();
+    telemetry.track('focus_session_complete', {
+      activity: completed.activity,
+      planned_seconds: completed.plannedSeconds,
+      effective_seconds: effectiveSeconds(completed, now),
+    });
     settleCompletion(completed, now);
   }
 
@@ -512,6 +525,11 @@ export function createFocusController(deps: FocusControllerDeps): FocusControlle
       companion: initialState(currentManifest.defaultState),
     });
     deps.music?.sessionEnded();
+    telemetry.track('focus_session_abandon', {
+      activity: abandoned.activity,
+      planned_seconds: abandoned.plannedSeconds,
+      effective_seconds: effectiveSeconds(abandoned, now),
+    });
     void track(repo.appendHistory(abandoned)).catch(noop);
     void track(repo.clearActive()).catch(noop);
   }

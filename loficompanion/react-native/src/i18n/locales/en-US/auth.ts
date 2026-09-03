@@ -38,8 +38,6 @@ export const auth = {
   termsLabel: 'Terms of Service',
   conjunction: ' and ',
   privacyLabel: 'Privacy Policy',
-  consentSuffix:
-    ', and authorize us to process my information as described there to provide account, focus sync, leaderboard and support services.',
   otherWays: 'Other ways to sign in',
   signInWith: 'Sign in with {{label}}',
   labelPhoneShort: 'Phone',

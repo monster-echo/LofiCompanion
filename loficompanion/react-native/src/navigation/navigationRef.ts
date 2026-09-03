@@ -57,6 +57,11 @@ export function resetToRoutes(names: readonly AppRoute[]): void {
   if (!navigationRef.isReady() || names.length === 0) return;
   const tabRoots = names.filter((name) => TAB_ROOT_ROUTES.has(name));
   const stacked = names.filter((name) => !TAB_ROOT_ROUTES.has(name));
+  // 幂等守卫：登出链路上有多处独立触发整栈重建的回调（onSignedOut、
+  // ProfileScreens 访客直达 effect、会话过期 handler），不设防时登录页会被
+  // 连续装载两次（入场动画重播 = 「进入两次登录页」）。目标链与当前栈
+  // 完全一致时跳过 reset。
+  if (targetChainEqualsCurrent(tabRoots, stacked)) return;
   if (tabRoots.length > 0) {
     const activeTab = tabRoots[tabRoots.length - 1];
     navigationRef.reset({
@@ -75,6 +80,30 @@ export function resetToRoutes(names: readonly AppRoute[]): void {
     index: names.length - 1,
     routes: names.map((name) => ({ name })),
   } as never);
+}
+
+// 目标 reset 链是否与当前根栈逐层一致（只比路由名，不比 params）。
+// Tab 容器展开为 [main.tabs, activeTab]；多压的页面（如 settings.home 之上
+// 再 push）会导致链不等，此时仍然执行 reset。
+function targetChainEqualsCurrent(
+  tabRoots: readonly AppRoute[],
+  stacked: readonly AppRoute[],
+): boolean {
+  const target = tabRoots.length > 0
+    ? [MAIN_TABS_ROUTE, tabRoots[tabRoots.length - 1] as string, ...stacked]
+    : [...tabRoots, ...stacked];
+  const chain: string[] = [];
+  let cursor = navigationRef.getRootState() as unknown as
+    | { index: number; routes: { name: string; state?: unknown }[] }
+    | undefined;
+  while (cursor) {
+    const route = cursor.routes[cursor.index];
+    if (!route) break;
+    chain.push(route.name);
+    cursor = route.state as typeof cursor;
+  }
+  return chain.length === target.length
+    && chain.every((name, index) => name === target[index]);
 }
 
 // 原位替换栈顶路由、保留其余栈（AppStore.replace 是整栈 reset，语义不同）。

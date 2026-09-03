@@ -12,8 +12,9 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { apiClient } from '../../../data/apiClient';
+import { apiClient, ApiClientError, skinPosterUrl } from '../../../data/apiClient';
 import type { SkinProductRemote } from '../../../data/apiClient';
+import { telemetry } from '../../../telemetry/Telemetry';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { createPaymentProvider } from '../../../payment/paymentFactory';
 import { IapError } from '../../../payment/iapPaymentProvider';
@@ -162,6 +163,10 @@ export function SkinDetailScreen() {
   const confirmPurchase = useCallback(async (target: SkinProductRemote) => {
     setSheetOpen(false);
     setCtaPhase('purchasing');
+    // 皮肤购买漏斗（本路径绕过 run()，此前购买失败/取消在遥测里零痕迹）
+    telemetry.track('purchase_initiated', {
+      plan_id: target.skinId, platform: Platform.OS, kind: 'skin',
+    });
     try {
       const order = await apiClient.createSkinOrder(
         target.skinId,
@@ -175,6 +180,9 @@ export function SkinDetailScreen() {
       } catch (error) {
         // 用户取消购买：静默回 idle，清本地记录（服务端 pending 单无害）
         if (error instanceof IapError && error.kind === 'cancelled') {
+          telemetry.track('purchase_cancelled', {
+            plan_id: target.skinId, platform: Platform.OS, kind: 'skin',
+          });
           await pendingOrders.clear(skinSlug).catch(() => undefined);
           return;
         }
@@ -188,12 +196,26 @@ export function SkinDetailScreen() {
         setOwnedKeys((keys) => keys.includes(target.entitlementKey)
           ? keys
           : [...keys, target.entitlementKey]);
+        telemetry.track('purchase_success', {
+          plan_id: target.skinId, platform: Platform.OS, order_id: order.orderId, kind: 'skin',
+        });
         showToast(t('purchaseSuccess'), 'success');
       } else {
         await pendingOrders.clear(skinSlug);
+        telemetry.track('purchase_failed', {
+          plan_id: target.skinId, platform: Platform.OS, order_id: order.orderId,
+          reason: 'verify_failed', kind: 'skin',
+        });
         showToast(t('purchaseFailed'), 'error');
       }
-    } catch {
+    } catch (error) {
+      telemetry.track('purchase_failed', {
+        plan_id: target.skinId, platform: Platform.OS,
+        reason: error instanceof IapError ? `iap_${error.kind}`
+          : error instanceof ApiClientError ? (error.status === 0 ? 'offline' : 'api_error')
+            : 'exception',
+        kind: 'skin',
+      });
       // 中断：本地记录保留，下次进入本页自动恢复终态（CTA 期间已防重复点击）
       showToast(t('recoveryStuck'), 'info');
     } finally {
@@ -245,7 +267,10 @@ export function SkinDetailScreen() {
     }, 1500);
   }, [back, focus.actions, showToast, skinSlug]);
 
-  const previewPoster = storePoster(focus.skins, skinSlug, previewState);
+  const previewPoster = storePoster(focus.skins, skinSlug, previewState)
+    // 未购/未拉取的皮肤清单不在本地：ready 态至少用公开海报兜底，
+    // 其余状态仍按缺失走占位（真实四态预览需购后清单落盘）
+    ?? (previewState === 'ready' ? { uri: skinPosterUrl(skinSlug) } : null);
   // 信息区状态数：皮肤清单已就位时用真实状态数
   const skinManifest = findSkinManifestByIdOrSlug(focus.skins, skinSlug);
   const previewWidth = windowWidth;

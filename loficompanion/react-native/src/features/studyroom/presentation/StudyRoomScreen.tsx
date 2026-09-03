@@ -18,6 +18,7 @@ import { radii, space, type, type ThemeColors } from "../../../theme/tokens";
 import { useThemeStyles } from "../../../theme/useThemeStyles";
 import { useAsyncRefresh } from "../../leaderboards/application/useAsyncRefresh";
 import { stateAsset } from "../../skins/domain/resolve";
+import { skinPosterUrl } from "../../../data/apiClient";
 import { findSkinManifestByIdOrSlug } from "../../skins/domain/registry";
 import { useFocus } from "../../focus/application/FocusStore";
 import { fetchRoomCounts } from "../data/roomsClient";
@@ -40,17 +41,19 @@ export function StudyRoomScreen() {
   const { t } = useTranslation("studyroom");
   const focus = useFocus();
   const insets = useSafeAreaInsets();
-  const { state, refreshing, refresh } = useAsyncRefresh(
+  const { state, refreshing, refresh, poll } = useAsyncRefresh(
     () => fetchRoomCounts(),
     [],
   );
 
   useEffect(() => {
+    // 后台静默轮询：只更新在线人数数字（数据未变不重渲染），不亮下拉刷新
+    // 指示器——此前误用 refresh（pull-to-refresh handler），每 15s 转一次菊花
     const timer = setInterval(() => {
-      void refresh();
+      void poll();
     }, COUNTS_POLL_MS);
     return () => clearInterval(timer);
-  }, [refresh]);
+  }, [poll]);
 
   const countsUnavailable = state.status === "error";
   const countFor = (room: StudyRoomDef): number | null => {
@@ -88,9 +91,11 @@ export function StudyRoomScreen() {
             const count = countFor(room);
             const name = roomName(room, locale);
             const roomManifest = findSkinManifestByIdOrSlug(focus.skins, room.id);
+            // 云端皮肤未拉取（付费未购/清单未就位）时用 biz 公开海报兜底，
+            // 不再渲染空占位卡（被误读为 mock 数据的问题根因）
             const poster = roomManifest
               ? stateAsset(roomManifest, "ready").poster
-              : null;
+              : { uri: skinPosterUrl(room.id) };
             return (
               <Pressable
                 key={room.id}

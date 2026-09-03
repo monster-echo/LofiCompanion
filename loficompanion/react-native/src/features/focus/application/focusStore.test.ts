@@ -1,4 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+// orchestrate 现在直连 telemetry（专注漏斗埋点）；Telemetry 顶层 import
+// react-native 的 Platform，node 测试环境无法解析——桩掉整个模块。
+vi.mock('../../../telemetry/Telemetry', () => ({
+  telemetry: {
+    track: vi.fn(),
+    report: vi.fn(),
+    screen: vi.fn(),
+    configure: vi.fn(),
+    setUserAnalyticsEnabled: vi.fn(),
+  },
+}));
 import { rainyStudyRoomManifest as manifest } from '../../skins/domain/rainyStudyRoom.generated';
 import type { SkinManifest } from '../../skins/domain/types';
 import type { AchievementRuleKey } from '../../achievements/domain/rules';

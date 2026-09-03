@@ -9,6 +9,7 @@ const configKey = 'mobileui.config.lastKnownGood';
 const anonymousKey = 'mobileui.telemetry.anonymousId';
 const telemetryQueueKey = 'mobileui.telemetry.queue';
 const localeOverrideKey = 'mobileui.preferences.localeOverride';
+const themeOverrideKey = 'mobileui.preferences.themeOverride';
 let anonymousIdPromise: Promise<string> | null = null;
 
 // 访客语言覆盖（登录用户走服务端 user.settings.language，优先级更高）。
@@ -20,6 +21,21 @@ export async function readLocaleOverride(): Promise<'zh-CN' | 'en-US' | null> {
 export async function saveLocaleOverride(locale: 'zh-CN' | 'en-US' | null) {
   if (locale) await AsyncStorage.setItem(localeOverrideKey, locale);
   else await AsyncStorage.removeItem(localeOverrideKey);
+}
+
+// 访客主题覆盖（登录用户走服务端 user.settings.theme，优先级更高）。
+// 登录页必然 user=null：没有这层覆盖，登录后选的 dark 在登出/冷启动时
+// 塌缩回 system，登录页会跟随系统亮暗（issue：dark 模式登录页是 light）。
+export type ThemeOverride = 'system' | 'light' | 'dark';
+
+export async function readThemeOverride(): Promise<ThemeOverride | null> {
+  const raw = await AsyncStorage.getItem(themeOverrideKey);
+  return raw === 'system' || raw === 'light' || raw === 'dark' ? raw : null;
+}
+
+export async function saveThemeOverride(mode: ThemeOverride | null) {
+  if (mode) await AsyncStorage.setItem(themeOverrideKey, mode);
+  else await AsyncStorage.removeItem(themeOverrideKey);
 }
 
 export async function readSessionToken() {

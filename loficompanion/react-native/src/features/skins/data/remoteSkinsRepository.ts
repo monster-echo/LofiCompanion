@@ -1,5 +1,6 @@
 import { File, Directory, Paths } from 'expo-file-system';
 import { apiClient, resolveAssetUrl } from '../../../data/apiClient';
+import { telemetry } from '../../../telemetry/Telemetry';
 import { materializeManifest } from '../domain/remoteSkinMaterialize';
 import type { SkinSummaryRemote } from '../../../data/apiClient';
 import type { SkinManifest } from '../domain/types';
@@ -189,6 +190,7 @@ export async function fetchRemoteSkins(
     catalog = await deps.fetchCatalog();
   } catch {
     // 离线/网络异常：回退本地缓存（pull 到本地的皮肤离线继续可用）
+    telemetry.track('skin_catalog_fetch_failed');
     return readCachedSkins();
   }
   const results: SkinManifest[] = [];
@@ -223,8 +225,17 @@ export async function fetchRemoteSkins(
       await pruneCache(manifest.slug, manifest.manifestVersion);
       persistManifest(manifest.slug, manifest.manifestVersion, raw);
       results.push(manifest);
-    } catch {
-      // 单皮肤失败静默跳过（目录下一轮 refresh 重试）
+    } catch (error) {
+      // 单皮肤失败跳过（目录下一轮 refresh 重试）。401/403 是权益门禁的
+      // 预期路径（未购/未登录），不打点防噪音；下载/换签失败是真实可用性
+      // 损失（商店与房间卡会一直空占位），必须可观测。
+      const status = (error as { status?: number }).status;
+      if (status !== 401 && status !== 403) {
+        telemetry.track('skin_fetch_failed', {
+          slug: summary.slug,
+          stage: error instanceof Error ? error.message.slice(0, 80) : 'unknown',
+        });
+      }
     }
   }
   return results;
