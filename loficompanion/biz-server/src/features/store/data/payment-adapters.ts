@@ -82,28 +82,45 @@ function resolveEnvironment(value: string | undefined): Environment {
 
 export class AppleAdapter implements PaymentAdapter {
   readonly id = 'apple';
-  private verifier: SignedDataVerifier | null = null;
-  private apiClient: AppStoreServerAPIClient | null = null;
+  /** 按环境缓存的验签器/API 客户端（生产/沙盒互为兜底，见 environments()） */
+  private verifiers = new Map<Environment, SignedDataVerifier>();
+  private apiClients = new Map<Environment, AppStoreServerAPIClient>();
 
-  private init(): SignedDataVerifier {
-    if (this.verifier) return this.verifier;
+  /**
+   * 主环境取 APPLE_ENVIRONMENT；Production/Sandbox 互为兜底——
+   * App Store 真实购买走 Production，TestFlight/沙盒测试交易走 Sandbox，
+   * 单一环境配置会让另一侧的 verify 必败。
+   */
+  private environments(): readonly Environment[] {
+    const primary = resolveEnvironment(process.env.APPLE_ENVIRONMENT ?? 'Sandbox');
+    const fallback = primary === Environment.PRODUCTION
+      ? Environment.SANDBOX
+      : primary === Environment.SANDBOX ? Environment.PRODUCTION : null;
+    return fallback ? [primary, fallback] : [primary];
+  }
+
+  private init(env: Environment): SignedDataVerifier {
+    const cached = this.verifiers.get(env);
+    if (cached) return cached;
     const bundleId = process.env.APPLE_BUNDLE_ID;
     const appAppleId = process.env.APPLE_APP_APPLE_ID;
     if (!bundleId || !appAppleId) {
       throw new ApiError(503, 'PAYMENT_PROVIDER_NOT_CONFIGURED', 'Apple 支付尚未配置', true);
     }
-    this.verifier = new SignedDataVerifier(
+    const verifier = new SignedDataVerifier(
       loadAppleRootCerts(),
       false,
-      resolveEnvironment(process.env.APPLE_ENVIRONMENT ?? 'Sandbox'),
+      env,
       bundleId,
       Number(appAppleId),
     );
-    return this.verifier;
+    this.verifiers.set(env, verifier);
+    return verifier;
   }
 
-  private initApiClient(): AppStoreServerAPIClient {
-    if (this.apiClient) return this.apiClient;
+  private initApiClient(env: Environment): AppStoreServerAPIClient {
+    const cached = this.apiClients.get(env);
+    if (cached) return cached;
     const issuerId = process.env.APPLE_ISSUER_ID;
     const keyId = process.env.APPLE_KEY_ID;
     const bundleId = process.env.APPLE_BUNDLE_ID;
@@ -115,41 +132,46 @@ export class AppleAdapter implements PaymentAdapter {
     if (!existsSync(keyPath)) {
       throw new ApiError(503, 'PAYMENT_PROVIDER_NOT_CONFIGURED', `Apple 私钥文件不存在: ${keyFile}`, true);
     }
-    this.apiClient = new AppStoreServerAPIClient(
+    const client = new AppStoreServerAPIClient(
       readFileSync(keyPath, 'utf8').trim(),
       keyId,
       issuerId,
       bundleId,
-      resolveEnvironment(process.env.APPLE_ENVIRONMENT ?? 'Sandbox'),
+      env,
     );
-    return this.apiClient;
+    this.apiClients.set(env, client);
+    return client;
   }
 
   async verifyReceipt(input: VerifyReceiptInput): Promise<VerifyResult> {
     if (typeof input.receipt !== 'string') return { ok: false };
-    try {
-      let jws: string;
-      if (input.receipt.startsWith('eyJ')) {
-        // 客户端直接给了 JWS（StoreKit 2 签名交易或测试夹具）：本地根 CA 验签，零网络
-        jws = input.receipt;
-      } else {
-        // 客户端给 transactionId——Apple 推荐的权威流：从 App Store Server API
-        // 取 JWS 再验签，绝不信任客户端数据
-        const response: TransactionInfoResponse =
-          await this.initApiClient().getTransactionInfo(input.receipt);
-        jws = response.signedTransactionInfo ?? '';
-        if (!jws) return { ok: false };
+    // 逐环境尝试：主环境失败（如配置 Production 但交易来自 TestFlight 沙盒）落另一环境
+    for (const env of this.environments()) {
+      try {
+        let jws: string;
+        if (input.receipt.startsWith('eyJ')) {
+          // 客户端直接给了 JWS（StoreKit 2 签名交易或测试夹具）：本地根 CA 验签，零网络
+          jws = input.receipt;
+        } else {
+          // 客户端给 transactionId——Apple 推荐的权威流：从 App Store Server API
+          // 取 JWS 再验签，绝不信任客户端数据
+          const response: TransactionInfoResponse =
+            await this.initApiClient(env).getTransactionInfo(input.receipt);
+          jws = response.signedTransactionInfo ?? '';
+          if (!jws) return { ok: false };
+        }
+        const tx: JWSTransactionDecodedPayload =
+          await this.init(env).verifyAndDecodeTransaction(jws);
+        return {
+          ok: true,
+          storeTransactionId: tx.originalTransactionId ?? '',
+          productId: tx.productId ?? '',
+        };
+      } catch {
+        // 落下一环境重试；全部失败按验签不通过处理
       }
-      const tx: JWSTransactionDecodedPayload =
-        await this.init().verifyAndDecodeTransaction(jws);
-      return {
-        ok: true,
-        storeTransactionId: tx.originalTransactionId ?? '',
-        productId: tx.productId ?? '',
-      };
-    } catch {
-      return { ok: false };
     }
+    return { ok: false };
   }
 }
 
