@@ -28,9 +28,17 @@ export const membership = {
   // 确认订阅（结账页）
   checkoutTitle: 'Confirm subscription',
   checkoutMockNotice: 'Demo checkout: completed through a mock channel.',
+  // 订阅合规披露（App Store 审核指南 3.1.2 / Play 支付政策）：必须渲染在购买动作之前
+  storeApple: 'App Store',
+  storeGoogle: 'Google Play',
+  checkoutDisclosureTitle: 'Auto-renewal details',
+  checkoutDisclosure: 'Subscribing to {{plan}} at {{price}}. Payment will be charged to your {{store}} account at confirmation of purchase, and your subscription renews automatically unless canceled at least 24 hours before the end of the current period. You can manage or cancel anytime in your {{store}} subscription settings.',
   done: 'Done',
   retry: 'Retry',
   restorePurchases: 'Restore purchases',
   restoreDone: 'Your purchases have been restored',
   restoreNone: 'No purchases to restore',
+  // 订阅管理入口（审核要求可跳转商店订阅设置）与法务文档
+  manageSubscriptions: 'Manage subscription',
+  legalLinks: 'Privacy policy & terms of use',
 } as const;

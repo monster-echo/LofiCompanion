@@ -28,9 +28,17 @@ export const membership = {
   // 确认订阅（结账页）
   checkoutTitle: '确认订阅',
   checkoutMockNotice: '演示支付：通过模拟渠道完成。',
+  // 订阅合规披露（App Store 审核指南 3.1.2 / Play 支付政策）：必须渲染在购买动作之前
+  storeApple: 'App Store',
+  storeGoogle: 'Google Play',
+  checkoutDisclosureTitle: '自动续期说明',
+  checkoutDisclosure: '订阅 {{plan}}（{{price}}）：付款将在确认购买时记入你的 {{store}} 账户，并按所选周期自动续期，除非在当前周期结束前至少 24 小时取消。你可在 {{store}} 的订阅设置中随时管理或取消订阅。',
   done: '完成',
   retry: '重试',
   restorePurchases: '恢复购买',
   restoreDone: '已恢复你的购买',
   restoreNone: '没有找到可恢复的购买',
+  // 订阅管理入口（审核要求可跳转商店订阅设置）与法务文档
+  manageSubscriptions: '管理订阅',
+  legalLinks: '隐私政策与用户条款',
 } as const;

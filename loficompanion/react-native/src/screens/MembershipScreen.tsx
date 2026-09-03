@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AppButton, AppCard, ListRow, PageHeader } from '../design-system/components';
@@ -78,6 +78,20 @@ export function MembershipScreen() {
           onPress={() => navigate('store.home')}
         />
         <ListRow label={t('viewOrders')} route="membership.orders" icon="gift" />
+        {/* 订阅合规（App Store 3.1.2 / Play 支付政策）：跳转商店订阅管理页，
+            用户可随时在系统侧取消/续订 */}
+        <ListRow
+          label={t('manageSubscriptions')}
+          icon="settings"
+          onPress={() => {
+            void Linking.openURL(
+              Platform.OS === 'android'
+                ? 'https://play.google.com/store/account/subscriptions'
+                : 'https://apps.apple.com/account/subscriptions',
+            );
+          }}
+        />
+        <ListRow label={t('legalLinks')} route="settings.legal" icon="book" />
         <RestoreRow />
       </ScrollView>
     </View>
