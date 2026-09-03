@@ -1,10 +1,11 @@
 /**
  * RN IAP provider — server-authoritative。
  *
- * iOS：回传 transactionId（JWS 标识）→ 服务端走 App Store Server API
- * getTransactionInfo 验签；Android：回传 {productId, purchaseToken} →
- * 服务端走 Play Developer API。finishTransaction 在服务端 verify 成功后
- * 由调用方触发（未完成交易经 purchaseUpdatedListener 自愈）。
+ * iOS：优先回传 JWS（transactionReceipt）→ 服务端本地根 CA 验签，零网络
+ * 依赖；无 JWS 时回传 transactionId → 服务端走 App Store Server API 回查。
+ * Android：回传 {productId, purchaseToken} → 服务端走 Play Developer API。
+ * finishTransaction 在服务端 verify 成功后由调用方触发（未完成交易经
+ * purchaseUpdatedListener 自愈）。
  *
  * react-native-iap v16（Nitro Modules）需要 dev client/prebuild 运行时；
  * 懒加载 require——包缺失时 IapPaymentProvider 退化为显式不可用。
@@ -87,11 +88,17 @@ export class IapPaymentProvider implements PaymentProvider {
     return IapPaymentProvider.initPromise;
   }
 
-  /** 平台差异归一：iOS 取 transactionId，Android 取 purchaseToken。 */
+  /**
+   * 平台差异归一：iOS 优先取 JWS（transactionReceipt，StoreKit 2 签名交易），
+   * 服务端可本地根 CA 验签、零网络依赖；transactionId 仅作无 JWS 时的兜底
+   * （走 App Store Server API 回查）。Android 取 purchaseToken。
+   */
   private static toResult(purchase: any): PurchaseResult {
     const productId = String(purchase?.productId ?? '');
     if (Platform.OS === 'ios') {
-      const receipt = String(purchase.transactionId ?? purchase.transactionReceipt ?? '');
+      const jws = String(purchase.transactionReceipt ?? '');
+      const txn = String(purchase.transactionId ?? '');
+      const receipt = jws.startsWith('eyJ') ? jws : (txn || jws);
       return { storeProductId: productId, receipt };
     }
     return {
