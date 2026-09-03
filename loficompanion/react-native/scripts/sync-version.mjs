@@ -4,7 +4,7 @@
 // 构建号（iOS buildNumber / Android versionCode）由 EAS 远端
 // autoIncrement 管理（appVersionSource: remote），本脚本不碰。
 // 调用方：tools/release.sh（发布前落库）、npm script eas-build-post-install（构建期自愈）。
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -12,6 +12,13 @@ const version = JSON.parse(readFileSync(`${ROOT}/package.json`, 'utf8')).version
 
 function replaceOrThrow(file, pattern, replacement, label) {
   const path = `${ROOT}/${file}`;
+  // ios/ android/ 被 gitignore（CNG：CI 上 EAS managed prebuild 从 app.json 现场生成，
+  // 版本直接取 package.json），原生目录不存在时跳过即可；存在但匹配不到才报错，
+  // 那说明本地原生工程结构漂了，需要人看。
+  if (!existsSync(path)) {
+    console.log(`[sync-version] 跳过 ${file}（不存在，CNG/CI 场景由 package.json 兜底）`);
+    return;
+  }
   const content = readFileSync(path, 'utf8');
   if (!pattern.test(content)) {
     throw new Error(`[sync-version] 未在 ${file} 中找到 ${label}，原生文件结构可能变了，请检查`);

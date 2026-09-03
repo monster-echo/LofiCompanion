@@ -48,9 +48,9 @@ jobs:
           fi
           echo "版本一致性 OK: v$TAG_VERSION"
 
-      # 同步原生版本位（Info.plist / pbxproj / build.gradle）：
-      # generic workflow 下 EAS 上传读取的就是这些文件；发布脚本已落库，
-      # 这里再跑一次作为构建期自愈，语义与 eas-build-post-install 相同。
+      # 原生版本位同步：仓库是 CNG（ios/ android/ 不入库），CI 上 managed prebuild
+      # 直接取 package.json 版本，此步在 CI 会跳过原生文件；仅本地构建时有意义
+      # （与 eas-build-post-install 同语义，构建期自愈）。
       - name: 同步原生版本文件
         run: node ./scripts/sync-version.mjs
 
