@@ -1,12 +1,27 @@
 name: React Native Publish
 
+# 统一发布链路：tools/release.sh 打 tag v<version> → 本 workflow 经 EAS 构建
+# 并自动提交 App Store Connect + Google Play（production profile，双平台）。
+# 版本唯一真源是 loficompanion/react-native/package.json 的 version，签名凭证
+# 全部托管在 EAS 服务端（iOS 证书/描述文件、Android keystore、ASC API Key、
+# Play 服务账号），CI 只需要一个 EXPO_TOKEN。
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      platform:
+        description: "构建平台（all=双平台）"
+        type: choice
+        options: [all, ios, android]
+        default: all
 
 permissions:
   contents: read
+
+concurrency:
+  group: eas-publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -15,70 +30,39 @@ jobs:
       run:
         working-directory: loficompanion/react-native
     env:
-      # Optional: base64-encoded release keystore. When unset, the release APK
-      # is signed with the debug keys (still installable for testing).
-      RN_KEYSTORE: ${{ secrets.RN_KEYSTORE }}
-      # Optional: base64-encoded real google-services.json. When unset, a minimal
-      # placeholder is generated so the Firebase Gradle plugin builds; Firebase is
-      # inert at runtime without a real file.
-      RN_GOOGLE_SERVICES_JSON: ${{ secrets.RN_GOOGLE_SERVICES_JSON }}
-      # 发布身份（必填）：app_id（租户）与 environment。Expo 在构建期把
-      # EXPO_PUBLIC_* 内联进产物，未配置则构建出的 App 启动即崩。
-      # 取值优先 GitHub Variables，其次 Secrets；environment 发布默认 production。
-      EXPO_PUBLIC_APP_ID: ${{ vars.APP_ID || secrets.APP_ID }}
-      EXPO_PUBLIC_APP_ENVIRONMENT: ${{ vars.APP_ENVIRONMENT || secrets.APP_ENVIRONMENT || 'production' }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: loficompanion/react-native/package-lock.json
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-      - run: npm ci --legacy-peer-deps
-      - name: Verify app identity
+
+      - name: 版本一致性校验（tag 必须等于 package.json 版本）
         run: |
-          if [ -z "$EXPO_PUBLIC_APP_ID" ]; then
-            echo "::error::APP_ID 未配置：请在仓库 Variables 或 Secrets 中设置 APP_ID 后再发布，不能为空。"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::tag v$TAG_VERSION 与 package.json 版本 $PKG_VERSION 不一致；版本唯一真源是 package.json，请用 tools/release.sh 发版"
             exit 1
           fi
-          echo "Publishing app_id=$EXPO_PUBLIC_APP_ID environment=$EXPO_PUBLIC_APP_ENVIRONMENT"
-      - name: Provide google-services.json
-        # Written to the project root BEFORE prebuild: the @react-native-firebase
-        # config plugin copies it into android/app/ during prebuild, and errors if
-        # expo.android.googleServicesFile is unset or the file is missing.
+          echo "版本一致性 OK: v$TAG_VERSION"
+
+      # 同步原生版本位（Info.plist / pbxproj / build.gradle）：
+      # generic workflow 下 EAS 上传读取的就是这些文件；发布脚本已落库，
+      # 这里再跑一次作为构建期自愈，语义与 eas-build-post-install 相同。
+      - name: 同步原生版本文件
+        run: node ./scripts/sync-version.mjs
+
+      - name: EAS build + 双商店提交
         run: |
-          if [ -n "$RN_GOOGLE_SERVICES_JSON" ]; then
-            printf '%s' "$RN_GOOGLE_SERVICES_JSON" | base64 -d > google-services.json
-          else
-            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"placeholder"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"tech.zhongbei.loficompanion"}},"oauth_client":[],"api_key":[{"current_key":"placeholder"}],"services":{}}],"configuration_version":"1"}' > google-services.json
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN 未配置：在 https://expo.dev/settings/access-tokens 创建 Access Token 后执行 gh secret set EXPO_TOKEN"
+            exit 1
           fi
-      - name: Generate native Android project
-        run: npx expo prebuild --platform android --clean --no-install
-      - name: Configure signing
-        env:
-          STORE_PASSWORD: ${{ secrets.RN_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.RN_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.RN_KEY_PASSWORD }}
-        run: |
-          if [ -n "$RN_KEYSTORE" ]; then
-            printf '%s' "$RN_KEYSTORE" | base64 -d > android/app/release.keystore
-            printf 'storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-              "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
-          fi
-          # Leading "\n" guards against the generated file ending without a
-          # trailing newline, which would otherwise concatenate onto the last line.
-          printf '\napply from: "${rootProject.projectDir}/../ci-release-signing.gradle"\n' >> android/app/build.gradle
-      - name: Build release APK
-        working-directory: loficompanion/react-native/android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease
-      - uses: actions/upload-artifact@v4
-        with:
-          name: react-native-apk
-          path: loficompanion/react-native/android/app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
+          PLATFORM="${{ inputs.platform || 'all' }}"
+          npx --yes eas-cli@latest build \
+            --profile production \
+            --platform "$PLATFORM" \
+            --auto-submit-with-profile=production \
+            --non-interactive

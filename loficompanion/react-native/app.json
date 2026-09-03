@@ -5,7 +5,6 @@
     "scheme": [
       "lofi-companion"
     ],
-    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "web": {
@@ -46,8 +45,7 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "associatedDomains": [
         "applinks:auth.zhongbei.tech"
-      ],
-      "buildNumber": "1"
+      ]
     },
     "android": {
       "package": "tech.zhongbei.loficompanion",
