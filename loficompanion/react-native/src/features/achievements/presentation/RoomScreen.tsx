@@ -12,6 +12,7 @@ import { useApp } from "../../../state/AppStore";
 import { mediaControl } from "../../../design-system/derivedTokens";
 import { usePreferences } from "../../../preferences/PreferencesProvider";
 import { useThemeStyles } from "../../../theme/useThemeStyles";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radii, space, type, type ThemeColors } from "../../../theme/tokens";
 import { useFocus } from "../../focus/application/FocusStore";
 import { ImmersiveMediaSurface } from "../../skins/presentation/ImmersiveMediaSurface";
@@ -57,6 +58,7 @@ export function RoomScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const { palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   // 同一时间只开一个 callout；再次点击同一热点收起
   const [openItemId, setOpenItemId] = useState<RoomItemId | null>(null);
 
@@ -135,7 +137,7 @@ export function RoomScreen() {
       </View>
 
       {/* 底部：说明 + 布置房间（P0-B） */}
-      <View style={styles.bottom}>
+      <View style={[styles.bottom, { paddingBottom: space.x3 + insets.bottom }]}>
         <Text style={styles.bottomTitle}>{t("roomTitle")}</Text>
         <Text style={styles.bottomCaption}>{t("roomCaption")}</Text>
         <View style={styles.arrangeRow}>
@@ -154,12 +156,12 @@ export function RoomScreen() {
         </View>
       </View>
 
-      {/* 返回：悬浮于媒体左上（44×44，媒体控件底） */}
+      {/* 返回：悬浮于媒体左上（44×44，媒体控件底，避让状态栏） */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t("backLabel")}
         onPress={back}
-        style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.backButton, { top: insets.top + space.x2 }, pressed && styles.pressed]}
       >
         <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
       </Pressable>
@@ -213,6 +215,7 @@ const makeStyles = (p: ThemeColors) =>
       flex: 1,
       paddingHorizontal: space.x4,
       paddingTop: space.x6,
+      // 动态 insets 无法进 makeStyles：底部避让在渲染处覆写
       paddingBottom: space.x3,
       gap: space.x1,
     },

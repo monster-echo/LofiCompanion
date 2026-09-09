@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../../../design-system/AppIcon';
 import { WeeklyProgressCard } from '../../../design-system/WeeklyProgressCard';
 import { useApp } from '../../../state/AppStore';
@@ -119,8 +120,10 @@ function Header({ onBack }: Readonly<{ onBack: () => void }>) {
   const { t } = useTranslation('achievements');
   const { palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
+  // 顶部安全区自包含（全局垫充已移除）
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top, height: 56 + insets.top }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('backLabel')}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { apiClient } from '../../../data/apiClient';
 import type { RootParamList } from '../../../navigation/navigationRef';
@@ -29,6 +30,7 @@ export function WeeklySettlementScreen() {
   const focus = useFocus();
   const { palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
+  const insets = useSafeAreaInsets();
 
   // 周结算查上一周：周末后首次查询惰性生成不可变快照（服务端保证幂等）
   const weekId = weekIdOf(previousWeekStartMs(Date.now()));
@@ -59,14 +61,14 @@ export function WeeklySettlementScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('backLabel')}
           onPress={back}
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.backButton, { top: insets.top + space.x2 }, pressed && styles.pressed]}
         >
           <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
       </View>
 
-      {/* 结果 sheet（S06 结果板同构：媒体表面色、圆角 24、CTA 固定） */}
-      <View style={styles.sheet}>
+      {/* 结果 sheet（S06 结果板同构：媒体表面色、圆角 24、CTA 固定，避让 Home 条） */}
+      <View style={[styles.sheet, { paddingBottom: insets.bottom }]}>
         {loaded.state.status === 'loading' ? (
           <Text style={styles.pendingText}>{t('loading')}</Text>
         ) : loaded.state.status === 'error' ? (

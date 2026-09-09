@@ -25,6 +25,7 @@ import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useThemeStyles } from '../../../theme/useThemeStyles';
 import type { StorageDriver } from '../../focus/data/storageDriver';
 import { useFocus } from '../../focus/application/FocusStore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SheetOverlay } from '../../focus/presentation/SheetOverlay';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
 import type { CompanionState } from '../../skins/domain/types';
@@ -79,6 +80,7 @@ export function SkinDetailScreen() {
   const { locale, palette } = usePreferences();
   const { t } = useTranslation('store');
   const styles = useThemeStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const signedIn = user !== null;
   const { width: windowWidth } = useWindowDimensions();
 
@@ -279,8 +281,8 @@ export function SkinDetailScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* App bar 56：返回 44×44，标题居中 */}
-      <View style={styles.header}>
+      {/* App bar 56（避让状态栏）：返回 44×44，标题居中 */}
+      <View style={[styles.header, { paddingTop: insets.top, height: 56 + insets.top }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={i18n.t('common:back')}
@@ -381,8 +383,8 @@ export function SkinDetailScreen() {
         </ScrollView>
       )}
 
-      {/* 底部主 CTA：价格加载中骨架不可点；pending 防重复点击 */}
-      <View style={styles.ctaArea}>
+      {/* 底部主 CTA（避让 Home 条）：价格加载中骨架不可点；pending 防重复点击 */}
+      <View style={[styles.ctaArea, { paddingBottom: space.x3 + insets.bottom }]}>
         {!productReady ? (
           <View style={styles.ctaSkeleton} accessibilityLabel={t('priceLoading')}>
             <Text style={styles.ctaSkeletonText}>{t('priceLoading')}</Text>
@@ -437,7 +439,7 @@ export function SkinDetailScreen() {
 
       {/* 购买确认 sheet：商品 / 价格 / 永久属性 + 恢复购买入口（doc-08 §16/§21） */}
       {sheetOpen && product ? (
-        <SheetOverlay onClose={() => setSheetOpen(false)}>
+        <SheetOverlay onClose={() => setSheetOpen(false)} bottomInset={insets.bottom}>
           <Text style={styles.sheetTitle}>{t('confirmTitle')}</Text>
           <View style={styles.sheetRows}>
             <InfoRow label={t('confirmProduct')} value={product.skinName} />
@@ -551,7 +553,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   stateChipActive: {
     borderColor: p.actionFocus,
-    backgroundColor: 'rgba(79,143,232,0.16)',
+    backgroundColor: p.brandSoft,
   },
   stateChipText: {
     ...type.label,

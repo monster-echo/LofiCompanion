@@ -9,7 +9,9 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { apiClient } from '../../../data/apiClient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../../../design-system/AppIcon';
+import { mediaGlassSoft } from '../../../design-system/derivedTokens';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
@@ -61,6 +63,7 @@ export function SkinStoreScreen() {
   const { back, navigate, user } = useApp();
   const { locale, palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation('store');
   const focus = useFocus();
   const signedIn = user !== null;
@@ -127,8 +130,8 @@ export function SkinStoreScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* App bar 56：返回 44×44 + 居中标题 + 右「已拥有」过滤（doc-08 §15） */}
-      <View style={styles.header}>
+      {/* App bar 56（避让状态栏）：返回 44×44 + 居中标题 + 右「已拥有」过滤（doc-08 §15） */}
+      <View style={[styles.header, { paddingTop: insets.top, height: 56 + insets.top }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={i18n.t('common:back')}
@@ -166,7 +169,7 @@ export function SkinStoreScreen() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: space.x6 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
         >
           <CurrentSkinBanner
@@ -417,6 +420,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     paddingTop: space.x3,
     paddingHorizontal: space.x4,
     gap: space.x5,
+    // 动态 insets 渲染处覆写（Home 指示条避让）
     paddingBottom: space.x6,
   },
   banner: {
@@ -430,7 +434,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   bannerScrim: {
     ...absoluteFill,
-    backgroundColor: 'rgba(6,16,28,0.34)',
+    backgroundColor: mediaGlassSoft,
   },
   bannerRow: {
     position: 'absolute',
@@ -535,7 +539,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   pricePillPlus: {
     borderColor: p.borderEmphasis,
-    backgroundColor: 'rgba(79,143,232,0.16)',
+    backgroundColor: p.brandSoft,
   },
   pricePillText: {
     ...type.micro,

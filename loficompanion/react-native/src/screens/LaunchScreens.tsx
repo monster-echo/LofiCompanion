@@ -8,7 +8,10 @@ import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { useTranslation } from 'react-i18next';
 import { RuntimeConfig } from '../domain/models';
-import { colors, radii, spacing } from '../theme/tokens';
+import { navigationRef } from '../navigation/navigationRef';
+import { colors, radii, semantic, spacing } from '../theme/tokens';
+import { mediaGlassControl } from '../design-system/derivedTokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styles } from '../theme/styles';
 
 const LogoImage = require('../../assets/splash-icon.png');
@@ -25,6 +28,7 @@ export function SplashScreen() {
   const { replace, config, bootstrapped, online } = useApp();
   const { palette } = usePreferences();
   const { t } = useTranslation('launch');
+  const insets = useSafeAreaInsets();
   const [minElapsed, setMinElapsed] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const doneRef = useRef(false);
@@ -37,6 +41,12 @@ export function SplashScreen() {
 
   const goHome = useCallback(() => {
     if (doneRef.current) return;
+    if (!navigationRef.isReady()) {
+      // 容器未就绪时 resetToRoutes 会静默 no-op——稍后重试且不置 doneRef，
+      // 保证无论时序如何最终一定逃生（不永久卡 splash）。
+      setTimeout(goHome, 200);
+      return;
+    }
     doneRef.current = true;
     replace('home');
   }, [replace]);
@@ -46,17 +56,23 @@ export function SplashScreen() {
     return () => clearTimeout(t);
   }, []);
 
-  // fetch 无显式超时，最长等待兜底，避免一直卡在 loading
+  // fetch 无显式超时，最长等待兜底，避免一直卡在 loading。定时器只挂一次，
+  // 经 ref 间接调用 goHome：goHome 身份随 config 轮询刷新（useCallback 依赖
+  // config.features），直接作为依赖会让计时器被反复重置、兜底永远不触发。
+  const goHomeRef = useRef(goHome);
+  useEffect(() => { goHomeRef.current = goHome; }, [goHome]);
   useEffect(() => {
-    const t = setTimeout(goHome, MAX_SPLASH_WAIT_MS);
+    const t = setTimeout(() => goHomeRef.current(), MAX_SPLASH_WAIT_MS);
     return () => clearTimeout(t);
-  }, [goHome]);
+  }, []);
 
-  const ready = minElapsed && bootstrapped;
+  // 开发构建跳过人为等待：不做 logo 最短展示，也不进品牌闪屏（联调反复冷启动
+  // 不必陪跑开屏倒计时）；线上（release）行为不变。
+  const ready = (__DEV__ || minElapsed) && bootstrapped;
   useEffect(() => {
     if (!ready || countdown !== null) return;
-    if (!config.splash || !online) {
-      goHome(); // 未配置闪屏或离线 → 直接进首页
+    if (__DEV__ || !config.splash || !online) {
+      goHome(); // dev 直达首页；未配置闪屏或离线 → 直接进首页
       return;
     }
     // 进闪屏前预加载图片：远程图首拉 1-2s，在 loading 阶段拉好，
@@ -87,10 +103,7 @@ export function SplashScreen() {
           style={launchStyles.logoMark}
           accessibilityLabel={t('brandIcon')}
         />
-        <Text style={styles.title}>{config.brand.appName}</Text>
-        <Text style={styles.secondary}>{config.brand.tagline}</Text>
         <ActivityIndicator color={colors.brand} style={launchStyles.loadingSpinner} />
-        <Text style={launchStyles.loadingText}>{t('loading')}</Text>
       </View>
     );
   }
@@ -102,7 +115,7 @@ export function SplashScreen() {
   return (
     <View style={[launchStyles.splashRoot, { backgroundColor: palette.background }]}>
       <SplashMedia splash={splash} background={palette.background} />
-      <View pointerEvents="box-none" style={launchStyles.overlay}>
+      <View pointerEvents="box-none" style={[launchStyles.overlay, { paddingTop: spacing.x3 + insets.top }]}>
         <View style={launchStyles.topBar}>
           <SkipCapsule canSkip={canSkip} countdown={Math.max(countdown, 0)} onSkip={goHome} />
         </View>
@@ -254,9 +267,10 @@ const launchStyles = StyleSheet.create({
     minWidth: 72,
     paddingHorizontal: spacing.x3,
     borderRadius: radii.round,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: mediaGlassControl,
   },
-  skipCapsuleText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  // 静态闪屏无 palette 上下文：媒体层 token 直接取模块级语义（onMedia 恒浅色）
+  skipCapsuleText: { color: semantic.onMedia, fontSize: 14, fontWeight: '600' },
   fallback: {
     flex: 1,
     alignItems: 'center',
@@ -268,5 +282,4 @@ const launchStyles = StyleSheet.create({
   badge: { color: colors.brand, fontSize: 13, fontWeight: '700' },
   fullWidth: { width: '100%' },
   loadingSpinner: { marginTop: spacing.x4 },
-  loadingText: { color: colors.brand, fontSize: 14, marginTop: spacing.x2 },
 });

@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StudyResultSheet } from '../../../design-system/StudyResultSheet';
 import { replaceRoute } from '../../../navigation/navigationRef';
 import { useApp } from '../../../state/AppStore';
 import { type, type ThemeColors } from '../../../theme/tokens';
 import { useThemeStyles } from '../../../theme/useThemeStyles';
+import { mediaTextShadow } from '../../../design-system/derivedTokens';
 import { ACHIEVEMENT_DEFS } from '../../achievements/domain/rules';
 import { effectiveSeconds as computeEffective } from '../domain/engine';
 import { useFocus } from '../application/FocusStore';
@@ -17,6 +18,12 @@ import { useTranslation } from 'react-i18next';
  * 处开始，CTA 固定。新成就仅在 completions 携带时展示（不伪造）；无成就
  * 时卡片移除、sheet 自然收缩。completions 为空（深链/回退导航）→ 回首页。
  */
+
+const TITLE_DELAY_MS = 200;
+const TITLE_MS = 240;
+const REDUCED_TITLE_MS = 100;
+/** 标题入场位移：自上 -8dp 沉降到位 */
+const TITLE_OFFSET = -8;
 export function FocusCompleteScreen() {
   const styles = useThemeStyles(makeStyles);
   const focus = useFocus();
@@ -26,6 +33,21 @@ export function FocusCompleteScreen() {
   const insets = useSafeAreaInsets();
   // 仅按「挂载时」判定深导航：后续 acknowledge 不触发已入栈的旧实例跳转
   const deepNav = useRef(focus.completions === null);
+  // 标题入场：短暂延迟后下沉淡入（与 sheet 上滑错峰，完成页的第一个动词）
+  const titleIn = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (deepNav.current || !focus.completions) return;
+    Animated.sequence([
+      Animated.delay(focus.reducedMotion ? 0 : TITLE_DELAY_MS),
+      Animated.timing(titleIn, {
+        toValue: 1,
+        duration: focus.reducedMotion ? REDUCED_TITLE_MS : TITLE_MS,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [focus.completions, focus.reducedMotion, titleIn]);
 
   useEffect(() => {
     if (deepNav.current) replace('home');
@@ -56,7 +78,28 @@ export function FocusCompleteScreen() {
         reducedMotion={focus.reducedMotion}
         style={styles.media}
       />
-      <Text style={styles.title}>{t('completeTitle')}</Text>
+      <Animated.View
+        style={[
+          styles.titleWrap,
+          {
+            top: insets.top + 24,
+          },
+          {
+            opacity: titleIn,
+            transform: [
+              {
+                translateY: titleIn.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [TITLE_OFFSET, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <Text style={styles.title}>{t('completeTitle')}</Text>
+      </Animated.View>
 
       <StudyResultSheet
         visible
@@ -75,7 +118,7 @@ export function FocusCompleteScreen() {
         primaryAction={{ label: t('againAction'), onPress: again }}
         secondaryAction={{ label: t('finishToday'), onPress: finishToday }}
         reducedMotion={focus.reducedMotion}
-        // Modal 不继承外层 SafeAreaView：CTA 需要 安全区 + 12
+        // StudyResultSheet 是独立窗口表面：CTA 需要 安全区 + 12
         bottomInset={insets.bottom}
       />
     </View>
@@ -91,11 +134,15 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     height: '56%',
     width: '100%',
   },
-  title: {
-    ...type.title1,
-    color: p.textPrimary,
+  titleWrap: {
     position: 'absolute',
     top: 24,
     left: 20,
+  },
+  title: {
+    ...type.title1,
+    // 压在 completed 影像上：onMedia 固定浅色 + 媒体文字投影（主题无关）
+    color: p.onMedia,
+    ...mediaTextShadow,
   },
 });

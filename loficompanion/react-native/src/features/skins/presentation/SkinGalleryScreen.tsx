@@ -7,6 +7,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../../data/apiClient';
 import type { SkinProductRemote } from '../../../data/apiClient';
 import { AppIcon } from '../../../design-system/AppIcon';
@@ -38,6 +39,7 @@ export function SkinGalleryScreen() {
   const { back, navigate } = useApp();
   const { palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation('skins');
   const { t: tStore } = useTranslation('store');
   const { width: windowWidth } = useWindowDimensions();
@@ -97,8 +99,8 @@ export function SkinGalleryScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* App bar 56：左返回 44×44，标题居中 */}
-      <View style={styles.header}>
+      {/* App bar 56（避让状态栏）：左返回 44×44，标题居中 */}
+      <View style={[styles.header, { paddingTop: insets.top, height: 56 + insets.top }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={i18n.t('common:back')}
@@ -144,8 +146,8 @@ export function SkinGalleryScreen() {
         </Pressable>
       </ScrollView>
 
-      {/* 底部固定主按钮（安全区 + 12 由外层 SafeArea + paddingBottom 承担） */}
-      <View style={styles.ctaArea}>
+      {/* 底部固定主按钮（自行避让 Home 指示条） */}
+      <View style={[styles.ctaArea, { paddingBottom: space.x3 + insets.bottom }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={ctaLabel}

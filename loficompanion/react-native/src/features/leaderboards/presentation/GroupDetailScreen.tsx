@@ -1,5 +1,6 @@
 import React from 'react';
 import { Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { apiClient } from '../../../data/apiClient';
 import type { RootParamList } from '../../../navigation/navigationRef';
@@ -33,6 +34,7 @@ export function GroupDetailScreen() {
   const focus = useFocus();
   const { palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
+  const insets = useSafeAreaInsets();
 
   const loaded = useAsyncRefresh(async () => {
     const [detail, board, previous] = await Promise.all([
@@ -184,8 +186,8 @@ export function GroupDetailScreen() {
         ) : null}
       </ScrollView>
 
-      {/* 透明 App bar（叠加于媒体之上）：返回 + 组名 */}
-      <View style={styles.appBar} pointerEvents="box-none">
+      {/* 透明 App bar（叠加于媒体之上，避让状态栏）：返回 + 组名 */}
+      <View style={[styles.appBar, { top: insets.top }]} pointerEvents="box-none">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('backLabel')}
@@ -198,8 +200,8 @@ export function GroupDetailScreen() {
         <View style={styles.backButton} />
       </View>
 
-      {/* 主按钮固定底部 */}
-      <View style={styles.ctaBar}>
+      {/* 主按钮固定底部（避让 Home 指示条） */}
+      <View style={[styles.ctaBar, { bottom: insets.bottom + space.x5 }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('startTogether')}
@@ -231,9 +233,10 @@ function StateShell({ onBack, title, children }: Readonly<{
   const { t } = useTranslation('leaderboards');
   const { palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.screen}>
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { top: insets.top }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('backLabel')}
