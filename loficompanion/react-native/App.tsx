@@ -1,8 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Platform, SafeAreaView } from 'react-native';
+import { Platform, View } from 'react-native';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 import { AppRoute } from './src/navigation/routes';
@@ -79,24 +80,28 @@ function AppSurface() {
   // 联机门禁：bootstrap 成功前不放行（hooks 顺序保持——门禁只是渲染分支）。
   if (!serverReady) return <ConnectionGate />;
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
-        <NavigationContainer
-          ref={navigationRef}
-          theme={navigationTheme}
-          onReady={() => setNavReady(true)}
-          onStateChange={() => {
-            // Screen-view telemetry fires on every navigation state change
-            // (push/pop/replace/tab switch). Replaces the old
-            // useEffect([navigation.route]) in AppStore.
-            const current = navigationRef.getCurrentRoute();
-            if (current?.name) telemetry.screen(current.name as AppRoute);
-          }}
-        >
-          <RootNavigator />
-        </NavigationContainer>
-        <FeedbackHost />
-      </SafeAreaView>
-    </SafeAreaProvider>
+    <KeyboardProvider>
+      <SafeAreaProvider>
+        {/* 边到边根容器：不再全局垫充安全区，各页面自行处理 insets
+            （沉浸页因此无需再叠 RN Modal 独立窗口逃避垫充） */}
+        <View style={[styles.safeArea, { backgroundColor: palette.background }]}>
+          <NavigationContainer
+            ref={navigationRef}
+            theme={navigationTheme}
+            onReady={() => setNavReady(true)}
+            onStateChange={() => {
+              // Screen-view telemetry fires on every navigation state change
+              // (push/pop/replace/tab switch). Replaces the old
+              // useEffect([navigation.route]) in AppStore.
+              const current = navigationRef.getCurrentRoute();
+              if (current?.name) telemetry.screen(current.name as AppRoute);
+            }}
+          >
+            <RootNavigator />
+          </NavigationContainer>
+          <FeedbackHost />
+        </View>
+      </SafeAreaProvider>
+    </KeyboardProvider>
   );
 }

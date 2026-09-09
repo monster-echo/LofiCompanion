@@ -1,10 +1,15 @@
 import React, { ReactNode } from 'react';
 import {
+  Platform,
   Pressable,
+  StyleProp,
   Switch,
   Text,
   View,
+  ViewStyle,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppRoute } from '../navigation/routes';
 import { useApp } from '../state/AppStore';
 import { semantic } from '../theme/tokens';
@@ -118,10 +123,18 @@ export function PageHeader({
   const { t } = useTranslation('common');
   const { back, canGoBack } = useApp();
   const { palette } = usePreferences();
+  // 顶部安全区自包含：全局垫充已移除，头部自行避让状态栏
+  // （headerTitle 绝对定位，height 须同步加上 insets.top，否则行内容溢出）
+  const insets = useSafeAreaInsets();
   return (
     <View style={[
       componentStyles.header,
-      { backgroundColor: palette.background, borderBottomColor: palette.border },
+      {
+        backgroundColor: palette.background,
+        borderBottomColor: palette.border,
+        paddingTop: insets.top,
+        height: 58 + insets.top,
+      },
     ]}>
       <View style={componentStyles.headerSide}>
         {canGoBack ? (
@@ -223,5 +236,28 @@ export function ToggleRow({
         trackColor={{ false: palette.border, true: palette.brand }}
       />
     </View>
+  );
+}
+
+// 键盘避让页面容器：iOS 上键盘弹出时按「视图与键盘的重叠高度」逐帧上推内容
+// （react-native-keyboard-controller 的帧同步动画，优于 RN 内置 KAV 的跳变）；
+// Android 不参与——系统 adjustResize 已压缩窗口，behavior 传 undefined 时
+// 该库源码直接返回空样式，等价透明包装，避免双重偏移。
+export function KeyboardAvoidingScreen({
+  children,
+  style,
+}: Readonly<{ children: ReactNode; style?: StyleProp<ViewStyle> }>) {
+  const insets = useSafeAreaInsets();
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[{ flex: 1 }, style]}
+    >
+      {/* 底部安全区放内层 View：KAV behavior="padding" 的动画样式会覆盖容器
+          自身静态 paddingBottom，垫在子视图上才能键盘收起时不丢失 */}
+      <View style={[{ flex: 1 }, { paddingBottom: insets.bottom }]}>
+        {children}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
