@@ -18,11 +18,12 @@ export type SheetOverlayProps = Readonly<{
   closeLabel?: string;
   /** 减少动态：取消位移，只保留 100ms opacity（doc-07 §10） */
   reducedMotion?: boolean;
-  /** 独立窗口层（RN Modal）内使用：追加底部安全区内边距（外层无 SafeAreaView 垫充时必传） */
+  /** 追加底部安全区内边距：渲染在无自身避让语境的容器里时必传
+   *  （全屏沉浸层/原生 Modal 类表面；普通栈屏由全局边到边布局自行处理） */
   bottomInset?: number;
   /** 面板锚定边：bottom（默认）= 底部上滑面板；top = 顶部下拉面板（圆角/描边/位移方向随之镜像） */
   anchor?: "top" | "bottom";
-  /** anchor="top" 时：追加顶部安全区内边距（Modal 内无 SafeAreaView 垫充时必传） */
+  /** anchor="top" 时：追加顶部安全区内边距（同上，无避让语境的容器必传） */
   topInset?: number;
   children: ReactNode;
 }>;
@@ -131,7 +132,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     backgroundColor: p.surface,
     paddingTop: 8,
     paddingHorizontal: 20,
-    paddingBottom: 12, // doc-07 §7.1：底部固定 CTA 与安全区 12（安全区由外层 SafeArea 承担）
+    paddingBottom: 12, // doc-07 §7.1：底部固定 CTA 与安全区 12（安全区经 bottomInset 由调用方传入）
   },
   sheetBottom: {
     bottom: 0,
