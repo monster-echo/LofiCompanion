@@ -5,7 +5,6 @@ import {
   BackHandler,
   Easing,
   Image,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -18,6 +17,8 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { AppIcon } from '../../../design-system/AppIcon';
+import { mediaGlassControl, mediaTextShadow } from '../../../design-system/derivedTokens';
+import { PressableScale } from '../../../design-system/PressableScale';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { radii, semantic, space, type, type ThemeColors } from '../../../theme/tokens';
@@ -37,7 +38,7 @@ import { DanmakuLayer, type DanmakuBand } from './DanmakuLayer';
 import { DanmakuInputBar } from './DanmakuInputBar';
 
 /**
- * S-自习室房间页（概念对齐 S04 专注中）：RN Modal 独立窗口层 100% 全屏，
+ * S-自习室房间页（概念对齐 S04 专注中）：fullScreenModal 路由边到边呈现，
  * 视频 + lofi 声音 + 弹幕只在进入房间后出现。左上「退出」+ 房间名 + 在线数；
  * 右上快捷设置（屏幕常亮 / 静音，与专注页共用 focusQuickPrefs）。
  * 挂载 5s 后进入沉浸弱化：控制件与输入条全部隐藏，任意触碰 160ms 恢复；
@@ -47,6 +48,10 @@ import { DanmakuInputBar } from './DanmakuInputBar';
 const WEAKEN_AFTER_MS = 5000;
 const RESTORE_MS = 160;
 const WEAKEN_MS = 600;
+/** 用户意图事件（暂停/恢复/完成）的画面叠化时长：短于清单 500ms，更跟手 */
+const FAST_CROSSFADE_MS = 260;
+/** 开场：顶部 chrome 淡入时长 */
+const ENTER_FADE_MS = 200;
 
 /** 弹幕位置三档循环顺序（快捷设置点击切换） */
 const BAND_CYCLE: readonly DanmakuBand[] = ['center', 'top', 'bottom'];
@@ -89,6 +94,12 @@ export function StudyRoomActiveScreen() {
   const roomSkin = findSkinManifestByIdOrSlug(skins, room.id);
   const roomManifest = roomSkin ?? DEFAULT_SKIN_MANIFEST;
   const roomDisplayName = roomName(room, locale);
+  // 用户意图事件（暂停/恢复/完成）与专注页同款短叠化，画面响应更跟手
+  const playingEvent = companion.playing?.eventType;
+  const fastCrossfade =
+    playingEvent === 'focus.paused' ||
+    playingEvent === 'focus.resumed' ||
+    playingEvent === 'focus.completed';
 
   // 进房 = 建连（弹幕/presence）+ 音乐在场（ambient：无需专注会话）；退出全部释放
   const enteredAt = useRef(0);
@@ -153,6 +164,22 @@ export function StudyRoomActiveScreen() {
     }).start();
   }, [weakened, screenReader, chrome]);
 
+  // ---- 开场编排（挂载一次性）：顶部 chrome 200ms 淡入，与视频叠化同刻 ----
+  const enter = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reducedMotion) {
+      enter.setValue(1);
+      return;
+    }
+    enter.setValue(0);
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: ENTER_FADE_MS,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [reducedMotion, enter]);
+
   // Android 返回不退出房间：仅唤醒界面（退出走左上按钮，防误触断连）
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -194,17 +221,10 @@ export function StudyRoomActiveScreen() {
 
   const offline = state.status === 'connecting' || state.status === 'reconnecting';
 
+  // 全屏由路由呈现层（fullScreenModal + 边到边）承担；TouchableWithoutFeedback
+  // 需单子节点，故 TWF 内保留一层同款 screen View 承载全部沉浸内容
   return (
-    <Modal
-      presentationStyle="fullScreen"
-      // 双层模态（native-stack fullScreenModal 内再叠 RN Modal）下 fade 会在
-      // 退出时瞬间移除独立窗口、露出底层 dismiss 动画的黑底——返回黑屏的
-      // 根因。与 FocusActiveScreen 同解：内层不用动画（animationType="none"）。
-      animationType="none"
-      statusBarTranslucent
-      navigationBarTranslucent
-      onRequestClose={wake}
-    >
+    <View style={styles.screen}>
       <TouchableWithoutFeedback onPress={wake}>
         <View style={styles.screen}>
           <StatusBar hidden animated={false} />
@@ -213,6 +233,7 @@ export function StudyRoomActiveScreen() {
               manifest={roomManifest}
               state={companion.playing ? companion.playing.state : companion.state}
               reducedMotion={reducedMotion}
+              crossfadeMs={fastCrossfade ? FAST_CROSSFADE_MS : undefined}
               style={styles.mediaFill}
             />
           ) : (
@@ -223,52 +244,59 @@ export function StudyRoomActiveScreen() {
                 resizeMode="cover"
                 blurRadius={2}
               />
-              <Pressable
+              <PressableScale
                 accessibilityRole="link"
                 accessibilityLabel={t('themeLockedCta')}
                 onPress={() => navigate('store.skinDetail', { skinSlug: room.id })}
+                reducedMotion={reducedMotion}
                 style={styles.lockedPill}
               >
                 <AppIcon name="lock" color={semantic.onMedia} size={14} />
                 <Text style={styles.lockedPillText}>{t('themeLockedHint')}</Text>
-              </Pressable>
+              </PressableScale>
             </>
           )}
 
           <DanmakuLayer reducedMotion={reducedMotion} band={danmakuBand} />
 
-          {/* 左上：退出 + 房间名 + 在线数 */}
-          <Animated.View style={[styles.topLeft, { top: insets.top + 8, opacity: chrome }]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('exitRoom')}
-              onPress={back}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <AppIcon name="chevron-left" color={semantic.textPrimary} size={20} />
-            </Pressable>
-            <View style={styles.titleBlock}>
-              <Text style={styles.roomName}>{roomDisplayName}</Text>
-              <View style={styles.onlineRow}>
-                <View style={styles.dot} />
-                <Text style={styles.onlineText}>{t('onlineNow', { n: state.onlineCount })}</Text>
+          {/* 左上：退出 + 房间名 + 在线数（外层开场淡入、内层弱化 chrome） */}
+          <Animated.View style={[styles.topLeft, { top: insets.top + 8, opacity: enter }]}>
+            <Animated.View style={{ opacity: chrome, flexDirection: 'row', alignItems: 'center', gap: space.x2 }}>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel={t('exitRoom')}
+                onPress={back}
+                reducedMotion={reducedMotion}
+                style={styles.roundButton}
+              >
+                <AppIcon name="chevron-left" color={semantic.textPrimary} size={20} />
+              </PressableScale>
+              <View style={styles.titleBlock}>
+                <Text style={styles.roomName}>{roomDisplayName}</Text>
+                <View style={styles.onlineRow}>
+                  <View style={styles.dot} />
+                  <Text style={styles.onlineText}>{t('onlineNow', { n: state.onlineCount })}</Text>
+                </View>
               </View>
-            </View>
+            </Animated.View>
           </Animated.View>
 
           {/* 右上：快捷设置（屏幕常亮 / 静音，与专注页同款） */}
-          <Animated.View style={[styles.topRight, { top: insets.top + 8, opacity: chrome }]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('quickMenuLabel')}
-              onPress={() => {
-                wake();
-                setQuickMenu(true);
-              }}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <AppIcon name="sliders" color={semantic.textPrimary} size={20} />
-            </Pressable>
+          <Animated.View style={[styles.topRight, { top: insets.top + 8, opacity: enter }]}>
+            <Animated.View style={{ opacity: chrome }}>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel={t('quickMenuLabel')}
+                onPress={() => {
+                  wake();
+                  setQuickMenu(true);
+                }}
+                reducedMotion={reducedMotion}
+                style={styles.roundButton}
+              >
+                <AppIcon name="sliders" color={semantic.textPrimary} size={20} />
+              </PressableScale>
+            </Animated.View>
           </Animated.View>
 
           {quickMenu ? (
@@ -350,7 +378,7 @@ export function StudyRoomActiveScreen() {
           <DanmakuInputBar chromeOpacity={chrome} />
         </View>
       </TouchableWithoutFeedback>
-    </Modal>
+    </View>
   );
 }
 
@@ -379,9 +407,7 @@ const styles = StyleSheet.create({
   roomName: {
     ...type.title3,
     color: semantic.textPrimary,
-    textShadowColor: 'rgba(6,16,28,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 12,
+    ...mediaTextShadow,
   },
   onlineRow: {
     flexDirection: 'row',
@@ -409,7 +435,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(13,27,43,0.5)',
+    backgroundColor: mediaGlassControl,
     borderWidth: 1,
     borderColor: semantic.borderSoft,
   },
@@ -417,7 +443,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
     borderRadius: radii.round,
-    backgroundColor: 'rgba(13,27,43,0.5)',
+    backgroundColor: mediaGlassControl,
     paddingHorizontal: space.x3,
     paddingVertical: space.x1,
   },
@@ -439,7 +465,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.x1,
     borderRadius: radii.round,
-    backgroundColor: 'rgba(13,27,43,0.62)',
+    backgroundColor: semantic.mediaGlass,
     borderWidth: 1,
     borderColor: semantic.borderEmphasis,
     paddingHorizontal: space.x3,
@@ -485,7 +511,7 @@ const makeSheetStyles = (p: ThemeColors) => StyleSheet.create({
     paddingVertical: 4,
   },
   menuStatePillOn: {
-    backgroundColor: 'rgba(99,191,148,0.16)',
+    backgroundColor: p.successSoft,
   },
   menuStateText: {
     ...type.micro,
