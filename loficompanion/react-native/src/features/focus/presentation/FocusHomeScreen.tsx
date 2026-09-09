@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
+// Pressable 仅剩媒体入口（absoluteFill，无按压视觉）使用；可按压控件走 PressableScale
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiClient } from "../../../data/apiClient";
 import type { SkinProductRemote } from "../../../data/apiClient";
@@ -17,8 +18,14 @@ import { useApp } from "../../../state/AppStore";
 import { usePreferences } from "../../../preferences/PreferencesProvider";
 import { useFocus } from "../application/FocusStore";
 import { DEFAULT_ACTIVITY, DEFAULT_DURATION } from "../domain/validate";
-import { mediaControl } from "../../../design-system/derivedTokens";
-import { radii, space, type, type ThemeColors } from "../../../theme/tokens";
+import {
+  mediaActionBorder,
+  mediaActionGlass,
+  mediaBorderSoft,
+  mediaControl,
+} from "../../../design-system/derivedTokens";
+import { PressableScale } from "../../../design-system/PressableScale";
+import { radii, semantic, space, type, type ThemeColors } from "../../../theme/tokens";
 import { useThemeStyles } from "../../../theme/useThemeStyles";
 import { useTranslation } from "react-i18next";
 
@@ -144,42 +151,38 @@ export function FocusHomeScreen() {
 
         {/* 右上皮肤快切（doc-08 §3）：≥2 套可用皮肤才显示，浮于媒体入口之上 */}
         {focus.skins.length > 1 && (
-          <View style={styles.skinSwitcher} pointerEvents="box-none">
-            <Pressable
+          <View style={[styles.skinSwitcher, { top: insets.top + 24 }]} pointerEvents="box-none">
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel={tSkin('prevSkin')}
               onPress={() => cycleSkin(-1)}
-              style={({ pressed }) => [
-                styles.skinSwitchButton,
-                pressed && styles.pressed,
-              ]}
+              reducedMotion={focus.reducedMotion}
+              style={styles.skinSwitchButton}
             >
               <AppIcon
                 name="chevron-left"
                 color={palette.onMedia}
                 size={20}
               />
-            </Pressable>
-            <Pressable
+            </PressableScale>
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel={tSkin('nextSkin')}
               onPress={() => cycleSkin(1)}
-              style={({ pressed }) => [
-                styles.skinSwitchButton,
-                pressed && styles.pressed,
-              ]}
+              reducedMotion={focus.reducedMotion}
+              style={styles.skinSwitchButton}
             >
               <AppIcon
                 name="chevron-right"
                 color={palette.onMedia}
                 size={20}
               />
-            </Pressable>
+            </PressableScale>
           </View>
         )}
 
-        {/* 问候（安全区下 72、左 20） */}
-        <View style={styles.greeting} pointerEvents="none">
+        {/* 问候（状态栏下 24、左 20） */}
+        <View style={[styles.greeting, { top: insets.top + 24 }]} pointerEvents="none">
           <Text style={styles.greetingText}>{t('greeting')}</Text>
         </View>
 
@@ -205,33 +208,29 @@ export function FocusHomeScreen() {
             </View>
           )}
           <View style={styles.boardActions}>
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel={active ? t('backToFocus') : t('startFocus')}
               onPress={active ? () => navigate("focus.active") : startFocus}
-              style={({ pressed }) => [
-                styles.primaryCta,
-                pressed && styles.pressed,
-              ]}
+              reducedMotion={focus.reducedMotion}
+              style={styles.primaryCta}
             >
               <Text style={styles.primaryCtaText}>{primaryLabel}</Text>
-            </Pressable>
-            <Pressable
+            </PressableScale>
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel={t('chooseActivity')}
               onPress={() => navigate("focus.setup")}
-              style={({ pressed }) => [
-                styles.selector,
-                pressed && styles.pressed,
-              ]}
+              reducedMotion={focus.reducedMotion}
+              style={styles.selector}
             >
               <Text style={styles.selectorText}>{selectorLabel}</Text>
               <AppIcon
                 name="chevron-down"
-                color={palette.textMuted}
+                color={palette.onMediaSecondary}
                 size={18}
               />
-            </Pressable>
+            </PressableScale>
           </View>
         </View>
       </View>
@@ -281,19 +280,19 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     right: space.x4,
     height: 196,
     borderRadius: radii.card,
-    // 底部结果板是 UI 面板而非媒体层：随主题翻转（暗=night.850 玻璃、亮=暖纸白），
-    // 板内文字用 textPrimary/textSecondary（原先 mediaSurface 固定暗玻璃 +
-    // 主题文字 → 亮色下深字压暗底不可读，3.3 修复）
-    backgroundColor: p.surface,
+    // 底部结果板是媒体层玻璃（tabs 液态玻璃同语言）：固定暗玻璃透出画面动画，
+    // 整组媒体层 token——onMedia 固定浅字，严禁混入随主题翻转的 token
+    //（3.3 事故：暗玻璃底配主题文字 → 亮色下深字压暗底不可读）
+    backgroundColor: semantic.mediaGlass,
     borderWidth: 1,
-    borderColor: p.borderSoft,
+    borderColor: mediaBorderSoft,
     paddingHorizontal: space.x5,
     paddingVertical: space.x4,
     justifyContent: "space-between",
   },
   boardEmpty: {
     ...type.body,
-    color: p.textSecondary,
+    color: p.onMediaSecondary,
   },
   statsRow: {
     flexDirection: "row",
@@ -302,12 +301,12 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   statMain: {
     ...type.title1,
-    color: p.textPrimary,
+    color: p.onMedia,
     fontVariant: ["tabular-nums"],
   },
   statSub: {
     ...type.body,
-    color: p.textSecondary,
+    color: p.onMediaSecondary,
     fontVariant: ["tabular-nums"],
   },
   boardActions: {
@@ -316,20 +315,24 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   primaryCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    // 主 CTA 玻璃蓝：透出底层动画、与液态玻璃 tab 同语言（用户选定方向）
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     paddingHorizontal: space.x5,
     alignItems: "center",
     justifyContent: "center",
   },
   primaryCtaText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    // 玻璃蓝恒压在底部 scrim 的暗背景上（onMedia 白字对比 ≥6:1，两模式同值）
+    color: p.onMedia,
   },
   selector: {
     minHeight: 48,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: p.borderStandard,
+    borderColor: mediaBorderSoft,
     paddingHorizontal: space.x4,
     flexDirection: "row",
     alignItems: "center",
@@ -337,10 +340,6 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   selectorText: {
     ...type.bodyStrong,
-    color: p.textPrimary,
-  },
-  pressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.98 }],
+    color: p.onMedia,
   },
 });

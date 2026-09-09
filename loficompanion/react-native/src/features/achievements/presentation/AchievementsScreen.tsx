@@ -51,8 +51,12 @@ export function AchievementsScreen() {
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
-          // 悬浮 Tab 覆盖场景底部：滚动内容尾部留出 Tab 高度，末尾条目可点
-          { paddingBottom: Math.max(insets.bottom + space.x6, 104) },
+          // 顶部自行避让状态栏（全局垫充已移除）；悬浮 Tab 覆盖场景底部：
+          // 滚动内容尾部留出 Tab 高度，末尾条目可点
+          {
+            paddingTop: insets.top + space.x5,
+            paddingBottom: Math.max(insets.bottom + space.x6, 104),
+          },
         ]}
         showsVerticalScrollIndicator={false}
       >

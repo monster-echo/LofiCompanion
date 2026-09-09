@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import {
   Image,
   Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -14,6 +13,13 @@ import { useTranslation } from "react-i18next";
 import { useApp } from "../../../state/AppStore";
 import { usePreferences } from "../../../preferences/PreferencesProvider";
 import { AppIcon } from "../../../design-system/AppIcon";
+import { PressableScale } from "../../../design-system/PressableScale";
+import {
+  mediaBorderSoft,
+  mediaGlassControl,
+  mediaScrimCard,
+  mediaTextShadow,
+} from "../../../design-system/derivedTokens";
 import { radii, space, type, type ThemeColors } from "../../../theme/tokens";
 import { useThemeStyles } from "../../../theme/useThemeStyles";
 import { useAsyncRefresh } from "../../leaderboards/application/useAsyncRefresh";
@@ -67,9 +73,8 @@ export function StudyRoomScreen() {
         contentContainerStyle={[
           styles.content,
           {
-            // 顶部避让由 App 根 SafeAreaView 统一负责（App.tsx），这里再叠
-            // insets.top 会双重让位（标题上方空出一整个状态栏高度）
-            paddingTop: space.x5,
+            // 顶部自行避让状态栏（全局垫充已移除，此前由 App 根 SafeAreaView 负责）
+            paddingTop: insets.top + space.x5,
             paddingBottom: insets.bottom + 120,
           },
         ]}
@@ -97,7 +102,7 @@ export function StudyRoomScreen() {
               ? stateAsset(roomManifest, "ready").poster
               : { uri: skinPosterUrl(room.id) };
             return (
-              <Pressable
+              <PressableScale
                 key={room.id}
                 accessibilityRole="button"
                 accessibilityLabel={`${t("enterRoom", { name })}，${
@@ -106,10 +111,8 @@ export function StudyRoomScreen() {
                 onPress={() =>
                   navigate("studyroom.active", { roomId: room.id })
                 }
-                style={({ pressed }) => [
-                  styles.card,
-                  pressed && styles.pressed,
-                ]}
+                reducedMotion={focus.reducedMotion}
+                style={styles.card}
               >
                 {poster ? (
                   <Image
@@ -139,13 +142,13 @@ export function StudyRoomScreen() {
                       </Text>
                       <AppIcon
                         name="chevron-right"
-                        color={palette.textPrimary}
+                        color={palette.onMediaSecondary}
                         size={14}
                       />
                     </View>
                   </View>
                 </View>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </View>
@@ -211,7 +214,7 @@ const makeStyles = (p: ThemeColors) =>
     },
     cardScrim: {
       ...absoluteFill,
-      backgroundColor: "rgba(6, 12, 22, 0.52)",
+      backgroundColor: mediaScrimCard,
     },
     cardBody: {
       ...absoluteFill,
@@ -223,9 +226,7 @@ const makeStyles = (p: ThemeColors) =>
       // 房间卡文字压在固定暗色 scrim 之上（媒体卡）：onMedia 固定浅色
       // （原 textPrimary 亮色下变深字 → 暗底深字不可读，3.3 修复）
       color: p.onMedia,
-      textShadowColor: "rgba(6,16,28,0.45)",
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 12,
+      ...mediaTextShadow,
     },
     cardFooter: {
       flexDirection: "row",
@@ -253,18 +254,15 @@ const makeStyles = (p: ThemeColors) =>
       alignItems: "center",
       gap: 4,
       borderRadius: radii.round,
-      backgroundColor: "rgba(12, 14, 20, 0.55)",
+      backgroundColor: mediaGlassControl,
       borderWidth: 1,
-      borderColor: p.borderSoft,
+      // 媒体卡上的固定浅色 hairline（主题化 borderSoft 亮色下是深边，压暗卡上会消失）
+      borderColor: mediaBorderSoft,
       paddingHorizontal: space.x3,
       paddingVertical: space.x1,
     },
     enterText: {
       ...type.label,
       color: p.onMedia,
-    },
-    pressed: {
-      opacity: 0.82,
-      transform: [{ scale: 0.98 }],
     },
   });

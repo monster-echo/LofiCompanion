@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { invalidateAssetUrl, resolveAssetUrl } from '../data/apiClient';
 import * as ImagePicker from 'expo-image-picker';
 import {
   AppButton,
   AppCard,
+  KeyboardAvoidingScreen,
   ListRow,
   OfflineBanner,
   PageHeader,
 } from '../design-system/components';
 import { useApp } from '../state/AppStore';
 import { AvatarCropEditor } from '../profile/AvatarCropEditor';
-import { ProfileIdentityCard } from '../profile/ProfileIdentityCard';
+import { ProfileIdentityCard, ResolvedAvatar } from '../profile/ProfileIdentityCard';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
@@ -44,8 +44,12 @@ export function ProfileScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          // 悬浮 Tab 覆盖场景底部：尾部留白保证「退出登录」可点
-          { paddingBottom: Math.max(insets.bottom + spacing.x6, 104) },
+          // 顶部自行避让状态栏（全局垫充已移除）；悬浮 Tab 覆盖场景底部：
+          // 尾部留白保证「退出登录」可点
+          {
+            paddingTop: spacing.x4 + insets.top,
+            paddingBottom: Math.max(insets.bottom + spacing.x6, 104),
+          },
         ]}
       >
         <ProfileIdentityCard
@@ -100,46 +104,13 @@ function SignedOutProfile() {
     <View style={styles.page}>
       <PageHeader title={t('tabMine')} />
       <View style={styles.centered}>
-        <Avatar label="M" />
+        <ResolvedAvatar avatarUrl={null} label="M" size={56} />
         <Text style={styles.title}>{t('signedOutTitle')}</Text>
         <Text style={styles.secondary}>{t('signedOutHint')}</Text>
         <View style={profileStyles.fullWidth}>
           <AppButton label={t('signInOrRegister')} onPress={() => navigate('auth.signIn')} />
         </View>
       </View>
-    </View>
-  );
-}
-
-// 头像显示：兼容 objectKey（→ presigned 24h）/ http(s) / data: 三种形态。
-function Avatar({ avatarUrl, label }: Readonly<{ avatarUrl?: string | null; label: string }>) {
-  const { palette } = usePreferences();
-  const { t } = useTranslation('profile');
-  const [resolved, setResolved] = useState<string | null>(null);
-  useEffect(() => {
-    let alive = true;
-    if (!avatarUrl) return;
-    void resolveAssetUrl(avatarUrl).then(url => {
-      if (alive) setResolved(url);
-    });
-    return () => { alive = false; };
-  }, [avatarUrl]);
-  if (resolved) {
-    return (
-      <Image
-        accessibilityLabel={t('avatarAlt')}
-        source={{ uri: resolved }}
-        style={profileStyles.avatar}
-        onError={() => {
-          if (avatarUrl) invalidateAssetUrl(avatarUrl);
-          setResolved(null);
-        }}
-      />
-    );
-  }
-  return (
-    <View style={[profileStyles.avatar, { backgroundColor: palette.brandSoft }]}>
-      <Text style={[profileStyles.avatarText, { color: palette.brand }]}>{label}</Text>
     </View>
   );
 }
@@ -174,9 +145,12 @@ export function EditProfileScreen() {
     }
   };
   return (
-    <View style={styles.page}>
+    <KeyboardAvoidingScreen style={styles.page}>
       <PageHeader title={t('rowProfile')} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={styles.scrollContent}
+      >
         <ProfileIdentityCard
           displayName={displayName || user?.username || 'M'}
           username={user?.username ?? ''}
@@ -206,7 +180,6 @@ export function EditProfileScreen() {
           style={[styles.input, profileStyles.bioInput]}
           value={bio}
         />
-        <Text style={styles.caption}>{t('avatarPickerHint')}</Text>
         <AppButton
           disabled={busy}
           label={busy ? t('saving') : t('saveProfile')}
@@ -224,7 +197,7 @@ export function EditProfileScreen() {
           }}
         />
       ) : null}
-    </View>
+    </KeyboardAvoidingScreen>
   );
 }
 
@@ -232,14 +205,6 @@ export function EditProfileScreen() {
 const profileStyles = StyleSheet.create({
   fullWidth: { width: '100%' },
   bioInput: { minHeight: 96, textAlignVertical: 'top' },
-  avatar: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radii.round,
-  },
-  avatarText: { fontSize: 20, fontWeight: '700' },
   membership: {
     borderRadius: radii.card,
     padding: spacing.x5,
