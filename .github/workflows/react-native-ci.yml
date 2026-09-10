@@ -32,6 +32,9 @@ jobs:
       # Expo 53 pins AsyncStorage 2.x while Firebase declares a newer optional peer.
       - run: npm ci --legacy-peer-deps
       - run: npm run typecheck
+      # 构建期生成物与 YAML 源同步校验（皮肤清单 / 自习室房间目录）
+      - run: npm run skins:generate -- --check
+      - run: npm run rooms:generate -- --check
       # Unit tests only — apiClient/purchaseFlow hit the live dev server
       # (localhost:3210) and are skipped in CI. vitest is sequential-only for
       # these (they mutate module-level apiClient readers).

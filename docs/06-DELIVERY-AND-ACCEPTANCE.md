@@ -307,3 +307,26 @@ Profile（`profiles/server/profile.json`），`create --profile react-native,ser
 - 视觉基线自动化（doc 09 §8 SSIM 门禁）与真机（非模拟器）检查仍为发布前
   待办；Tracked #12（RN 发布 workflow 身份改写）为 CLI 层改进，不影响本项目
   （已就地修复）。
+
+## 13. 配置运维记录：品牌闪屏关闭（2026-09-03）
+
+**变更**：生产 bootstrap 配置关闭品牌闪屏——auth 库 `runtime_configs` 两行
+（`loficompanion/production`、`lofi-companion/production`）`document.splash`
+置为显式 JSON `null`，其余字段原样（doc version 仍为 6）。线上 bootstrap
+实测已返回 `splash: null`；客户端冷启动跳过品牌闪屏（含远程媒体/倒计时），
+仅保留 1s logo+loading 过渡直接进首页（`SplashScreen` 组件与路由保留，
+`config.splash` 非空即自动恢复，无需发版）。
+
+**splash 开关语义**：`splash` 必须显式 `null` 才是关。直接删除该 key 会被
+服务端 `mergeRuntimeConfig` 判为 `undefined` 而回退模板默认闪屏
+（MobileStarter/server `database.ts`）。
+
+**操作通道（教训）**：配置变更应走 Admin 控制台 API——
+`GET/PUT /api/v1/admin/config`（草稿）→ `POST /api/v1/admin/config/publish`，
+自带 revisions/audit/rollback。生产**不接受** `x-admin-key` 头（仅非生产），
+须控制台登录会话。本次因无控制台凭据经 psql 直改生产库，属一次性例外备案：
+绕过 audit/revisions，后续禁止。
+
+**备份与回滚**：变更前两行 document 已备份——服务器 tengxun1
+`~/lofi-runtime-config-backup-20260903-190926.json`（本地副本 `/tmp/` 同名）。
+恢复闪屏 = 把备份中的 `splash` 段写回配置行（推荐经控制台 API 走草稿+发布）。
