@@ -94,7 +94,7 @@ CF 的 TLS 证书只发给"自家 zone 里的主机名"或"注册过的自定义
 | 数据库 | 独立实例 | 独立实例（**与境内不互通**） |
 | auth 配置 | Admin API 管理（版本审计） | 独立初始化，同套配置内容，独立版本链 |
 | 皮肤目录数据 | 真源 | 从境内 pg_dump 灌入（skins / skin_products / skin_manifests） |
-| 对象存储 | S3 兼容桶（北京区域） | 同一桶（⚠️ 跨境拉取慢，待迁 R2/本地镜像，见 §9） |
+| 对象存储 | S3 兼容桶（北京区域） | **Cloudflare R2**（`lofi-media` 桶，出流量免费；biz 存储层为 env 驱动 S3 适配器，仅换 env 零代码） |
 
 服务间凭据（internal client credentials、支付 provider、OAuth secret）两侧等值对齐；JWT 同一私钥（token 可互验），但 `AUTH_JWT_ISSUER` 必须与 biz 侧 `AUTH_BASE_URL` **逐字一致**（biz 按 issuer 字符串验签）。
 
@@ -144,7 +144,7 @@ docker run --rm --network <compose网络> -v ~/workspace/lofi-biz/prisma:/prisma
 
 ## 9. 已知限制与待办
 
-- 皮肤媒体仍存北京区域对象存储，境外下载跨境慢。CF 只代理 API，救不了跨境媒体。正解：媒体复制到境外（R2 出流量免费 / 源站本地盘 + Oracle 10TB 免费 egress），biz 存储层是 env 驱动的 S3 适配器，改四个 env 即可切换。
+- 媒体双存储：境内=北京 OSS（真源），境外=R2（经 rclone 按前缀同步，对象 key 结构一致）。**发布新付费皮肤后需同步两处**：目录表 pg_dump 到境外库 + 媒体对象 rclone sync 到 R2。
 - 自习室/社交按区分库隔离，跨区用户互不可见（产品语义）。
 - 顺带修复的历史雷：zone 迁移后源站证书续期静默失败（见 §5 铁律）。
 
