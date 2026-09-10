@@ -45,6 +45,9 @@
       "usesAppleSignIn": true,
       "bundleIdentifier": "tech.zhongbei.loficompanion",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
       "associatedDomains": [
         "applinks:auth.zhongbei.tech"
       ]
