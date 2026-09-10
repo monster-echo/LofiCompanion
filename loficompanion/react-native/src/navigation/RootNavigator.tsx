@@ -38,11 +38,9 @@ import { StudyRoomScreen } from '../features/studyroom/presentation/StudyRoomScr
 import { StudyRoomActiveScreen } from '../features/studyroom/presentation/StudyRoomActiveScreen';
 import { FocusSetupSheet } from '../features/focus/presentation/FocusSetupSheet';
 import { FocusActiveScreen } from '../features/focus/presentation/FocusActiveScreen';
-import { FocusCompleteScreen } from '../features/focus/presentation/FocusCompleteScreen';
 import { SkinGalleryScreen } from '../features/skins/presentation/SkinGalleryScreen';
 import { SkinStoreScreen } from '../features/store/presentation/SkinStoreScreen';
 import { SkinDetailScreen } from '../features/store/presentation/SkinDetailScreen';
-import { AchievementsScreen } from '../features/achievements/presentation/AchievementsScreen';
 import { HistoryScreen } from '../features/achievements/presentation/HistoryScreen';
 import { RoomScreen } from '../features/achievements/presentation/RoomScreen';
 import { GroupDetailScreen } from '../features/leaderboards/presentation/GroupDetailScreen';
@@ -52,12 +50,9 @@ import { WeeklySettlementScreen } from '../features/leaderboards/presentation/We
 const Stack = createNativeStackNavigator<RootParamList>();
 
 // 四个主 Tab 的参数均为 undefined，直接复用根参数表子集。
-// （排行暂不提供入口——leaderboard 相关 push 页保留，恢复时把
-//   'leaderboard.home' 加回 RootTabList 与 TABS 即可。）
-type RootTabList = Pick<
-  RootParamList,
-  'home' | 'studyroom.home' | 'achievements.home' | 'profile.home'
->;
+// （成就/排行暂不提供入口——push 页与发放记账逻辑均保留，恢复时把
+//   'achievements.home' / 'leaderboard.home' 加回 RootTabList 与 TABS 即可。）
+type RootTabList = Pick<RootParamList, 'home' | 'studyroom.home' | 'profile.home'>;
 
 const NativeTab = createNativeBottomTabNavigator<RootTabList>();
 
@@ -73,7 +68,7 @@ type TabDef = Readonly<{
   labelKey: 'focus' | 'studyRoom' | 'achievements' | 'profile';
 }>;
 
-// doc-08 §1：主 Tab 根页——专注 / 自习室 / 成就 / 我的（排行暂不提供）
+// doc-08 §1：主 Tab 根页——专注 / 自习室 / 我的（成就/排行暂不提供）
 const TABS: readonly TabDef[] = [
   {
     name: 'home',
@@ -90,14 +85,6 @@ const TABS: readonly TabDef[] = [
     sfIdle: 'person.2',
     image: require('../../assets/icons/tabbar/studyroom.png'),
     labelKey: 'studyRoom',
-  },
-  {
-    name: 'achievements.home',
-    icon: 'bookmark',
-    sfFocused: 'bookmark.fill',
-    sfIdle: 'bookmark',
-    image: require('../../assets/icons/tabbar/bookmark.png'),
-    labelKey: 'achievements',
   },
   {
     name: 'profile.home',
@@ -149,7 +136,6 @@ function MainTabs() {
 const TAB_COMPONENTS: Readonly<Record<keyof RootTabList, React.ComponentType>> = {
   home: FocusHomeScreen,
   'studyroom.home': StudyRoomScreen,
-  'achievements.home': AchievementsScreen,
   'profile.home': ProfileScreen,
 };
 
@@ -170,11 +156,10 @@ function AuthRoute() {
 }
 
 // 偏好设置页标题走 settings ns（与设置列表入口文案同 key，单一来源）
-const PREF_KIND: Record<string, { kind: PreferenceKind; titleKey: 'notifications' | 'general' | 'privacy' | 'appearance' | 'language' }> = {
+const PREF_KIND: Record<string, { kind: PreferenceKind; titleKey: 'notifications' | 'general' | 'privacy' | 'language' }> = {
   'settings.notifications': { kind: 'notifications', titleKey: 'notifications' },
   'settings.general': { kind: 'general', titleKey: 'general' },
   'settings.privacy': { kind: 'privacy', titleKey: 'privacy' },
-  'settings.appearance': { kind: 'appearance', titleKey: 'appearance' },
   'settings.language': { kind: 'language', titleKey: 'language' },
 };
 
@@ -200,7 +185,7 @@ export function RootNavigator() {
       <Stack.Screen name="launch.splash" component={SplashScreen} />
       <Stack.Screen name="launch.onboarding" component={OnboardingScreen} />
 
-      {/* 四个底部 Tab（doc-08 §1 路由表）：专注 / 自习室 / 成就 / 我的（排行暂不挂载） */}
+      {/* 三个底部 Tab（doc-08 §1 路由表）：专注 / 自习室 / 我的（成就/排行暂不挂载） */}
       <Stack.Screen name="main.tabs" component={MainTabs} />
 
       {/* 专注闭环 push 页（doc-08 §1 路由表） */}
@@ -236,14 +221,11 @@ export function RootNavigator() {
           gestureEnabled: false,
         }}
       />
-      <Stack.Screen
-        name="focus.complete"
-        component={FocusCompleteScreen}
-        options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
-      />
 
-      {/* 记录/房间 push 页（doc-08 §8–§10）+ 规则隐私/小组/周结算 push 页
-          （doc-08 §11–§14，P0-C） */}
+      {/* 记录/房间 push 页（doc-08 §8–§10，成就 Tab 隐藏期间暂无入口）
+          + 规则隐私/小组/周结算 push 页（doc-08 §11–§14，P0-C）。
+          完成结算已并入 focus.active（结果 sheet 覆盖层），无独立
+          focus.complete 路由 */}
       <Stack.Screen name="history.week" component={HistoryScreen} />
       <Stack.Screen name="room.home" component={RoomScreen} />
       <Stack.Screen name="leaderboard.rules" component={LeaderboardRulesScreen} />
@@ -275,7 +257,6 @@ export function RootNavigator() {
       <Stack.Screen name="settings.notifications" component={PreferenceRoute} />
       <Stack.Screen name="settings.general" component={PreferenceRoute} />
       <Stack.Screen name="settings.privacy" component={PreferenceRoute} />
-      <Stack.Screen name="settings.appearance" component={PreferenceRoute} />
       <Stack.Screen name="settings.language" component={PreferenceRoute} />
       <Stack.Screen name="settings.textSize" component={TextSizeScreen} />
       <Stack.Screen name="settings.storage" component={StorageScreen} />

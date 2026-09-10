@@ -38,11 +38,33 @@ export function getBizApiBase() {
   return process.env.EXPO_PUBLIC_BIZ_API_URL?.trim() || getApiBase();
 }
 
-// 公开主题缩略图（biz 匿名端点，302 → 对象存储）：付费皮肤未购/未拉取时
+// 公开主题海报（biz 匿名端点，302 → 对象存储）：付费皮肤未购/未拉取时
 // manifest 解析不到海报，房间卡/商店卡/房间页以此兜底——保证每个主题有
 // 可见封面（不依赖权益，也不依赖皮肤清单是否已落盘）。
-export function skinPosterUrl(slug: string): string {
-  return `${getBizApiBase()}/api/v1/skins/${encodeURIComponent(slug)}/poster`;
+// variant='thumb' 签 960 宽 JPEG 卡片图（卡片场景必用，省 ~30x 流量）；
+// thumb 未生成时服务端自动回落原图。缺省 original 全尺寸（详情大图/活动屏）。
+export type SkinPosterVariant = 'thumb' | 'original';
+
+export function skinPosterUrl(slug: string, variant: SkinPosterVariant = 'original'): string {
+  const query = variant === 'thumb' ? '?v=thumb' : '';
+  return `${getBizApiBase()}/api/v1/skins/${encodeURIComponent(slug)}/poster${query}`;
+}
+
+// 指定状态的公开海报（详情页四态预览兜底）：服务端请求态缺失时自动回落
+// ready 海报——付费皮肤未购/未拉取时四态预览全部有图，不再渲染占位。
+export function skinStatePosterUrl(
+  slug: string,
+  state: string,
+  variant: SkinPosterVariant = 'original',
+): string {
+  const query = `?state=${encodeURIComponent(state)}${variant === 'thumb' ? '&v=thumb' : ''}`;
+  return `${getBizApiBase()}/api/v1/skins/${encodeURIComponent(slug)}/poster${query}`;
+}
+
+// 指定状态的公开预览视频（详情页氛围预览）：302 → 对象存储；该态无视频
+// 时 404（调用方 expo-video 加载失败静默退化到海报，无错误 UI）。
+export function skinStateVideoUrl(slug: string, state: string): string {
+  return `${getBizApiBase()}/api/v1/skins/${encodeURIComponent(slug)}/video?state=${encodeURIComponent(state)}`;
 }
 
 function getApiBase() {
@@ -225,6 +247,13 @@ export interface SkinProductRemote {
   currency: string;
   /** 只有 active 商品会出现在目录里 */
   status: string;
+  /** 限时发售窗口（ISO；缺省 undefined=无窗口——旧服务端不下发）。窗口过滤
+   *  在客户端：过期商品仍会出现在目录（详情页 owned 判定依赖商品行存在） */
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  /** Plus 会员价（分；undefined/null=无折扣 SKU）。实际扣款由服务端按 Plus
+   *  身份选中 plus SKU 决定，此字段仅展示 */
+  plusPriceMinor?: number | null;
 }
 
 // —— P0-B：服务器分发皮肤（GET /v1/skins 目录与 /v1/skins/{id}/manifest 门禁形态）——
@@ -264,6 +293,17 @@ export interface SkinOrderRemote {
   /** 皮肤权益是否已生效（中断恢复轮询的终态判据） */
   entitled: boolean;
 }
+
+// —— 免费试用（skin.trial.{slug}；服务端 expires_at 为 24h 窗口真源）——
+export interface SkinTrialRemote {
+  slug: string;
+  entitlementKey: string;
+  expiresAt: string;
+}
+
+export type SkinTrialStartRemote =
+  | { status: 'owned' }
+  | { status: 'started'; slug: string; entitlementKey: string; expiresAt: string };
 
 // —— 公开法务（P5 起按需读取：bootstrap 只带元数据，正文走专用通道）——
 export interface PublicLegalDocRemote {
@@ -488,6 +528,15 @@ export const apiClient = {
   // 商店/画廊判拥有时聚合两侧。
   skinEntitlements: () => requestBiz<{ entitlements: readonly string[] }>(
     '/api/v1/store/skin-entitlements',
+  ),
+  // —— 免费试用（24h 随便用，每皮肤限一次）：GET 全部记录（出现过的不再出
+  // 试用入口）；POST 开启（已拥有 → owned；已试过 → 409 SKIN_TRIAL_ALREADY_USED）。
+  skinTrials: () => requestBiz<{ trials: readonly SkinTrialRemote[] }>(
+    '/api/v1/store/skin-trials',
+  ),
+  startSkinTrial: (skinId: string) => requestBiz<SkinTrialStartRemote>(
+    '/api/v1/store/skin-trials',
+    jsonOptions('POST', { skinId }),
   ),
   // —— LofiCompanion P0-C：好友邀请码/小组/榜单/隐私（docs/04 §3，走 biz-server）——
   // 我的邀请码（幂等，无则生成——服务端为 POST）。

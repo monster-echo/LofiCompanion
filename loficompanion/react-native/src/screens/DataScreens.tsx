@@ -14,7 +14,7 @@ import { styles } from '../theme/styles';
 import { NotificationCard } from '../notifications/NotificationCard';
 import { spacing } from '../theme/tokens';
 import { useTranslation } from 'react-i18next';
-import { i18n } from '../i18n/core';
+import { currentLanguage, i18n } from '../i18n/core';
 
 export function NotificationsScreen() {
   const {
@@ -115,7 +115,8 @@ export function AboutScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <AppCard>
           <Text style={styles.heading}>{config.brand.appName}</Text>
-          <Text style={styles.secondary}>{config.brand.tagline}</Text>
+          {/* 服务端 tagline 当前只下发中文，文案走 i18n（键与内置/服务端值同步维护） */}
+          <Text style={styles.secondary}>{t('brandTagline')}</Text>
         </AppCard>
         <AppCard>
           <ListRow label={t('clientVersion')} value="1.0.0" />
@@ -142,11 +143,11 @@ const statusLabel = (status: OrderStatus): string => ({
 }[status] ?? status);
 
 function formatMoney(amount: number, currency: string) {
-  return new Intl.NumberFormat('zh-CN', { style: 'currency', currency }).format(amount / 100);
+  return new Intl.NumberFormat(currentLanguage(), { style: 'currency', currency }).format(amount / 100);
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleString('zh-CN');
+  return new Date(value).toLocaleString(currentLanguage());
 }
 
 const notificationStyles = StyleSheet.create({

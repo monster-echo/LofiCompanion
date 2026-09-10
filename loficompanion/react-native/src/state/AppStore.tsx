@@ -2,6 +2,7 @@ import React, {
   createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState,
 } from 'react';
 import { apiClient, ApiClientError, registerSessionExpiredHandler } from '../data/apiClient';
+import { errorMessageOf } from '../data/errorCopy';
 import { clearAuthStorage, readCachedConfig, saveCachedConfig } from '../data/storage';
 import { embeddedConfig } from '../config/embeddedConfig';
 import {
@@ -146,7 +147,10 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
       setOnline(true);
       setServerReady(true);
       void telemetry.configure(payload.config);
-      await saveCachedConfig(payload.config);
+      // lastKnownGood 缓存尽力而为写入：不 await——真机上 AsyncStorage 写入
+      // 曾观测到挂起，await 会拖住 bootstrap promise（bootstrapped 永不置位，
+      // splash 的 ready 永假 → 永久卡启动页）。写失败/挂起不影响主流程。
+      void saveCachedConfig(payload.config).catch(() => {});
       if (!appStartTracked) {
         appStartTracked = true;
         telemetry.track('app_start', { server_ready: true });
@@ -183,7 +187,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
       return result;
     } catch (error) {
       if (!(error instanceof ApiClientError)) setOnline(false);
-      const message = error instanceof Error ? error.message : i18n.t('errors:operationFailed');
+      const message = errorMessageOf(error, i18n.t('errors:operationFailed'));
       // 用户可见错误必须进遥测（app_error）——catch 分支不上报则线上查不到。
       telemetry.report(error instanceof Error ? error : new Error(message));
       setLastAuthError(message);

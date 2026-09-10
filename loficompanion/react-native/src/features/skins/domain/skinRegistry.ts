@@ -19,6 +19,8 @@ export interface SkinRegistry {
   subscribe(listener: () => void): () => void;
   /** 远端清单批量就位（整体替换远端侧；内置侧不变） */
   setRemote(manifests: readonly SkinManifest[]): void;
+  /** 单包就位（资源包按需下载完成）：同 slug 原位替换保持序，否则追加；同引用 no-op */
+  upsertRemote(manifest: SkinManifest): void;
 }
 
 export function createSkinRegistry(builtIn: readonly SkinManifest[]): SkinRegistry {
@@ -39,6 +41,19 @@ export function createSkinRegistry(builtIn: readonly SkinManifest[]): SkinRegist
     },
     setRemote(next: readonly SkinManifest[]) {
       if (next.length === remote.length && next.every((skin, i) => skin === remote[i])) return;
+      remote = next;
+      recompute();
+    },
+    upsertRemote(manifest: SkinManifest) {
+      const index = remote.findIndex((skin) => skin.slug === manifest.slug);
+      if (index === -1) {
+        remote = [...remote, manifest];
+        recompute();
+        return;
+      }
+      if (remote[index] === manifest) return;
+      const next = [...remote];
+      next[index] = manifest;
       remote = next;
       recompute();
     },

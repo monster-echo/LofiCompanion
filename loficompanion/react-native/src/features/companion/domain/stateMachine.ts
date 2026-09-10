@@ -53,6 +53,18 @@ function isTerminalEvent(eventType: CompanionEventType): boolean {
   return eventType === 'focus.completed';
 }
 
+/**
+ * 用户意图事件：点击即生效，无条件打断正在播放的动作（focus.completed
+ * 终态特判的同一语义推广）。清单里的 interruptible 对这三个事件不再约束
+ * 运行时——用户点暂停/恢复必须立刻看到画面响应，不被 focus.started 开场
+ * 或 wellness.drink 动作（4s、interruptible:false）挡住排队。
+ * 系统事件之间仍按既有优先级/可打断/队列语义流转。
+ */
+const USER_IMMEDIATE: ReadonlySet<CompanionEventType> = new Set([
+  'focus.paused',
+  'focus.resumed',
+]);
+
 export interface QueuedEvent {
   eventType: CompanionEventType;
   queuedAt: number;
@@ -168,12 +180,13 @@ export function dispatch(
   // 2) 基态转移立即生效——即使动作被排队或丢弃。
   const base = BASE_TRANSITION[eventType] ?? prev.state;
 
-  // 3) 打断判定：focus.completed 是终态事件，无论谁在播都直接打断；
-  //    其余事件仅当「播放中的动作可打断 且 来事件优先级严格更高」时打断。
+  // 3) 打断判定：focus.completed（终态）与用户意图事件（暂停/恢复）无论谁
+  //    在播都直接打断；其余事件仅当「播放中的动作可打断 且 来事件优先级
+  //    严格更高」时打断。
   let interrupt: boolean;
   if (prev.playing === null) {
     interrupt = true; // 空闲直接播
-  } else if (eventType === 'focus.completed') {
+  } else if (eventType === 'focus.completed' || USER_IMMEDIATE.has(eventType)) {
     interrupt = true;
   } else {
     const playingMapping =

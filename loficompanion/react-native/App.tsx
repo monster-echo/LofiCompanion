@@ -10,6 +10,7 @@ import { AppRoute } from './src/navigation/routes';
 import { AppProvider } from './src/state/AppStore';
 import { ConnectionGate } from './src/screens/ConnectionGate';
 import { FocusProvider } from './src/features/focus/application/FocusStore';
+import { SkinTrialProvider } from './src/features/store/application/SkinTrialProvider';
 import { StudyRoomProvider } from './src/features/studyroom/application/StudyRoomStore';
 import { SyncProvider } from './src/features/sync/application/SyncStore';
 import { FeedbackHost } from './src/design-system/FeedbackHost';
@@ -39,11 +40,13 @@ export default function App() {
           <AuthRecoveryProvider>
             <SupportProvider>
               <FocusProvider>
-                <StudyRoomProvider>
-                  <SyncProvider>
-                    <AppSurface />
-                  </SyncProvider>
-                </StudyRoomProvider>
+                <SkinTrialProvider>
+                  <StudyRoomProvider>
+                    <SyncProvider>
+                      <AppSurface />
+                    </SyncProvider>
+                  </StudyRoomProvider>
+                </SkinTrialProvider>
               </FocusProvider>
             </SupportProvider>
           </AuthRecoveryProvider>

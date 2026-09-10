@@ -16,6 +16,8 @@ import {
   validateSessionInput,
 } from '../domain/validate';
 import { SheetOverlay } from './SheetOverlay';
+import { KeyboardAvoidingScreen } from '../../../design-system/components';
+import { mediaActionBorder, mediaActionGlass } from '../../../design-system/derivedTokens';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -78,6 +80,8 @@ export function FocusSetupSheet() {
 
   return (
     <SheetOverlay onClose={back} reducedMotion={focus.reducedMotion}>
+      {/* 键盘弹起时整个面板内容上移（sheet 锚定底部，自定义时长输入会被键盘遮住） */}
+      <KeyboardAvoidingScreen>
       <Text style={styles.title}>{t('setupTitle')}</Text>
 
       {/* 活动单选：两行内排列 */}
@@ -181,6 +185,7 @@ export function FocusSetupSheet() {
       >
         <Text style={styles.ctaText}>{t('beginFocus')}</Text>
       </Pressable>
+      </KeyboardAvoidingScreen>
     </SheetOverlay>
   );
 }
@@ -294,14 +299,17 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   cta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    // 主 CTA 玻璃蓝：与首页同语言（半透明雨蓝+浅蓝描边），前景随主题翻转
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     marginTop: space.x5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    color: p.textPrimary,
   },
   pressed: {
     opacity: 0.82,

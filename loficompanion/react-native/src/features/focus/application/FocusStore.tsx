@@ -12,7 +12,9 @@ import { AccessibilityInfo, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BUILT_IN_SKINS } from '../../skins/domain/registry';
 import { createSkinRegistry } from '../../skins/domain/skinRegistry';
-import { fetchRemoteSkins } from '../../skins/data/remoteSkinsRepository';
+import { downloadSkinPack, hydrateRemoteSkins } from '../../skins/data/remoteSkinsRepository';
+import { createSkinPackController } from '../../skins/application/skinPackController';
+import type { SkinPackStatus } from '../../skins/application/skinPackController';
 import type {
   CompanionEventType,
   SkinManifest,
@@ -68,12 +70,17 @@ export interface FocusApi {
   selectedSkinId: string;
   /** 可选皮肤全量（内置 + 已下载的远端皮肤）；画廊/详情页据此渲染 */
   skins: readonly SkinManifest[];
+  /** 资源包下载状态机（详情页「下载资源包并使用」的进度真源） */
+  pack: {
+    statusFor(slug: string): SkinPackStatus;
+    subscribe(listener: () => void): () => void;
+  };
   companion: CompanionRuntimeState;
   cooldown: { eventType: CompanionEventType; until: number } | null;
   reducedMotion: boolean;
   /** 最近一次完成新授予的成就（acknowledge 后清空） */
   newGrants: AchievementRuleKey[];
-  /** 会话完成时置位，FocusCompleteScreen 消费 */
+  /** 会话完成时置位，FocusActiveScreen 的结算覆盖层消费（acknowledge 后清空） */
   completions: CompletionView | null;
   actions: {
     startSession(
@@ -90,8 +97,10 @@ export interface FocusApi {
     acknowledgeCompletions(): void;
     /** 专注页静音开关 → 音乐控制器（focusQuickPrefs.muted 的落地点） */
     setMusicMuted(muted: boolean): void;
-    /** 拉取远端皮肤目录并物化到注册表（挂载/购买成功后调用；免费皮肤访客也可拉） */
+    /** 拉取远端皮肤目录并水合（挂载/登录态变化时调用；只收齐套包，绝不下载） */
     refreshSkins(): void;
+    /** 按需下载单个资源包（全有或全无）；成功即已并入注册表，可直接 selectSkin */
+    downloadSkinPack(slug: string): Promise<SkinManifest>;
   };
 }
 
@@ -100,6 +109,8 @@ function toFocusApi(
   state: FocusState,
   music: MusicController,
   skins: readonly SkinManifest[],
+  pack: FocusApi['pack'],
+  downloadSkinPack: (slug: string) => Promise<SkinManifest>,
   refreshSkins: () => void,
 ): FocusApi {
   return {
@@ -120,6 +131,7 @@ function toFocusApi(
     skin: state.skin,
     selectedSkinId: state.selectedSkinId,
     skins,
+    pack,
     companion: state.companion,
     cooldown: state.cooldown,
     reducedMotion: state.reducedMotion,
@@ -136,6 +148,7 @@ function toFocusApi(
       acknowledgeCompletions: controller.acknowledgeCompletions,
       setMusicMuted: (muted) => music.setMuted(muted),
       refreshSkins,
+      downloadSkinPack,
     },
   };
 }
@@ -165,12 +178,24 @@ export function FocusProvider({ children }: Readonly<{ children: ReactNode }>): 
   // toFocusApi 需要：静音开关直达控制器（setMusicMuted）
   const [music] = useState<MusicController>(() => getMusicController());
 
+  // 资源包按需下载（资源包模型）：成功即并入注册表并重挂选肤，详情页随即
+  // selectSkin+back。闭包捕获 registry/controller，两者都是 useState 单例。
+  const [packController] = useState(() =>
+    createSkinPackController({
+      downloadPack: (slug, sink) => downloadSkinPack(slug, sink),
+      onPackReady: (manifest) => {
+        registry.upsertRemote(manifest);
+        // 上次选择的云端皮肤此刻可解析时自动切回（冷启动暂落默认皮肤的场景）
+        controller.reattachSkinCatalog();
+      },
+    }));
+
   const refreshSkins = useCallback(() => {
     // 云端皮肤目录对访客开放（免费 manifest 匿名可取，付费由服务端 401 门禁）；
-    // 目录拉取失败时仓储内部回退磁盘缓存（离线可用已拉取的皮肤）
-    void fetchRemoteSkins().then((remote) => {
+    // 目录拉取失败时仓储内部回退磁盘缓存（离线可用已获的包）。水合绝不下载：
+    // 媒体获取收敛到详情页的 downloadSkinPack（资源包按需模型）。
+    void hydrateRemoteSkins().then((remote) => {
       registry.setRemote(remote);
-      // 上次选择的云端皮肤此刻可解析时自动切回（冷启动暂落默认皮肤的场景）
       controller.reattachSkinCatalog();
     });
   }, [controller, registry]);
@@ -196,7 +221,7 @@ export function FocusProvider({ children }: Readonly<{ children: ReactNode }>): 
     };
   }, [controller]);
 
-  // 远端皮肤目录：挂载与登录态切换时拉取（购买解锁后详情页也会再拉一轮）
+  // 远端皮肤目录：挂载与登录态切换时水合（已获包不失联；媒体按需下载）
   useEffect(() => {
     refreshSkins();
   }, [refreshSkins, signedIn]);
@@ -204,8 +229,17 @@ export function FocusProvider({ children }: Readonly<{ children: ReactNode }>): 
   const skins = useSyncExternalStore(registry.subscribe, registry.getAll);
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getState);
   const value = useMemo<FocusApi>(
-    () => toFocusApi(controller, snapshot, music, skins, refreshSkins),
-    [controller, snapshot, music, skins, refreshSkins],
+    () =>
+      toFocusApi(
+        controller,
+        snapshot,
+        music,
+        skins,
+        { statusFor: packController.statusFor, subscribe: packController.subscribe },
+        (slug) => packController.downloadPack(slug),
+        refreshSkins,
+      ),
+    [controller, snapshot, music, skins, packController, refreshSkins],
   );
   return <FocusContext.Provider value={value}>{children}</FocusContext.Provider>;
 }

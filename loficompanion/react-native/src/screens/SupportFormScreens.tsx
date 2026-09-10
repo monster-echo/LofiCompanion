@@ -7,6 +7,7 @@ import { useApp } from '../state/AppStore';
 import { FeedbackScreenshots } from '../support/FeedbackScreenshots';
 import type { FeedbackScreenshot } from '../support/FeedbackScreenshots';
 import { useSupport } from '../support/SupportStore';
+import { supportCategoryLabel } from '../support/supportCopy';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { styles } from '../theme/styles';
 import { SupportPage } from './SupportScreens';
@@ -51,7 +52,7 @@ export function NewTicketScreen() {
         onChange={setCategory}
         options={config.support.categories.map((item) => ({
           value: item.id,
-          label: item.label,
+          label: supportCategoryLabel(item.id, item.label, t),
         }))}
         value={category}
       />

@@ -49,6 +49,12 @@ export interface SkinStateAsset {
   videoLoop?: boolean;
   /** 静态模式下的展示时长 */
   durationMs: number;
+  /**
+   * 卡片用缩略图（{uri} 本地缓存文件；仅远端皮肤且缩略图落盘时存在）。
+   * 卡片场景（主题页/商店卡/会员横滑/房间列表）优先渲染，缺省回落 poster
+   * 全图（内置皮肤与旧缓存无缩略图）。沉浸面/详情大图一律用 poster。
+   */
+  cardPoster?: { readonly uri: string };
 }
 
 /** 事件 → 动作映射。interruptible 指该动作播放中可否被更高优先级事件打断。 */

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon, IconName } from '../../../design-system/AppIcon';
+import { mediaActionBorder, mediaActionGlass } from '../../../design-system/derivedTokens';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { useThemeStyles } from '../../../theme/useThemeStyles';
@@ -16,6 +18,7 @@ export function LeaderboardSignInScreen() {
   const { t } = useTranslation('leaderboards');
   const { navigate } = useApp();
   const { palette } = usePreferences();
+  const insets = useSafeAreaInsets();
   const styles = useThemeStyles(makeStyles);
 
   const rules: readonly { icon: IconName; text: string }[] = [
@@ -26,7 +29,7 @@ export function LeaderboardSignInScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top, height: 48 + insets.top }]}>
         <Text style={styles.headerTitle}>{t('screenTitle')}</Text>
       </View>
 
@@ -66,7 +69,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     backgroundColor: p.canvas,
   },
   header: {
-    height: 56,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -118,13 +121,16 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     alignSelf: 'stretch',
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    // 主 CTA 玻璃蓝：与首页同语言（半透明雨蓝+浅蓝描边），前景随主题翻转
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    color: p.textPrimary,
   },
   upcoming: {
     ...type.caption,

@@ -54,10 +54,10 @@ describe('goalProgress', () => {
 
 describe('avatarInitial', () => {
   test('昵称首字符；空白回退；代理对按码位', () => {
-    expect(avatarInitial('雨夜')).toBe('雨');
-    expect(avatarInitial('  echo ')).toBe('e');
-    expect(avatarInitial('🌈study')).toBe('🌈');
-    expect(avatarInitial('')).toBe('友');
-    expect(avatarInitial('   ')).toBe('友');
+    expect(avatarInitial('雨夜', '友')).toBe('雨');
+    expect(avatarInitial('  echo ', '友')).toBe('e');
+    expect(avatarInitial('🌈study', '友')).toBe('🌈');
+    expect(avatarInitial('', '友')).toBe('友');
+    expect(avatarInitial('   ', '友')).toBe('友');
   });
 });

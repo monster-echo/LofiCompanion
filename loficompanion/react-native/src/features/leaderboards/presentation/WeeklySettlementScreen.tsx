@@ -5,7 +5,9 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import { apiClient } from '../../../data/apiClient';
 import type { RootParamList } from '../../../navigation/navigationRef';
 import { AppIcon } from '../../../design-system/AppIcon';
-import { achievementSoft, mediaControl } from '../../../design-system/derivedTokens';
+import {
+  achievementSoft, mediaActionBorder, mediaActionGlass, mediaControl,
+} from '../../../design-system/derivedTokens';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { useThemeStyles } from '../../../theme/useThemeStyles';
@@ -246,13 +248,16 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   primaryCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    // 主 CTA 玻璃蓝：与首页同语言（半透明雨蓝+浅蓝描边），前景随主题翻转
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryCtaText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    color: p.textPrimary,
   },
   secondaryCta: {
     minHeight: 48,

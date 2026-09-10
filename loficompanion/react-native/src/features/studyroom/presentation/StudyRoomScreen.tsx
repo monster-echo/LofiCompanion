@@ -12,13 +12,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useApp } from "../../../state/AppStore";
 import { usePreferences } from "../../../preferences/PreferencesProvider";
-import { AppIcon } from "../../../design-system/AppIcon";
 import { PressableScale } from "../../../design-system/PressableScale";
 import {
   mediaBorderSoft,
   mediaGlassControl,
-  mediaScrimCard,
-  mediaTextShadow,
 } from "../../../design-system/derivedTokens";
 import { radii, space, type, type ThemeColors } from "../../../theme/tokens";
 import { useThemeStyles } from "../../../theme/useThemeStyles";
@@ -96,11 +93,13 @@ export function StudyRoomScreen() {
             const count = countFor(room);
             const name = roomName(room, locale);
             const roomManifest = findSkinManifestByIdOrSlug(focus.skins, room.id);
-            // 云端皮肤未拉取（付费未购/清单未就位）时用 biz 公开海报兜底，
-            // 不再渲染空占位卡（被误读为 mock 数据的问题根因）
-            const poster = roomManifest
-              ? stateAsset(roomManifest, "ready").poster
-              : { uri: skinPosterUrl(room.id) };
+            // 云端皮肤未拉取（付费未购/清单未就位）时用 biz 公开海报兜底
+            // （卡片走 thumb 变体），不再渲染空占位卡（被误读为 mock 数据
+            // 的问题根因）。本地清单优先渲染落盘缩略图，回落全图。
+            const readyAsset = roomManifest ? stateAsset(roomManifest, "ready") : null;
+            const poster = readyAsset
+              ? readyAsset.cardPoster ?? readyAsset.poster
+              : { uri: skinPosterUrl(room.id, "thumb") };
             return (
               <PressableScale
                 key={room.id}
@@ -121,30 +120,20 @@ export function StudyRoomScreen() {
                     // 放大裁切），须显式宽高（对齐 ImmersiveMediaSurface/SkinPreviewCard 既有解法）
                     style={imageFill}
                     resizeMode="cover"
-                    blurRadius={2}
                   />
                 ) : (
                   <View style={[imageFill, styles.cardPlaceholder]} />
                 )}
-                <View style={styles.cardScrim} />
                 <View style={styles.cardBody}>
-                  <Text style={styles.cardName}>{name}</Text>
+                  <View style={styles.nameChip}>
+                    <Text style={styles.cardName}>{name}</Text>
+                  </View>
                   <View style={styles.cardFooter}>
                     <View style={styles.onlineRow}>
                       <View style={styles.dot} />
                       <Text style={styles.onlineText}>
                         {count === null ? " " : t("onlineNow", { n: count })}
                       </Text>
-                    </View>
-                    <View style={styles.enterPill}>
-                      <Text style={styles.enterText}>
-                        {t("enterRoom", { name })}
-                      </Text>
-                      <AppIcon
-                        name="chevron-right"
-                        color={palette.onMediaSecondary}
-                        size={14}
-                      />
                     </View>
                   </View>
                 </View>
@@ -174,6 +163,18 @@ const imageFill = {
   width: "100%" as const,
   height: "100%" as const,
 };
+
+// 媒体层暗玻璃 chip：房名/在线人数共用的可读性底（固定暗玻璃 +
+// 固定浅 hairline，均不随主题翻转）。海报本身不再整卡压暗，文字可读性
+// 由各自 chip 底保证。
+const glassChip = {
+  borderRadius: radii.round,
+  backgroundColor: mediaGlassControl,
+  borderWidth: 1,
+  borderColor: mediaBorderSoft,
+  paddingHorizontal: space.x3,
+  paddingVertical: space.x1,
+} as const;
 
 const makeStyles = (p: ThemeColors) =>
   StyleSheet.create({
@@ -212,21 +213,21 @@ const makeStyles = (p: ThemeColors) =>
     cardPlaceholder: {
       backgroundColor: p.surfaceRaised,
     },
-    cardScrim: {
-      ...absoluteFill,
-      backgroundColor: mediaScrimCard,
-    },
     cardBody: {
       ...absoluteFill,
       padding: space.x5,
       justifyContent: "space-between",
     },
+    nameChip: {
+      ...glassChip,
+      alignSelf: "flex-start",
+      maxWidth: "100%",
+    },
     cardName: {
       ...type.title2,
-      // 房间卡文字压在固定暗色 scrim 之上（媒体卡）：onMedia 固定浅色
+      // 房间名压在暗玻璃 chip 上：onMedia 固定浅色
       // （原 textPrimary 亮色下变深字 → 暗底深字不可读，3.3 修复）
       color: p.onMedia,
-      ...mediaTextShadow,
     },
     cardFooter: {
       flexDirection: "row",
@@ -234,6 +235,7 @@ const makeStyles = (p: ThemeColors) =>
       justifyContent: "space-between",
     },
     onlineRow: {
+      ...glassChip,
       flexDirection: "row",
       alignItems: "center",
       gap: space.x1,
@@ -248,21 +250,5 @@ const makeStyles = (p: ThemeColors) =>
       ...type.caption,
       color: p.onMediaSecondary,
       fontVariant: ["tabular-nums"],
-    },
-    enterPill: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      borderRadius: radii.round,
-      backgroundColor: mediaGlassControl,
-      borderWidth: 1,
-      // 媒体卡上的固定浅色 hairline（主题化 borderSoft 亮色下是深边，压暗卡上会消失）
-      borderColor: mediaBorderSoft,
-      paddingHorizontal: space.x3,
-      paddingVertical: space.x1,
-    },
-    enterText: {
-      ...type.label,
-      color: p.onMedia,
     },
   });

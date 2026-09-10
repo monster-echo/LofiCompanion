@@ -3,6 +3,7 @@ import React, {
 } from 'react';
 import { AppState } from 'react-native';
 import { apiClient } from '../../../data/apiClient';
+import { errorMessageOf } from '../../../data/errorCopy';
 import { useApp } from '../../../state/AppStore';
 import { i18n } from '../../../i18n/core';
 import {
@@ -70,7 +71,7 @@ export function SyncProvider(props: { children: React.ReactNode }) {
         setState((prev) => ({ ...prev, status: 'synced' }));
       }
     } catch (error) {
-      setState((prev) => afterSyncFailure(prev, error instanceof Error ? error.message : i18n.t('errors:syncFailed')));
+      setState((prev) => afterSyncFailure(prev, errorMessageOf(error, i18n.t('errors:syncFailed'))));
     }
   }, [user]);
 

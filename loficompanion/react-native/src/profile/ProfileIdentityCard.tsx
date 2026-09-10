@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { invalidateAssetUrl, resolveAssetUrl } from '../data/apiClient';
 import { AppCard } from '../design-system/components';
+import { AppIcon } from '../design-system/AppIcon';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { radii, spacing } from '../theme/tokens';
 import { styles } from '../theme/styles';
@@ -25,15 +27,17 @@ export function ProfileIdentityCard({
   const { palette } = usePreferences();
   const { t } = useTranslation('profile');
   const avatar = (
-    <ProfileAvatar
+    <ResolvedAvatar
       avatarUrl={avatarUrl}
       label={displayName.slice(0, 1).toUpperCase()}
+      size={96}
     />
   );
   return (
     <AppCard>
       <View style={identityStyles.container}>
         {onAvatarPress ? (
+          // 可编辑态：头像本身即可点区域，右下角徽标提示可更换（不放文字，保持卡片干净）
           <Pressable
             accessibilityLabel={t('changeAvatarAlt')}
             accessibilityRole="button"
@@ -41,7 +45,14 @@ export function ProfileIdentityCard({
             style={identityStyles.avatarAction}
           >
             {avatar}
-            <Text style={[identityStyles.avatarHint, { color: palette.brand }]}>{t('changeAvatarHint')}</Text>
+            <View
+              style={[
+                identityStyles.avatarBadge,
+                { backgroundColor: palette.surface, borderColor: palette.border },
+              ]}
+            >
+              <AppIcon color={palette.text} name="image" size={13} />
+            </View>
           </Pressable>
         ) : avatar}
         <View style={identityStyles.copy}>
@@ -62,27 +73,71 @@ export function ProfileIdentityCard({
   );
 }
 
-function ProfileAvatar({
+/** 头像显示：兼容 objectKey（→ presigned 24h）/ http(s) / data: 三种形态，加载失败回落首字母。 */
+export function ResolvedAvatar({
   avatarUrl,
   label,
-}: Readonly<{ avatarUrl?: string | null; label: string }>) {
+  size,
+}: Readonly<{ avatarUrl?: string | null; label: string; size: number }>) {
   const { palette } = usePreferences();
   const { t } = useTranslation('profile');
-  if (avatarUrl) {
+  const [resolved, setResolved] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    if (!avatarUrl) {
+      setResolved(null);
+      return;
+    }
+    void resolveAssetUrl(avatarUrl).then(url => {
+      if (alive && url) setResolved(url);
+    });
+    return () => { alive = false; };
+  }, [avatarUrl]);
+  if (resolved) {
     return (
       <Image
         accessibilityLabel={t('avatarAlt')}
-        source={{ uri: avatarUrl }}
-        style={identityStyles.avatar}
+        source={{ uri: resolved }}
+        style={identityAvatarStyles.image(size)}
+        onError={() => {
+          if (avatarUrl) invalidateAssetUrl(avatarUrl);
+          setResolved(null);
+        }}
       />
     );
   }
   return (
-    <View style={[identityStyles.avatar, { backgroundColor: palette.brandSoft }]}>
-      <Text style={[identityStyles.avatarText, { color: palette.brand }]}>{label}</Text>
+    <View
+      style={[
+        identityAvatarStyles.frame(size),
+        { backgroundColor: palette.brandSoft },
+      ]}
+    >
+      <Text style={[identityAvatarStyles.text(size), { color: palette.brand }]}>
+        {label}
+      </Text>
     </View>
   );
 }
+
+const identityAvatarStyles = {
+  image: (size: number) => ({
+    width: size,
+    height: size,
+    borderRadius: radii.round,
+  }),
+  frame: (size: number) => ({
+    width: size,
+    height: size,
+    borderRadius: radii.round,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  }),
+  text: (size: number) => ({
+    fontSize: Math.max(14, Math.round(size / 4.8)),
+    fontWeight: '700' as const,
+  }),
+};
 
 const identityStyles = StyleSheet.create({
   container: { alignItems: 'center', gap: spacing.x3, paddingVertical: spacing.x3 },
@@ -93,15 +148,16 @@ const identityStyles = StyleSheet.create({
     padding: spacing.x3,
     borderRadius: radii.control,
   },
-  avatarAction: { alignItems: 'center', gap: spacing.x2 },
-  // avatarHint 颜色由渲染处 palette.brand 注入
-  avatarHint: { fontWeight: '700' },
-  avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: radii.round,
+  avatarAction: { alignItems: 'center', justifyContent: 'center' },
+  avatarBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: radii.round,
+    borderWidth: 1,
   },
-  avatarText: { fontSize: 20, fontWeight: '700' },
 });

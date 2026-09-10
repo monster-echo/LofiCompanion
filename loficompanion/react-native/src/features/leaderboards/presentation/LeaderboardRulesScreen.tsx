@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../../data/apiClient';
+import { errorMessageOf } from '../../../data/errorCopy';
 import type { LeaderboardPrivacyRemote, LeaderboardViewRemote } from '../../../data/apiClient';
 import { AppIcon, type IconName } from '../../../design-system/AppIcon';
 import { useApp } from '../../../state/AppStore';
@@ -20,6 +22,7 @@ export function LeaderboardRulesScreen() {
   const { t } = useTranslation('leaderboards');
   const { user, back, showToast, showConfirm } = useApp();
   const { palette } = usePreferences();
+  const insets = useSafeAreaInsets();
   const styles = useThemeStyles(makeStyles);
   const privacy = useAsyncRefresh(() => apiClient.getLeaderboardPrivacy(), []);
   const board = useAsyncRefresh(() => apiClient.friendsLeaderboard(), []);
@@ -48,7 +51,7 @@ export function LeaderboardRulesScreen() {
       void board.reload();
     } catch (error) {
       setSettings(previous); // 回滚
-      showToast(error instanceof Error ? error.message : i18n.t('errors:saveFailed'), 'error');
+      showToast(errorMessageOf(error, i18n.t('errors:saveFailed')), 'error');
     }
   };
 
@@ -77,7 +80,7 @@ export function LeaderboardRulesScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top, height: 48 + insets.top }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('backLabel')}
@@ -200,7 +203,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     backgroundColor: p.canvas,
   },
   header: {
-    height: 56,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: space.x2,

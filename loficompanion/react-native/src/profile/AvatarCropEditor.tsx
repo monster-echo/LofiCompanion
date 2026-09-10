@@ -3,7 +3,7 @@ import { Image, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'r
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import { AppButton } from '../design-system/components';
-import { AppIcon, IconName } from '../design-system/AppIcon';
+import { errorMessageOf } from '../data/errorCopy';
 import { useApp } from '../state/AppStore';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { radii, spacing } from '../theme/tokens';
@@ -13,9 +13,8 @@ import { useThemeStyles } from '../theme/useThemeStyles';
 import { useTranslation } from 'react-i18next';
 
 const cropSize = 280;
-const zoomStep = 0.25;
 const initialZoom = 1.25;
-const nudgeStep = 12;
+const maxZoom = 3;
 
 type Point = Readonly<{ x: number; y: number }>;
 
@@ -37,16 +36,50 @@ export function AvatarCropEditor({
   const [processing, setProcessing] = useState(false);
   const dragStart = useRef<Point>({ x: 0, y: 0 });
   const offsetRef = useRef<Point>({ x: 0, y: 0 });
+  const zoomRef = useRef(initialZoom);
+  // 双指捏合基线：触摸数变化时重新标定，避免缩放/拖动切换时跳变
+  const pinchStart = useRef({ distance: 0, zoom: initialZoom });
+  const touchCount = useRef(0);
   const geometry = cropGeometry(asset, zoom);
   const geometryRef = useRef(geometry);
   geometryRef.current = geometry;
+
+  const applyZoom = (next: number) => {
+    const value = Math.min(maxZoom, Math.max(1, next));
+    zoomRef.current = value;
+    setZoom(value);
+    const nextOffset = clampOffset(offsetRef.current, cropGeometry(asset, value));
+    offsetRef.current = nextOffset;
+    setOffset(nextOffset);
+  };
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: (_, gesture) => (
-      Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2
-    ),
-    onPanResponderGrant: () => { dragStart.current = offsetRef.current; },
-    onPanResponderMove: (_, gesture) => {
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => {
+      touchCount.current = 1;
+      pinchStart.current.distance = 0;
+      dragStart.current = offsetRef.current;
+    },
+    onPanResponderMove: (event, gesture) => {
+      const touches = event.nativeEvent.touches;
+      if (touches.length >= 2) {
+        const distance = Math.hypot(
+          touches[0].pageX - touches[1].pageX,
+          touches[0].pageY - touches[1].pageY,
+        );
+        if (pinchStart.current.distance === 0) {
+          pinchStart.current = { distance, zoom: zoomRef.current };
+        } else if (distance > 0) {
+          applyZoom(pinchStart.current.zoom * (distance / pinchStart.current.distance));
+        }
+        return;
+      }
+      // 双指回落到单指：重新标定拖动起点
+      if (touchCount.current !== 1) {
+        touchCount.current = 1;
+        pinchStart.current.distance = 0;
+        dragStart.current = offsetRef.current;
+      }
       const next = clampOffset({
         x: dragStart.current.x + gesture.dx,
         y: dragStart.current.y + gesture.dy,
@@ -57,25 +90,10 @@ export function AvatarCropEditor({
     onPanResponderTerminationRequest: () => false,
   }), []);
 
-  const changeZoom = (next: number) => {
-    const value = Math.min(3, Math.max(1, next));
-    setZoom(value);
-    const nextOffset = clampOffset(offsetRef.current, cropGeometry(asset, value));
-    offsetRef.current = nextOffset;
-    setOffset(nextOffset);
-  };
-  const moveBy = (x: number, y: number) => {
-    const next = clampOffset({
-      x: offsetRef.current.x + x,
-      y: offsetRef.current.y + y,
-    }, geometryRef.current);
-    offsetRef.current = next;
-    setOffset(next);
-  };
   const confirm = async () => {
     setProcessing(true);
     try {
-      const crop = sourceCrop(asset, zoom, offset);
+      const crop = sourceCrop(asset, zoomRef.current, offset);
       const result = await manipulateAsync(
         asset.uri,
         [{ crop }, { resize: { width: 512, height: 512 } }],
@@ -89,95 +107,55 @@ export function AvatarCropEditor({
       );
       onConfirm(url);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : t('avatarUploadFailed'), 'error');
+      showToast(errorMessageOf(error, t('avatarUploadFailed')), 'error');
     } finally {
       setProcessing(false);
     }
   };
 
   return (
-    <Modal animationType="fade" transparent visible>
+    // 底部 2/3 弹层：点空白处关闭（无取消按钮），只保留一个主操作
+    <Modal animationType="slide" transparent visible onRequestClose={onCancel}>
       <View style={editorStyles.backdrop}>
+        <Pressable
+          accessibilityLabel={t('cancel')}
+          accessibilityRole="button"
+          style={editorStyles.backdropTouch}
+          onPress={onCancel}
+        />
         <View style={[editorStyles.sheet, { backgroundColor: palette.surface }]}>
+          <View style={[editorStyles.grabber, { backgroundColor: palette.border }]} />
           <Text style={styles.heading}>{t('cropTitle')}</Text>
           <Text style={styles.secondary}>{t('cropHint')}</Text>
-          <View
-            style={[editorStyles.cropFrame, { backgroundColor: palette.surfaceMuted }]}
-            {...panResponder.panHandlers}
-          >
-            <View style={editorStyles.nonInteractive}>
-              <Image
-                accessibilityLabel={t('cropImageAlt')}
-                source={{ uri: asset.uri }}
-                style={[
-                  editorStyles.image,
-                  {
-                    width: geometry.width,
-                    height: geometry.height,
-                    transform: [{ translateX: offset.x }, { translateY: offset.y }],
-                  },
-                ]}
-              />
+          <View style={editorStyles.frameArea}>
+            <View
+              style={[editorStyles.cropFrame, { backgroundColor: palette.surfaceMuted }]}
+              {...panResponder.panHandlers}
+            >
+              <View style={editorStyles.nonInteractive}>
+                <Image
+                  accessibilityLabel={t('cropImageAlt')}
+                  source={{ uri: asset.uri }}
+                  style={[
+                    editorStyles.image,
+                    {
+                      width: geometry.width,
+                      height: geometry.height,
+                      transform: [{ translateX: offset.x }, { translateY: offset.y }],
+                    },
+                  ]}
+                />
+              </View>
             </View>
           </View>
-          <View style={editorStyles.zoomControls}>
-            <ZoomButton label={t('zoomOut')} icon="minus" onPress={() => changeZoom(zoom - zoomStep)} />
-            <Text style={styles.caption}>{Math.round(zoom * 100)}%</Text>
-            <ZoomButton label={t('zoomIn')} icon="plus" onPress={() => changeZoom(zoom + zoomStep)} />
-          </View>
-          <View style={editorStyles.moveControls}>
-            <NudgeButton label={t('moveUp')} onPress={() => moveBy(0, -nudgeStep)} />
-            <NudgeButton label={t('moveDown')} onPress={() => moveBy(0, nudgeStep)} />
-            <NudgeButton label={t('moveLeft')} onPress={() => moveBy(-nudgeStep, 0)} />
-            <NudgeButton label={t('moveRight')} onPress={() => moveBy(nudgeStep, 0)} />
-          </View>
-          <View style={editorStyles.actions}>
-            <AppButton label={t('cancel')} onPress={onCancel} variant="secondary" />
-            <AppButton
-              disabled={processing}
-              label={processing ? t('processing') : t('useCrop')}
-              onPress={() => void confirm()}
-            />
-          </View>
+          <AppButton
+            disabled={processing}
+            label={processing ? t('processing') : t('useCrop')}
+            onPress={() => void confirm()}
+          />
         </View>
       </View>
     </Modal>
-  );
-}
-
-function NudgeButton({
-  label,
-  onPress,
-}: Readonly<{ label: string; onPress: () => void }>) {
-  const { palette } = usePreferences();
-  const editorStyles = useThemeStyles(makeStyles);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={[editorStyles.nudgeButton, { backgroundColor: palette.surfaceMuted }]}
-    >
-      <Text style={styles.caption}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function ZoomButton({
-  label,
-  icon,
-  onPress,
-}: Readonly<{ label: string; icon: IconName; onPress: () => void }>) {
-  const { palette } = usePreferences();
-  const editorStyles = useThemeStyles(makeStyles);
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={[editorStyles.zoomButton, { backgroundColor: palette.surfaceMuted }]}
-    >
-      <AppIcon color={palette.text} name={icon} size={22} />
-    </Pressable>
   );
 }
 
@@ -215,46 +193,36 @@ function sourceCrop(asset: ImagePickerAsset, zoom: number, offset: Point) {
 const makeStyles = (p: ThemeColors) => StyleSheet.create({
   backdrop: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.x5,
+    justifyContent: 'flex-end',
     backgroundColor: p.scrim,
   },
+  // 点遮罩关闭：绝对铺满，sheet 声明在后自然盖在其上
+  backdropTouch: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   sheet: {
     width: '100%',
-    maxWidth: 420,
-    padding: spacing.x5,
-    gap: spacing.x4,
-    borderRadius: radii.sheet,
+    height: '66.67%',
+    paddingTop: spacing.x3,
+    paddingHorizontal: spacing.x5,
+    paddingBottom: spacing.x5,
+    gap: spacing.x3,
+    borderTopLeftRadius: radii.sheet,
+    borderTopRightRadius: radii.sheet,
     backgroundColor: p.surface,
   },
+  grabber: {
+    alignSelf: 'center',
+    width: 44,
+    height: 4,
+    borderRadius: radii.round,
+  },
+  frameArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   cropFrame: {
     width: cropSize,
     height: cropSize,
-    alignSelf: 'center',
     overflow: 'hidden',
     borderRadius: radii.round,
     backgroundColor: p.surfaceMuted,
   },
   image: { alignSelf: 'center' },
   nonInteractive: { pointerEvents: 'none' },
-  zoomControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.x5 },
-  moveControls: { flexDirection: 'row', justifyContent: 'center', gap: spacing.x2 },
-  nudgeButton: {
-    minWidth: 56,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radii.control,
-    backgroundColor: p.surfaceMuted,
-  },
-  zoomButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radii.round,
-    backgroundColor: p.surfaceMuted,
-  },
-  actions: { gap: spacing.x3 },
 });

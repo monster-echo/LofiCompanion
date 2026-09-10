@@ -21,7 +21,6 @@ export const profile = {
   // 头像与资料卡
   avatarAlt: '用户头像',
   changeAvatarAlt: '更换头像',
-  changeAvatarHint: '点击更换',
   bioEmpty: '这个人还没有填写简介。',
   // 编辑资料
   galleryPermissionRequired: '需要相册权限才能选择头像',
@@ -30,19 +29,12 @@ export const profile = {
   displayNameLabel: '显示名称',
   bioLabel: '个人简介',
   bioPlaceholder: '介绍一下自己',
-  avatarPickerHint: '点击上方头像选择图片，可拖动和缩放裁剪为 512×512。',
   saving: '保存中…',
   saveProfile: '保存资料',
   // 头像裁剪
-  cropTitle: '移动和裁剪头像',
-  cropHint: '拖动图片调整位置，使用下方按钮缩放。',
+  cropTitle: '调整头像',
+  cropHint: '拖动调整位置，双指捏合缩放。',
   cropImageAlt: '待裁剪头像',
-  zoomOut: '缩小头像',
-  zoomIn: '放大头像',
-  moveUp: '上移',
-  moveDown: '下移',
-  moveLeft: '左移',
-  moveRight: '右移',
   cancel: '取消',
   processing: '处理中…',
   useCrop: '使用此裁剪',
@@ -88,6 +80,7 @@ export const profile = {
   orderRefunded: '已退款',
   // 关于与版本
   aboutTitle: '关于与版本',
+  brandTagline: '安静开始，专注完成',
   clientVersion: '客户端版本',
   configVersion: '配置版本',
   configSchema: '配置 Schema',

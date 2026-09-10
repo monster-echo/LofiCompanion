@@ -24,7 +24,7 @@ import {
   type StoreSkinCard,
 } from '../domain/storeCatalog';
 import { useTranslation } from 'react-i18next';
-import { storePoster } from './storePosters';
+import { storeCardPoster, storePoster } from './storePosters';
 import { skinPosterUrl } from '../../../data/apiClient';
 import { i18n } from '../../../i18n/core';
 
@@ -102,6 +102,9 @@ export function SkinStoreScreen() {
       selectedSkinSlug: focus.skin.slug,
       stateCountFor: (slug) =>
         findSkinManifestByIdOrSlug(focus.skins, slug)?.states.length,
+      // 限时窗口判定 + Plus 会员价显示（ownedKeys 已含 auth 会员键）
+      now: Date.now(),
+      isPlusUser: ownedKeys.includes('catalog.premium.active'),
     });
   }, [focus.skins, focus.skin, locale, ownedKeys, state]);
 
@@ -131,7 +134,7 @@ export function SkinStoreScreen() {
   return (
     <View style={styles.screen}>
       {/* App bar 56（避让状态栏）：返回 44×44 + 居中标题 + 右「已拥有」过滤（doc-08 §15） */}
-      <View style={[styles.header, { paddingTop: insets.top, height: 56 + insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, height: 48 + insets.top }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={i18n.t('common:back')}
@@ -140,7 +143,8 @@ export function SkinStoreScreen() {
         >
           <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
-        <Text style={styles.headerTitle}>{t('appBarTitle')}</Text>
+        {/* 绝对定位标题须显式锚定 top（Yoga 对无 top 的绝对子元素不再居中，会贴 padding 原点=灵动岛下） */}
+        <Text style={[styles.headerTitle, { top: insets.top, lineHeight: 48 }]}>{t('appBarTitle')}</Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={ownedOnly ? t('browsingAll') : t('ownedEntry')}
@@ -219,7 +223,8 @@ function CurrentSkinBanner({
   const { t } = useTranslation('store');
   const focus = useFocus();
   const styles = useThemeStyles(makeStyles);
-  const poster = storePoster(focus.skins, slug, 'ready');
+  // 横幅底图走卡片缩略图（有暗纱+文案覆盖，960 宽视觉无差，省整张原图解码）
+  const poster = storeCardPoster(focus.skins, slug, 'ready');
   return (
     <View
       style={[styles.banner, { width }]}
@@ -287,9 +292,9 @@ function StoreCard({
   const { palette } = usePreferences();
   const focus = useFocus();
   const styles = useThemeStyles(makeStyles);
-  // 未拉取/未购的皮肤用 biz 公开海报兜底，不再渲染图标占位
-  const poster = storePoster(focus.skins, card.slug, 'ready')
-    ?? { uri: skinPosterUrl(card.slug) };
+  // 未拉取/未购的皮肤用 biz 公开海报兜底（卡片走 thumb 变体），不再渲染图标占位
+  const poster = storeCardPoster(focus.skins, card.slug, 'ready')
+    ?? { uri: skinPosterUrl(card.slug, 'thumb') };
   const statesText = card.stateCount === null ? null : t('stateCount', { n: card.stateCount });
   const priceText = card.accessType === 'free'
     ? t('priceFree')
@@ -318,7 +323,7 @@ function StoreCard({
             <AppIcon name="image" color={palette.textMuted} size={22} />
           </View>
         )}
-        {/* 使用中 / 已拥有 徽标（doc-08 §15 状态） */}
+        {/* 使用中 / 已拥有 / 限时 徽标（doc-08 §15 状态） */}
         {card.inUse ? (
           <View style={[styles.cornerBadge, styles.inUseCorner]}>
             <Text style={styles.inUseBadgeText}>{t('inUseBadge')}</Text>
@@ -327,6 +332,10 @@ function StoreCard({
           <View style={[styles.cornerBadge, styles.ownedCorner]}>
             <AppIcon name="check" color={palette.canvasDeep} size={12} />
             <Text style={styles.ownedCornerText}>{t('ownedBadge')}</Text>
+          </View>
+        ) : card.limited ? (
+          <View style={[styles.cornerBadge, styles.limitedCorner]}>
+            <Text style={styles.limitedCornerText}>{t('limitedBadge')}</Text>
           </View>
         ) : null}
       </View>
@@ -382,7 +391,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     backgroundColor: p.canvas,
   },
   header: {
-    height: 56,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: space.x2,
@@ -512,6 +521,13 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     backgroundColor: p.actionFocus,
   },
   ownedCornerText: {
+    ...type.micro,
+    color: p.canvasDeep,
+  },
+  limitedCorner: {
+    backgroundColor: p.membershipGold,
+  },
+  limitedCornerText: {
     ...type.micro,
     color: p.canvasDeep,
   },

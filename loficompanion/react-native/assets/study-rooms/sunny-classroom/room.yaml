@@ -1,0 +1,11 @@
+# 房间唯一配置源（晴日教室）。
+# 修改后运行 `npm run rooms:generate` 重新生成
+# src/features/studyroom/domain/rooms.generated.ts（CI/测试用 --check 校验同步）。
+
+id: sunny-classroom
+skin: sunny-classroom
+name: 晴日教室
+name_en: Sunny Classroom
+order: 2
+# 房间画面固定态：人物恒为伏案写字（focusing 循环），个人六态只在专注页表达
+displayState: focusing

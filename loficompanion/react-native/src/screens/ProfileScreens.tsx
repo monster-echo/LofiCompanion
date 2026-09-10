@@ -11,6 +11,7 @@ import {
   PageHeader,
 } from '../design-system/components';
 import { useApp } from '../state/AppStore';
+import { tierDisplaySummary } from '../domain/membershipCopy';
 import { AvatarCropEditor } from '../profile/AvatarCropEditor';
 import { ProfileIdentityCard, ResolvedAvatar } from '../profile/ProfileIdentityCard';
 import { usePreferences } from '../preferences/PreferencesProvider';
@@ -22,6 +23,7 @@ export function ProfileScreen() {
   const { user, config, navigate, signOut, showConfirm, replace } = useApp();
   const { palette } = usePreferences();
   const { t } = useTranslation('profile');
+  const { t: tMembership } = useTranslation('membership');
   const insets = useSafeAreaInsets();
   // 访客直达登录页（产品决策 2026-08-31：中间「登录后同步」页增加操作步骤、
   // 造成流失）。replace 语义保证登录页无返回入口，登录成功后由
@@ -69,7 +71,7 @@ export function ProfileScreen() {
             {tier?.name ?? user.tierId}
           </Text>
           <Text style={[profileStyles.membershipText, { color: palette.textSecondary }]}>
-            {tier?.summary ?? t('membershipFallback')}
+            {tier ? tierDisplaySummary(tier, tMembership) : t('membershipFallback')}
           </Text>
           <AppButton
             label={t('viewMembershipPerks')}

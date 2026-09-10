@@ -1,4 +1,5 @@
 import { RuntimeConfig } from '../domain/models';
+import { primitives } from '../theme/tokens';
 
 export const embeddedConfig: RuntimeConfig = {
   schemaVersion: 1,
@@ -38,20 +39,11 @@ export const embeddedConfig: RuntimeConfig = {
   brand: {
     appName: 'Lofi Companion',
     tagline: '安静开始，专注完成',
-    primaryColor: '#4F8FE8',
+    primaryColor: primitives.rain[500],
   },
-  splash: {
-    id: 'embedded',
-    title: '今晚，从一间安静的房间开始',
-    description: '选一位陪伴角色，放一段 lofi，完成你的第一轮专注。',
-    badge: '新学期',
-    actionLabel: '进入房间',
-    imageUrl: null,
-    videoUrl: null,
-    linkUrl: null,
-    skippable: true,
-    durationSeconds: 5,
-  },
+  // 内置启动页置 null（与生产 bootstrap 一致）：启动页文案是运营配置、单语言
+  // 下发，内置中文版会把中文压给英文用户。运营要上启动页时经服务端配置。
+  splash: null,
   auth: {
     providers: [
       { id: 'password', enabled: true, platforms: ['ios', 'android', 'harmonyos', 'web'] },

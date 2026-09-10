@@ -18,6 +18,7 @@ import { AppIcon, IconName } from './AppIcon';
 import { telemetry } from '../telemetry/Telemetry';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { buttonStyles, componentStyles } from './componentStyles';
+import { mediaActionBorder, mediaActionGlass } from './derivedTokens';
 import { useTranslation } from 'react-i18next';
 
 export function AppButton({
@@ -41,18 +42,22 @@ export function AppButton({
     : variant === 'danger'
       ? buttonStyles.danger
       : buttonStyles.secondary;
-  // 实底按钮（主色/危险）可用态前景恒白（semantic.onAction）——彩色底上的
-  // 高对比惯例；禁用态弱化为次级文字色（doc-07「禁用态保持可读」意图）。
+  // primary 可用态 = 全 app 统一玻璃蓝（buttonStyles.primary），前景随主题翻转
+  // （暗=纸白同 onMedia，亮=墨字——亮色画布上玻璃合成浅色，恒白不可读）；
+  // 危险实底可用态前景恒白（semantic.onAction）——彩色底上的高对比惯例；
+  // 禁用态弱化为次级文字色（doc-07「禁用态保持可读」意图）。
   const foreground = disabled
     ? palette.textSecondary
     : variant === 'secondary'
       ? palette.text
-      : semantic.onAction;
+      : variant === 'danger'
+        ? semantic.onAction
+        : palette.textPrimary;
   const background = disabled
     ? (variant === 'secondary' ? palette.surface : palette.actionDisabled)
     : variant === 'secondary'
       ? palette.surface
-      : variant === 'danger' ? palette.error : palette.brand;
+      : variant === 'danger' ? palette.error : mediaActionGlass;
   return (
     <Pressable
       accessibilityRole="button"
@@ -66,7 +71,11 @@ export function AppButton({
         variantStyle,
         {
           backgroundColor: background,
-          borderColor: variant === 'secondary' ? palette.border : background,
+          borderColor: variant === 'secondary'
+            ? palette.border
+            : variant === 'primary' && !disabled
+              ? mediaActionBorder
+              : background,
         },
         pressed && buttonStyles.pressed,
         disabled && buttonStyles.disabledOpacityless,
@@ -133,15 +142,18 @@ export function PageHeader({
         backgroundColor: palette.background,
         borderBottomColor: palette.border,
         paddingTop: insets.top,
-        height: 58 + insets.top,
+        height: 48 + insets.top,
       },
     ]}>
+      {/* 绝对定位标题必须显式锚定 top：Yoga 3 对无 top 的绝对子元素不再受
+          alignItems 居中约束，会贴到 padding 原点（=灵动岛正下方）；
+          lineHeight=头部行高 48 使单行标题垂直居中。 */}
+      <Text style={[componentStyles.headerTitle, { color: palette.text, top: insets.top, lineHeight: 48 }]}>{title}</Text>
       <View style={componentStyles.headerSide}>
         {canGoBack ? (
           <IconButton label={t('back')} icon="arrow-left" onPress={back} />
         ) : null}
       </View>
-      <Text style={[componentStyles.headerTitle, { color: palette.text }]}>{title}</Text>
       <View style={[componentStyles.headerSide, componentStyles.headerRight]}>
         {rightAction ? (
           <Pressable

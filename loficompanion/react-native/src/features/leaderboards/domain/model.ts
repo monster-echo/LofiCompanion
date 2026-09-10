@@ -42,9 +42,10 @@ export function goalProgress(currentMinutes: number, goalMinutes: number): numbe
   return Math.max(0, Math.min(1, currentMinutes / goalMinutes));
 }
 
-/** 头像占位：昵称首字符（按码位取，兼容代理对）；空昵称回退「友」。 */
-export function avatarInitial(nickname: string): string {
+/** 头像占位：昵称首字符（按码位取，兼容代理对）；空昵称回退注入的占位字
+ *  （调用方按当前语言传 leaderboards:avatarFallback，域层不依赖 i18n）。 */
+export function avatarInitial(nickname: string, fallback: string): string {
   const trimmed = nickname.trim();
-  if (!trimmed) return '友';
-  return Array.from(trimmed)[0] ?? '友';
+  if (!trimmed) return fallback;
+  return Array.from(trimmed)[0] ?? fallback;
 }

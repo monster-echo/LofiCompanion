@@ -21,6 +21,15 @@ export const errors = {
   requestFailed: '服务请求失败',
   badResponse: '服务返回了无法识别的数据',
   networkUnreachable: '无法连接服务器，请检查网络后重试',
+  // 服务端高频业务码的客户端翻译（data/errorCopy.ts 码表；服务端文案未本地化）
+  invalidCredentials: '账号或密码不正确',
+  usernameTaken: '用户名已被占用',
+  emailTaken: '邮箱已被注册',
+  passwordPolicy: '密码不符合要求',
+  currentPasswordInvalid: '当前密码不正确',
+  codeInvalid: '验证码不正确',
+  codeExpired: '验证码已过期，请重新获取',
+  codeLocked: '尝试次数过多，请稍后再试',
   // 全局错误边界兜底
   boundaryTitle: '页面暂时无法显示',
   boundaryHint: '错误已经记录，请重新启动应用。',

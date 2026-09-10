@@ -51,6 +51,45 @@ describe('createSkinRegistry', () => {
     registry.setRemote([remoteSkin()]);
     expect(notified).toBe(2);
   });
+
+  describe('upsertRemote', () => {
+    it('新 slug 追加；已有 slug 原位替换保持序', () => {
+      const registry = createSkinRegistry([rainyStudyRoomManifest]);
+      const first = remoteSkin();
+      const second = remoteSkin({ id: 'another-v1', slug: 'another', name: '另一套' });
+      registry.setRemote([first, second]);
+      expect(registry.getAll().map((skin) => skin.slug)).toEqual([
+        'rainy-study-room',
+        'pilot-skin',
+        'another',
+      ]);
+      // 版本升级：原位替换（pilot-skin 保持在 another 前）
+      const upgraded = remoteSkin({ id: 'pilot-skin-v2', manifestVersion: 2 });
+      registry.upsertRemote(upgraded);
+      expect(registry.getAll().map((skin) => skin.slug)).toEqual([
+        'rainy-study-room',
+        'pilot-skin',
+        'another',
+      ]);
+      expect(registry.getAll()[1]).toBe(upgraded);
+      expect(registry.getAll().some((skin) => skin.id === 'pilot-skin-v1')).toBe(false);
+    });
+
+    it('同引用 no-op 不通知；新引用通知', () => {
+      const registry = createSkinRegistry([rainyStudyRoomManifest]);
+      let notified = 0;
+      registry.subscribe(() => {
+        notified += 1;
+      });
+      const manifest = remoteSkin();
+      registry.upsertRemote(manifest);
+      expect(notified).toBe(1);
+      registry.upsertRemote(manifest);
+      expect(notified).toBe(1);
+      registry.upsertRemote(remoteSkin({ id: 'pilot-skin-v2', manifestVersion: 2 }));
+      expect(notified).toBe(2);
+    });
+  });
 });
 
 describe('materializeManifest', () => {

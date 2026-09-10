@@ -35,6 +35,11 @@ export const support = {
   labelDetail: '问题详情',
   placeholderDetail: '描述发生步骤、预期结果与实际结果，请勿填写密码或验证码',
   labelCategory: '问题分类',
+  // 工单分类（服务端按 id 下发，渲染期翻译，未登记 id 回落服务端 label）
+  categoryAccount: '账号与登录',
+  categoryBilling: '会员与支付',
+  categoryTechnical: '功能故障',
+  categoryPrivacy: '隐私与数据',
   labelSeverity: '紧急程度',
   severityNormal: '普通',
   severityHigh: '较高',

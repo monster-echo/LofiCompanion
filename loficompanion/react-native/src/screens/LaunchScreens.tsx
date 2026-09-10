@@ -278,8 +278,11 @@ const launchStyles = StyleSheet.create({
     gap: spacing.x2,
     padding: spacing.x6,
   },
-  logoMark: { width: 48, height: 48 },
+  // 与原生闪屏同尺寸（app.json imageWidth=256）：PNG 四周约 25% 透明留白，
+  // 可见 logo ≈115pt，原生→JS 过渡 logo 不跳变；PNG 底部留白约 62pt，
+  // spinner 用负 margin 拉回可见 logo 下方约 22pt。
+  logoMark: { width: 256, height: 256 },
   badge: { color: colors.brand, fontSize: 13, fontWeight: '700' },
   fullWidth: { width: '100%' },
-  loadingSpinner: { marginTop: spacing.x4 },
+  loadingSpinner: { marginTop: -spacing.x10 },
 });

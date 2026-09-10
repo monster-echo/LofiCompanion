@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { semantic } from '../../../theme/tokens';
+import { mediaGlassControl } from '../../../design-system/derivedTokens';
 import { allocateLane, estimateBulletChars } from '../domain/danmakuLanes';
 import type { DanmakuMessage } from '../domain/protocol';
 import { useStudyRoom } from '../application/StudyRoomStore';
@@ -180,7 +181,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: 'rgba(12, 14, 20, 0.45)',
+    backgroundColor: mediaGlassControl,
     alignSelf: 'flex-start',
   },
   bulletText: {

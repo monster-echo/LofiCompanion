@@ -59,3 +59,18 @@ export function resolveSelectedTrack(
   }
   return tracks[0] ?? null;
 }
+
+/**
+ * 房间 Radio 的随机换曲：返回下一曲索引，length>1 时保证不与当前曲重复
+ * （相邻不重曲）。rng 入参保持域层可测（与陪伴状态机同一时钟/随机纪律）。
+ */
+export function shuffleNextIndex(
+  currentIndex: number,
+  length: number,
+  rng: () => number = Math.random,
+): number {
+  if (length <= 1) return 0;
+  let next = Math.floor(rng() * length) % length;
+  if (next === currentIndex) next = (next + 1) % length;
+  return next;
+}

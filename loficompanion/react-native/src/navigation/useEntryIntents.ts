@@ -9,7 +9,7 @@ const routeNames = new Set<AppRoute>([
   'profile.coupons', 'membership.home', 'membership.plans', 'membership.orders',
   'settings.home', 'settings.accountSecurity', 'settings.devices',
   'settings.notifications', 'settings.privacy', 'settings.general',
-  'settings.appearance', 'settings.language', 'settings.textSize',
+  'settings.language', 'settings.textSize',
   'settings.storage', 'settings.permissions', 'settings.helpFeedback',
   'settings.legal', 'settings.privacyPolicy', 'settings.termsOfService',
   'settings.about', 'notifications.center', 'support.newTicket',

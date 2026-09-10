@@ -3,6 +3,7 @@ import type { SkinProductRemote } from '../../../data/apiClient';
 import {
   buildStoreSections,
   formatPrice,
+  isWithinWindow,
   newSkinOrderIdempotencyKey,
   ownedCardCount,
   resolveRecovery,
@@ -208,5 +209,132 @@ describe('newSkinOrderIdempotencyKey', () => {
     const b = newSkinOrderIdempotencyKey();
     expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-a[0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(a).not.toBe(b);
+  });
+});
+
+// —— 限时窗口 + Plus 会员价（F5）——
+describe('isWithinWindow', () => {
+  const NOW = Date.parse('2026-09-09T12:00:00.000Z');
+
+  it('未配置窗口 → false（无「限时」徽标语义）', () => {
+    expect(isWithinWindow({}, NOW)).toBe(false);
+  });
+
+  it('窗口内：from ≤ now ≤ until', () => {
+    expect(isWithinWindow({
+      availableFrom: '2026-09-01T00:00:00.000Z',
+      availableUntil: '2026-10-01T00:00:00.000Z',
+    }, NOW)).toBe(true);
+  });
+
+  it('边界：now=from / now=until 均在窗口内', () => {
+    const win = {
+      availableFrom: '2026-09-09T12:00:00.000Z',
+      availableUntil: '2026-09-09T12:00:00.000Z',
+    };
+    expect(isWithinWindow(win, NOW)).toBe(true);
+  });
+
+  it('窗外：早于 from / 晚于 until', () => {
+    expect(isWithinWindow({
+      availableFrom: '2026-09-10T00:00:00.000Z',
+      availableUntil: '2026-10-01T00:00:00.000Z',
+    }, NOW)).toBe(false);
+    expect(isWithinWindow({
+      availableFrom: '2026-09-01T00:00:00.000Z',
+      availableUntil: '2026-09-09T00:00:00.000Z',
+    }, NOW)).toBe(false);
+  });
+
+  it('单边窗口：仅 until（已过 → false）/ 仅 from（未到 → false）', () => {
+    expect(isWithinWindow({ availableUntil: '2026-09-01T00:00:00.000Z' }, NOW)).toBe(false);
+    expect(isWithinWindow({ availableUntil: '2026-10-01T00:00:00.000Z' }, NOW)).toBe(true);
+    expect(isWithinWindow({ availableFrom: '2026-10-01T00:00:00.000Z' }, NOW)).toBe(false);
+    expect(isWithinWindow({ availableFrom: '2026-09-01T00:00:00.000Z' }, NOW)).toBe(true);
+  });
+
+  it('坏 ISO 端点按无穷处理（配置错误不把商品永久藏掉）', () => {
+    expect(isWithinWindow({ availableFrom: 'not-a-date', availableUntil: '2026-10-01T00:00:00.000Z' }, NOW)).toBe(true);
+    expect(isWithinWindow({ availableUntil: 'not-a-date' }, NOW)).toBe(true);
+  });
+});
+
+describe('buildStoreSections 限时窗口 + Plus 价（F5）', () => {
+  const NOW = Date.parse('2026-09-09T12:00:00.000Z');
+  const LIMITED = product({
+    ...MIDNIGHT,
+    slug: 'midnight-workstation',
+    availableFrom: '2026-09-01T00:00:00.000Z',
+    availableUntil: '2026-10-01T00:00:00.000Z',
+    plusPriceMinor: 49,
+  });
+  const EXPIRED = product({
+    ...MIDNIGHT,
+    slug: 'midnight-workstation',
+    availableFrom: '2026-08-01T00:00:00.000Z',
+    availableUntil: '2026-09-01T00:00:00.000Z',
+  });
+
+  it('窗口内非拥有卡：limited=true，非 Plus 用户价签为原价', () => {
+    const sections = buildStoreSections({
+      products: [LIMITED],
+      localSkins: [],
+      ownedKeys: [],
+      selectedSkinSlug: '',
+      now: NOW,
+    });
+    expect(sections.paid[0]).toMatchObject({
+      limited: true,
+      plusPriceLabel: null,
+      priceLabel: '$0.99',
+    });
+  });
+
+  it('Plus 用户窗口内：plusPriceLabel 为折扣价（不显示虚构划线价）', () => {
+    const sections = buildStoreSections({
+      products: [LIMITED],
+      localSkins: [],
+      ownedKeys: [],
+      selectedSkinSlug: '',
+      now: NOW,
+      isPlusUser: true,
+    });
+    expect(sections.paid[0]).toMatchObject({ limited: true, plusPriceLabel: '$0.49' });
+  });
+
+  it('已拥有窗口内卡：不亮「限时」徽标', () => {
+    const sections = buildStoreSections({
+      products: [LIMITED],
+      localSkins: [],
+      ownedKeys: ['skin.official.midnight-workstation'],
+      selectedSkinSlug: '',
+      now: NOW,
+      isPlusUser: true,
+    });
+    expect(sections.paid[0]).toMatchObject({ owned: true, limited: false });
+  });
+
+  it('窗外（已结束）付费商品从 paid 分区隐藏（过期不卖）', () => {
+    const sections = buildStoreSections({
+      products: [EXPIRED],
+      localSkins: [],
+      ownedKeys: [],
+      selectedSkinSlug: '',
+      now: NOW,
+    });
+    expect(sections.paid).toHaveLength(0);
+  });
+
+  it('未配置窗口的商品不受 now/isPlusUser 影响（常态可售无徽标）', () => {
+    const sections = buildStoreSections({
+      products: [MIDNIGHT],
+      localSkins: [],
+      ownedKeys: [],
+      selectedSkinSlug: '',
+      now: NOW,
+      isPlusUser: true,
+    });
+    expect(sections.paid).toHaveLength(1);
+    expect(sections.paid[0]).toMatchObject({ limited: false, plusPriceLabel: null });
   });
 });

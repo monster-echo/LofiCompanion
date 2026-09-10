@@ -9,11 +9,17 @@ import {
   Text,
   View,
 } from 'react-native';
-import { radii, space, type, ThemeColors } from '../theme/tokens';
+import { radii, semantic, space, type, ThemeColors } from '../theme/tokens';
 import { useThemeStyles } from '../theme/useThemeStyles';
-import { usePreferences } from '../preferences/PreferencesProvider';
 import { AppIcon, IconName } from './AppIcon';
-import { achievementSoft, mediaSurface } from './derivedTokens';
+import {
+  achievementSoft,
+  mediaActionBorder,
+  mediaActionGlass,
+  mediaBorderSoft,
+  mediaGlassControl,
+  mediaSurface,
+} from './derivedTokens';
 import { useTranslation } from 'react-i18next';
 
 export type SheetAction = Readonly<{
@@ -44,6 +50,8 @@ const ENTER_MS = 260;
 const REDUCED_ENTER_MS = 100;
 const ENTER_OFFSET = 24;
 const PROGRESS_BAR_HEIGHT = 6;
+/** 新成就高亮相对 sheet 入场完成的再延迟 */
+const ACHIEVEMENT_DELAY_MS = 300;
 
 function rewardIcon(rewardItemId: string): IconName {
   if (rewardItemId.includes('lamp')) return 'lamp';
@@ -71,9 +79,11 @@ export function StudyResultSheet({
   onDismiss,
 }: StudyResultSheetProps) {
   const { t } = useTranslation('common');
-  const { palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
   const progress = useRef(new Animated.Value(0)).current;
+  // 新成就高亮：sheet 入场完成后行轻弹 + 光晕两闪（结算页的庆祝锚点）
+  const achievementPop = useRef(new Animated.Value(1)).current;
+  const achievementFlash = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!visible) {
@@ -88,6 +98,39 @@ export function StudyResultSheet({
       useNativeDriver: true,
     }).start();
   }, [visible, reducedMotion, progress]);
+
+  useEffect(() => {
+    if (!visible || !newAchievement) return;
+    if (reducedMotion) {
+      achievementPop.setValue(1);
+      achievementFlash.setValue(0);
+      return;
+    }
+    achievementPop.setValue(0.92);
+    achievementFlash.setValue(0);
+    Animated.sequence([
+      Animated.delay(ENTER_MS + ACHIEVEMENT_DELAY_MS),
+      Animated.parallel([
+        Animated.spring(achievementPop, {
+          toValue: 1,
+          friction: 5,
+          tension: 160,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(achievementFlash, {
+            toValue: 0.9,
+            duration: 260,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(achievementFlash, { toValue: 0, duration: 340, useNativeDriver: true }),
+          Animated.timing(achievementFlash, { toValue: 0.7, duration: 220, useNativeDriver: true }),
+          Animated.timing(achievementFlash, { toValue: 0, duration: 320, useNativeDriver: true }),
+        ]),
+      ]),
+    ]).start();
+  }, [visible, newAchievement, reducedMotion, achievementPop, achievementFlash]);
 
   const sessionMinutes = Math.round(sessionSeconds / 60);
   const weeklyRatio = weekTarget > 0 ? Math.min(1, weekMinutes / weekTarget) : 0;
@@ -135,7 +178,7 @@ export function StudyResultSheet({
           >
             <View style={styles.resultRow}>
               <View style={styles.doneBadge}>
-                <AppIcon name="check-circle" color={palette.success} size={28} />
+                <AppIcon name="check-circle" color={semantic.success} size={28} />
               </View>
               <View style={styles.resultText}>
                 <Text style={styles.resultTitle}>{t('sessionMinutes', { n: sessionMinutes })}</Text>
@@ -159,16 +202,23 @@ export function StudyResultSheet({
             </View>
 
             {newAchievement ? (
-              <View style={styles.achievementRow}>
-                <AppIcon
-                  name={rewardIcon(newAchievement.rewardItemId)}
-                  color={palette.achievement}
-                  size={20}
+              <Animated.View style={{ transform: [{ scale: achievementPop }] }}>
+                <View style={styles.achievementRow}>
+                  <AppIcon
+                    name={rewardIcon(newAchievement.rewardItemId)}
+                    color={semantic.achievement}
+                    size={20}
+                  />
+                  <Text style={styles.achievementText} numberOfLines={1}>
+                    {t('achievementEarned', { name: newAchievement.name })}
+                  </Text>
+                </View>
+                {/* 光晕两闪：覆盖行外框的庆祝描边（纯展示层） */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[styles.achievementFlash, { opacity: achievementFlash }]}
                 />
-                <Text style={styles.achievementText} numberOfLines={1}>
-                  {t('achievementEarned', { name: newAchievement.name })}
-                </Text>
-              </View>
+              </Animated.View>
             ) : null}
           </ScrollView>
 
@@ -207,13 +257,16 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   backdrop: {
     backgroundColor: p.scrimBottom,
   },
+  // 整组媒体层 token：sheet 底是固定暗玻璃（mediaSurface），文字必须用
+  // onMedia 固定浅色——严禁混入随主题翻转的 token（3.3 事故：亮色下
+  // 墨字压暗玻璃不可读）
   sheet: {
     maxHeight: '90%',
     backgroundColor: mediaSurface,
     borderTopLeftRadius: radii.sheet,
     borderTopRightRadius: radii.sheet,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: p.borderStandard,
+    borderTopColor: mediaBorderSoft,
     paddingTop: space.x5,
     paddingHorizontal: space.x4,
   },
@@ -232,9 +285,9 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radii.round,
-    backgroundColor: p.surfaceInset,
+    backgroundColor: mediaGlassControl,
     borderWidth: 1,
-    borderColor: p.borderSoft,
+    borderColor: mediaBorderSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -244,23 +297,23 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   resultTitle: {
     ...type.title1,
-    color: p.textPrimary,
+    color: p.onMedia,
   },
   resultMeta: {
     ...type.caption,
-    color: p.textSecondary,
+    color: p.onMediaSecondary,
   },
   weekBlock: {
     gap: space.x2,
   },
   weekLabel: {
     ...type.label,
-    color: p.textSecondary,
+    color: p.onMediaSecondary,
   },
   weekTrack: {
     height: PROGRESS_BAR_HEIGHT,
     borderRadius: radii.small,
-    backgroundColor: p.surfaceInset,
+    backgroundColor: mediaGlassControl,
     overflow: 'hidden',
   },
   weekFill: {
@@ -270,7 +323,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   weekValue: {
     ...type.caption,
-    color: p.textMuted,
+    color: p.onMediaSecondary,
   },
   achievementRow: {
     flexDirection: 'row',
@@ -283,8 +336,18 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   achievementText: {
     ...type.bodyStrong,
-    color: p.textPrimary,
+    color: p.onMedia,
     flexShrink: 1,
+  },
+  achievementFlash: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: radii.small,
+    borderWidth: 2,
+    borderColor: semantic.achievement,
   },
   ctaArea: {
     paddingTop: space.x4,
@@ -293,27 +356,31 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   primaryCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    // 主 CTA 玻璃蓝：与首页同语言（压在完成页影像之上）
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     paddingHorizontal: space.x5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryCtaText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    // 玻璃蓝恒压暗背景（sheet 玻璃 + 底部 scrim），onMedia 白字对比达标
+    color: p.onMedia,
   },
   secondaryCta: {
     minHeight: 48,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: p.borderStandard,
+    borderColor: mediaBorderSoft,
     paddingHorizontal: space.x4,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryCtaText: {
     ...type.bodyStrong,
-    color: p.textSecondary,
+    color: p.onMediaSecondary,
   },
   ctaPressed: {
     opacity: 0.78,

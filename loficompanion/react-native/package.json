@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "skins:generate": "node scripts/generate-skin.mjs",
+    "rooms:generate": "node scripts/generate-study-rooms.mjs",
     "sync-version": "node ./scripts/sync-version.mjs",
     "eas-build-post-install": "node ./scripts/sync-version.mjs && node ./scripts/provide-google-services.mjs"
   },
@@ -45,7 +46,9 @@
     "react-i18next": "^17.0.12",
     "react-native": "0.86.2",
     "react-native-iap": "^16.5.0",
+    "react-native-keyboard-controller": "1.21.9",
     "react-native-nitro-modules": "^0.36.5",
+    "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-sse": "^1.2.1",

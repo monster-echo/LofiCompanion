@@ -1,44 +1,64 @@
 // membership 域文案（en 键集须与 zh deep-equal（parity.test.ts））。
+// 2026-09 scene-based redesign: sell benefits, not configuration.
 export const membership = {
-  // 会员中心
   title: 'Membership',
-  heroTitle: 'Tiers that flex with your product',
-  heroBody: 'Your setup includes {{tiers}} tiers and {{plans}} plans.',
-  sectionPlans: 'Available plans',
+  // Scene hero (purchase state)
+  heroTitle: 'Tonight, let Plus keep you company',
+  heroSubtitle: 'Every curated skin, plus advanced abilities',
+  sectionBenefits: 'Plus benefits',
+  sectionPlans: 'Choose a plan',
+  sectionSkins: 'Curated skins',
+  // Entitlement keys (docs/05 §4) → user-facing copy
+  benefitCatalogPremium: 'Every curated skin',
+  benefitSkinOfficial: 'Official curated skins',
+  benefitRoomSlots: 'Advanced room slots',
+  benefitInsights: 'Advanced study insights',
+  benefitCustomGen: 'Custom generation flow',
+  // Tier/plan catalog (server bootstrap, currently zh-only) translated at render time:
+  // keys map registered catalog ids (see domain/membershipCopy.ts); unregistered ids fall back to server copy
+  tierFreeSummary: 'Core focus sessions, three free skins, and study history',
+  tierPlusSummary: 'Every skin, advanced room layout, and study insights',
+  planPlusMonthly: 'Plus Monthly',
+  planPlusYearly: 'Plus Yearly',
+  // Plan cards
+  planRecommended: 'Best value',
+  planSavings: 'Save {{percent}}%',
+  // Sticky CTA
+  confirmSubscribe: 'Subscribe',
   mockNotice: 'This is demo checkout — no real store or payment channel is called.',
   confirming: 'Confirming…',
   signInToSubscribe: 'Sign in to subscribe',
   mockOrder: 'Place demo order (not a real payment)',
-  confirmSubscribe: 'Confirm subscription',
   emptyPlans: 'No plans are set up for this app yet.',
-  browsePlusSkins: 'Browse Plus skin catalog',
-  plusSkinValue: 'Plus unlocks the official curated skins',
-  viewOrders: 'View order history',
-  tierCurrent: 'Current tier',
-  tierRecommended: 'Recommended',
-  entitlementsCount: '{{n}} entitlements configured',
-  planSelected: 'This plan is selected',
-  planProvider: 'Payment channel: {{provider}}',
+  // Member card (subscribed state)
+  memberBadgeActive: 'Active',
+  memberFallbackTitle: 'Member',
+  memberCardSubtitle: 'Your benefits are live and ready',
+  memberManage: 'Manage subscription',
+  memberChangeSkin: 'Change skin',
+  // Footer text links
+  linkRestore: 'Restore purchases',
+  linkManageSubs: 'Manage subscription',
+  linkLegal: 'Privacy & terms',
+  linkStore: 'Browse Plus skins',
+  linkOrders: 'Order history',
+  restoreDone: 'Your purchases have been restored',
+  restoreNone: 'No purchases to restore',
+  // Billing intervals (formatPrice builds "¥x/mo"; reused by CheckoutScreen)
   interval: {
     month: 'mo',
     year: 'yr',
     lifetime: 'lifetime',
     one_time: 'use',
   },
-  // 确认订阅（结账页）
+  // Checkout
   checkoutTitle: 'Confirm subscription',
   checkoutMockNotice: 'Demo checkout: completed through a mock channel.',
-  // 订阅合规披露（App Store 审核指南 3.1.2 / Play 支付政策）：必须渲染在购买动作之前
+  // Subscription compliance disclosure (App Store 3.1.2 / Play payments policy): must render before the purchase action
   storeApple: 'App Store',
   storeGoogle: 'Google Play',
   checkoutDisclosureTitle: 'Auto-renewal details',
   checkoutDisclosure: 'Subscribing to {{plan}} at {{price}}. Payment will be charged to your {{store}} account at confirmation of purchase, and your subscription renews automatically unless canceled at least 24 hours before the end of the current period. You can manage or cancel anytime in your {{store}} subscription settings.',
   done: 'Done',
   retry: 'Retry',
-  restorePurchases: 'Restore purchases',
-  restoreDone: 'Your purchases have been restored',
-  restoreNone: 'No purchases to restore',
-  // 订阅管理入口（审核要求可跳转商店订阅设置）与法务文档
-  manageSubscriptions: 'Manage subscription',
-  legalLinks: 'Privacy policy & terms of use',
 } as const;

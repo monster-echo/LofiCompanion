@@ -3,6 +3,7 @@ import {
   availableTracks,
   parseMusicManifest,
   resolveSelectedTrack,
+  shuffleNextIndex,
 } from './musicLibrary';
 import type { MusicTrack } from './musicTypes';
 
@@ -72,5 +73,24 @@ describe('resolveSelectedTrack', () => {
     expect(resolveSelectedTrack('gone', tracks)?.id).toBe('rainy-night');
     expect(resolveSelectedTrack(null, tracks)?.id).toBe('rainy-night');
     expect(resolveSelectedTrack(null, [])).toBeNull();
+  });
+});
+
+describe('shuffleNextIndex（房间 Radio 随机换曲）', () => {
+  it('单曲曲目恒回 0（配合播放器原生循环，不走换曲）', () => {
+    expect(shuffleNextIndex(0, 1, () => 0)).toBe(0);
+    expect(shuffleNextIndex(0, 0, () => 0.9)).toBe(0);
+  });
+
+  it('length>1 时绝不与当前曲重复（相邻不重曲）', () => {
+    const rng = () => 0; // 恒指到 0：当前曲为 0 时必须让位到 1
+    expect(shuffleNextIndex(0, 3, rng)).toBe(1);
+    expect(shuffleNextIndex(1, 3, rng)).toBe(0);
+    expect(shuffleNextIndex(2, 3, rng)).toBe(0);
+  });
+
+  it('rng 命中当前曲时顺延一位，命中他曲时原样采用', () => {
+    expect(shuffleNextIndex(1, 4, () => 0.5)).toBe(2); // floor(0.5*4)=2 ≠ 1
+    expect(shuffleNextIndex(2, 4, () => 0.5)).toBe(3); // floor(0.5*4)=2 撞当前 → 顺延
   });
 });

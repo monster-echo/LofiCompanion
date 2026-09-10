@@ -3,10 +3,9 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppCard, ListRow, PageHeader } from '../design-system/components';
 import { apiClient } from '../data/apiClient';
 import {
+  bundledLegal,
   LegalDocument,
-  privacyPolicy,
-  subscriptionTerms,
-  termsOfService,
+  LegalLocale,
 } from '../legal/legalDocuments';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +14,7 @@ import { radii, spacing } from '../theme/tokens';
 
 type LegalType = 'privacy' | 'terms' | 'subscription';
 
-/** 解析后的法务文档：服务端（locale 匹配）优先，回落内置中文文书。 */
+/** 解析后的法务文档：当前语言的文书（服务端优先，回落内置译本）。 */
 interface ResolvedLegal {
   title: string;
   /** 结构化段落（内置文书）；服务端 content 按空行切分为平铺段落 */
@@ -24,15 +23,12 @@ interface ResolvedLegal {
   localeTag: 'zh-CN' | 'en-US';
 }
 
-function bundledResolved(type: LegalType): ResolvedLegal {
-  const bundled: LegalDocument =
-    type === 'privacy' ? privacyPolicy
-      : type === 'terms' ? termsOfService
-        : subscriptionTerms;
+function bundledResolved(type: LegalType, locale: LegalLocale): ResolvedLegal {
+  const bundled: LegalDocument = bundledLegal(locale)[type];
   return {
     title: bundled.title,
     revision: bundled.effectiveDate,
-    localeTag: 'zh-CN',
+    localeTag: locale,
     sections: bundled.sections.map((section) => ({
       title: section.title,
       paragraphs: section.bullets ? [...section.paragraphs, ...section.bullets] : section.paragraphs,
@@ -41,20 +37,20 @@ function bundledResolved(type: LegalType): ResolvedLegal {
 }
 
 /** 法务正文按需读取（P5 启动轻量化）：bootstrap 只带元数据，正文在页面打开时
- *  经公开通道拉取。挂载即渲染内置文书（零等待、离线可用），服务端版本（语言
- *  优先级：当前语言 → zh-CN → 首篇）到达后整体替换。 */
+ *  经公开通道拉取。挂载即渲染当前语言的内置文书（零等待、离线可用；服务端
+ *  目前只下发中文文书，英文界面靠内置译本兜底）。服务端返回中仅采纳与当前
+ *  语言一致的版本——服务端补齐英文文书后自动生效，未补齐时不把中文压给
+ *  英文用户。 */
 function useResolvedLegal(type: LegalType): ResolvedLegal {
   const { locale } = usePreferences();
-  const [resolved, setResolved] = useState<ResolvedLegal>(() => bundledResolved(type));
+  const [resolved, setResolved] = useState<ResolvedLegal>(() => bundledResolved(type, locale));
   useEffect(() => {
     let mounted = true;
-    setResolved(bundledResolved(type)); // 类型/语言切换先回内置，防止串页残影
+    setResolved(bundledResolved(type, locale)); // 类型/语言切换先回内置，防止串页残影
     apiClient.publicLegal({ type })
       .then(({ docs }) => {
         if (!mounted || docs.length === 0) return;
-        const entry = docs.find((doc) => doc.locale === locale)
-          ?? docs.find((doc) => doc.locale === 'zh-CN')
-          ?? docs[0];
+        const entry = docs.find((doc) => doc.locale === locale);
         if (!entry) return;
         setResolved({
           title: entry.title,

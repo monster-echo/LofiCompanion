@@ -35,6 +35,11 @@ export const support = {
   labelDetail: 'Issue details',
   placeholderDetail: 'Walk through the steps, what you expected, and what actually happened. Please skip passwords or verification codes',
   labelCategory: 'Category',
+  // Ticket categories (server sends ids; translated at render, unknown ids fall back to server label)
+  categoryAccount: 'Account & sign-in',
+  categoryBilling: 'Membership & payments',
+  categoryTechnical: 'Something broke',
+  categoryPrivacy: 'Privacy & data',
   labelSeverity: 'Urgency',
   severityNormal: 'Normal',
   severityHigh: 'High',

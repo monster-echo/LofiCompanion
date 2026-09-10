@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../../state/AppStore';
 import { radii, semantic, space, type } from '../../../theme/tokens';
@@ -53,6 +55,13 @@ export function DanmakuInputBar({
   // 否则打字 5s 后输入条被整体淡出——作曲态恒显。
   const composing = signedIn && (focused || draft.length > 0);
 
+  // 底部停靠条键盘避让：iOS 键盘逐帧上移（height 弹出时为负的键盘高度）；
+  // Android 不参与——adjustResize 已压缩窗口，再平移会双重偏移。
+  const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
+  const avoidStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: Platform.OS === 'ios' ? keyboardHeight.value : 0 }],
+  }));
+
   return (
     <Animated.View
       style={[
@@ -62,6 +71,7 @@ export function DanmakuInputBar({
       ]}
       pointerEvents="box-none"
     >
+      <Reanimated.View style={avoidStyle}>
       {signedIn ? (
         <View style={styles.inputRow}>
           <TextInput
@@ -103,6 +113,7 @@ export function DanmakuInputBar({
           <Text style={styles.guestText}>{t('signInToChat')}</Text>
         </Pressable>
       )}
+      </Reanimated.View>
     </Animated.View>
   );
 }

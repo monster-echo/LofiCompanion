@@ -22,7 +22,6 @@ export const profile = {
   // 头像与资料卡
   avatarAlt: 'User avatar',
   changeAvatarAlt: 'Change avatar',
-  changeAvatarHint: 'Tap to change',
   bioEmpty: "This person hasn't written a bio yet.",
   // 编辑资料
   galleryPermissionRequired: 'Photo library access is needed to pick an avatar',
@@ -31,20 +30,12 @@ export const profile = {
   displayNameLabel: 'Display name',
   bioLabel: 'Bio',
   bioPlaceholder: 'Tell us a bit about yourself',
-  avatarPickerHint:
-    'Tap the avatar above to pick an image — drag and zoom to crop it to 512×512.',
   saving: 'Saving…',
   saveProfile: 'Save profile',
   // 头像裁剪
-  cropTitle: 'Move and crop your avatar',
-  cropHint: 'Drag the image to adjust its position, and zoom with the buttons below.',
+  cropTitle: 'Adjust your avatar',
+  cropHint: 'Drag to reposition, pinch to zoom.',
   cropImageAlt: 'Avatar to crop',
-  zoomOut: 'Zoom out',
-  zoomIn: 'Zoom in',
-  moveUp: 'Move up',
-  moveDown: 'Move down',
-  moveLeft: 'Move left',
-  moveRight: 'Move right',
   cancel: 'Cancel',
   processing: 'Processing…',
   useCrop: 'Use this crop',
@@ -90,6 +81,7 @@ export const profile = {
   orderRefunded: 'Refunded',
   // 关于与版本
   aboutTitle: 'About & versions',
+  brandTagline: 'Start quiet, finish focused',
   clientVersion: 'Client version',
   configVersion: 'Config version',
   configSchema: 'Config schema',

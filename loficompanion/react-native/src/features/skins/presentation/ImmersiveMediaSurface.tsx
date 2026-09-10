@@ -27,6 +27,9 @@ export type ImmersiveMediaSurfaceProps = Readonly<{
   resizeMode?: "cover" | "contain";
   /** 减少动态：状态切换不做叠化，直接换海报（doc-07 §10） */
   reducedMotion?: boolean;
+  /** 本次状态切换的叠化时长覆盖（ms）；缺省用 manifest.animation.crossfadeMs。
+   *  用户意图事件（暂停/恢复等）传短值让画面切换更跟手 */
+  crossfadeMs?: number;
   /** 容器尺寸由调用方决定（absoluteFill / 56% 高等），缺省跟随父级布局 */
   style?: StyleProp<ViewStyle>;
 }>;
@@ -149,6 +152,7 @@ export function ImmersiveMediaSurface({
   state,
   resizeMode = "cover",
   reducedMotion = false,
+  crossfadeMs,
   style,
 }: ImmersiveMediaSurfaceProps) {
   const styles = useThemeStyles(makeStyles);
@@ -261,7 +265,7 @@ export function ImmersiveMediaSurface({
     dissolve.current?.stop();
     fadeVis.setValue(1);
     fadeTarget.setValue(0);
-    const duration = manifest.animation?.crossfadeMs ?? DEFAULT_CROSSFADE_MS;
+    const duration = crossfadeMs ?? manifest.animation?.crossfadeMs ?? DEFAULT_CROSSFADE_MS;
     const anim = Animated.parallel([
       Animated.timing(fadeVis, {
         toValue: 0,
@@ -282,7 +286,7 @@ export function ImmersiveMediaSurface({
       dissolve.current = null;
       setBuf((prev) => ({ ...prev, visible: targetKey, incoming: null }));
     });
-  }, [buf, manifest, xFade, yFade]);
+  }, [buf, manifest, crossfadeMs, xFade, yFade]);
 
   // 各槽海报解码完成（成功或失败都放行）——隐藏层常驻退役海报，往返切换零等待
   const markDecoded = (key: SlotKey) => {

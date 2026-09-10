@@ -53,8 +53,9 @@ describe('doc-07 §4.2 语义映射', () => {
       actionDisabled: '#3A6AAD',
       scrimTop: 'rgba(6,16,28,0.62)',
       scrimBottom: 'rgba(6,16,28,0.88)',
-      // 媒体暗玻璃（主题无关，两模式同值）：输入条/玻璃按钮等影像 chrome
-      mediaGlass: 'rgba(12,14,20,0.62)',
+      // 媒体暗玻璃（主题无关，两模式同值）：输入条/玻璃按钮等影像 chrome，
+      // 基底与 derivedTokens 媒体玻璃族统一为 night.950
+      mediaGlass: 'rgba(7,14,24,0.62)',
     });
   });
 
@@ -85,7 +86,7 @@ describe('doc-07 §4.2 语义映射', () => {
       actionDisabled: 'rgba(79,143,232,0.35)',
       scrimTop: 'rgba(6,16,28,0.62)',
       scrimBottom: 'rgba(6,16,28,0.88)',
-      mediaGlass: 'rgba(12,14,20,0.62)',
+      mediaGlass: 'rgba(7,14,24,0.62)',
     });
   });
 

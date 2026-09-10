@@ -20,6 +20,10 @@ export interface StoreSkinCard {
   stateCount: number | null;
   /** 价格标签文案（paid：¥X/$X；free/premium 为 null——Plus 标签由 UI 按 accessType 渲染） */
   priceLabel: string | null;
+  /** Plus 折扣价标签（Plus 用户 + 窗口内 + 配置了 plusPriceMinor；否则 null） */
+  plusPriceLabel: string | null;
+  /** 限时发售中（窗口内且非已拥有——「限时」徽标） */
+  limited: boolean;
   owned: boolean;
   inUse: boolean;
 }
@@ -49,6 +53,10 @@ export type BuildCardsInput = Readonly<{
   selectedSkinSlug: string;
   /** slug → 真实状态数（皮肤注册表解析；未命中卡片隐藏状态行） */
   stateCountFor?: (slug: string) => number | undefined;
+  /** 当前时间（ms）——限时窗口判定注入时钟，node 可测 */
+  now?: number;
+  /** 调用方是否 Plus 会员（权益键含 catalog.premium.active） */
+  isPlusUser?: boolean;
 }>;
 
 /** 分单价签：1200 分 CNY → ¥12；99 分 USD → $0.99；其余币种带 ISO 码前缀。 */
@@ -63,13 +71,41 @@ function normalizeAccessType(raw: string): StoreAccessType {
   return raw === 'paid' || raw === 'premium' ? raw : 'free';
 }
 
+/**
+ * 限时窗口判定（纯函数，node 可测）：from ≤ now ≤ until；缺省端点=无穷；
+ * 不可解析的端点按无穷处理（配置错误不把商品永久藏掉——过期隐藏只影响
+ * 商店分区，商品行必须留在目录里供详情页 owned 判定）。
+ */
+export function isWithinWindow(
+  product: Pick<SkinProductRemote, 'availableFrom' | 'availableUntil'>,
+  now: number,
+): boolean {
+  const parse = (raw: string | null | undefined): number | null => {
+    if (raw == null) return null;
+    const ms = Date.parse(raw);
+    return Number.isNaN(ms) ? null : ms;
+  };
+  const fromMs = parse(product.availableFrom);
+  const untilMs = parse(product.availableUntil);
+  if (product.availableFrom == null && product.availableUntil == null) return false;
+  if (fromMs !== null && now < fromMs) return false;
+  if (untilMs !== null && now > untilMs) return false;
+  return true;
+}
+
 export function buildStoreSections(input: BuildCardsInput): StoreSections {
   const ownedSet = new Set(input.ownedKeys);
+  const now = input.now ?? 0;
   const cards = input.products.map<StoreSkinCard>((product) => {
     const accessType = normalizeAccessType(product.accessType);
     const owned = accessType === 'free'
       ? true
       : ownedSet.has(product.entitlementKey);
+    const inWindow = isWithinWindow(product, now);
+    const plusDiscount = accessType === 'paid'
+      && input.isPlusUser === true
+      && inWindow
+      && product.plusPriceMinor != null;
     return {
       skinId: product.skinId,
       slug: product.slug,
@@ -79,6 +115,10 @@ export function buildStoreSections(input: BuildCardsInput): StoreSections {
       priceLabel: accessType === 'paid'
         ? formatPrice(product.priceMinor, product.currency)
         : null,
+      plusPriceLabel: plusDiscount && product.plusPriceMinor != null
+        ? formatPrice(product.plusPriceMinor, product.currency)
+        : null,
+      limited: !owned && inWindow,
       owned,
       inUse: product.slug === input.selectedSkinSlug,
     };
@@ -92,15 +132,38 @@ export function buildStoreSections(input: BuildCardsInput): StoreSections {
     accessType: 'free',
     stateCount: skin.stateCount,
     priceLabel: null,
+    plusPriceLabel: null,
+    limited: false,
     owned: true,
     inUse: skin.slug === input.selectedSkinSlug,
   }));
 
   return {
     free: [...localCards, ...cards.filter((c) => c.accessType === 'free')],
-    paid: cards.filter((c) => c.accessType === 'paid'),
+    // 窗外（未开始/已结束）付费商品从商店分区隐藏——过期不卖；商品行仍在
+    // 目录（详情页可达性与 owned 判定依赖它），只是不再可买
+    paid: cards.filter((c) => c.accessType === 'paid')
+      .filter((c) => {
+        const product = input.products.find((p) => p.slug === c.slug);
+        return product === undefined || isPurchasable(product, now);
+      }),
     premium: cards.filter((c) => c.accessType === 'premium'),
   };
+}
+
+/** 可售窗口：未配置窗口恒可售；配置了则需 now ∈ [from, until]（坏 ISO 按无穷端）。 */
+function isPurchasable(product: SkinProductRemote, now: number): boolean {
+  if (product.availableFrom == null && product.availableUntil == null) return true;
+  const parse = (raw: string | null | undefined): number | null => {
+    if (raw == null) return null;
+    const ms = Date.parse(raw);
+    return Number.isNaN(ms) ? null : ms;
+  };
+  const fromMs = parse(product.availableFrom);
+  const untilMs = parse(product.availableUntil);
+  if (fromMs !== null && now < fromMs) return false;
+  if (untilMs !== null && now > untilMs) return false;
+  return true;
 }
 
 /** 「已拥有」轻量视图：本地已选 + 服务端已购（权益键命中）都算。 */

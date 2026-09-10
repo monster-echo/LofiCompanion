@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { AppButton, PageHeader } from '../design-system/components';
+import { AppButton, KeyboardAvoidingScreen, PageHeader } from '../design-system/components';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { useApp } from '../state/AppStore';
 import { spacing } from '../theme/tokens';
@@ -93,9 +93,12 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
   };
 
   return (
-    <View style={styles.page}>
+    <KeyboardAvoidingScreen style={styles.page}>
       <PageHeader title={t(copy.titleKey)} />
-      <ScrollView contentContainerStyle={authStyles.content}>
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={authStyles.content}
+      >
         <View style={authStyles.copy}>
           <Text style={styles.title}>{t(copy.titleKey)}</Text>
           <Text style={styles.secondary}>{t('subtitle')}</Text>
@@ -240,7 +243,7 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
           </View>
         </View>
       ) : null}
-    </View>
+    </KeyboardAvoidingScreen>
   );
 }
 

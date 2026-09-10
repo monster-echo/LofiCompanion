@@ -1,0 +1,13 @@
+# 房间唯一配置源（雨夜书房）。
+# 修改后运行 `npm run rooms:generate` 重新生成
+# src/features/studyroom/domain/rooms.generated.ts（CI/测试用 --check 校验同步）。
+# 房间不携带媒体资产：播放内容 = skin 引用的皮肤清单，画面固定在
+# displayState 声明的基态循环（自习室是集体氛围场景，不随个人会话流转）。
+
+id: rainy-study-room        # 房间 id = 白名单键，必须与目录名一致
+skin: rainy-study-room      # 播放内容引用的皮肤 slug（当前与 id 相同；解耦未来房间≠皮肤）
+name: 雨夜书房
+name_en: Rainy Study Room
+order: 1                    # 列表排序，1 起唯一；1 为默认房间
+# 房间画面固定态：人物恒为伏案写字（focusing 循环），个人六态只在专注页表达
+displayState: focusing

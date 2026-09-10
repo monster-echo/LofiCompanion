@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AccessibilityInfo,
   Pressable,
@@ -7,9 +7,11 @@ import {
   View,
 } from "react-native";
 // Pressable 仅剩媒体入口（absoluteFill，无按压视觉）使用；可按压控件走 PressableScale
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiClient } from "../../../data/apiClient";
 import type { SkinProductRemote } from "../../../data/apiClient";
+import type { StorageDriver } from "../../focus/data/storageDriver";
 import type { CompanionState, SkinManifest } from "../../skins/domain/types";
 import { ImmersiveMediaSurface } from "../../skins/presentation/ImmersiveMediaSurface";
 import { AppIcon } from "../../../design-system/AppIcon";
@@ -17,6 +19,17 @@ import { formatTimerSeconds } from "../../../design-system/FocusTimerRing";
 import { useApp } from "../../../state/AppStore";
 import { usePreferences } from "../../../preferences/PreferencesProvider";
 import { useFocus } from "../application/FocusStore";
+import { useSkinTrials } from "../../store/application/SkinTrialProvider";
+import { useTrialExpiryGuard } from "../../store/application/useTrialExpiryGuard";
+import {
+  createRecommendationPrefsRepository,
+} from "../../store/data/recommendationPrefs";
+import {
+  NIGHT_OWL_TARGET_SLUG,
+  nightOwlStats,
+  shouldShowNightOwlCard,
+} from "../../store/domain/nightOwl";
+import { NightOwlRecommendCard } from "../../store/presentation/NightOwlRecommendCard";
 import { DEFAULT_ACTIVITY, DEFAULT_DURATION } from "../domain/validate";
 import {
   mediaActionBorder,
@@ -35,10 +48,18 @@ import { useTranslation } from "react-i18next";
  * 右上角 ‹ › 半透明快切在已上线皮肤间环绕切换（设置在「我的」页有入口）。
  * 底部结果板承载今日战绩与主 CTA，锚定在悬浮 Tab 之上。
  */
+// 推荐关闭记录用 AsyncStorage 适配（仅首页场景卡；与详情页待完成订单同范式）
+const storageDriver: StorageDriver = {
+  get: (key) => AsyncStorage.getItem(key),
+  set: (key, value) => AsyncStorage.setItem(key, value),
+  remove: (key) => AsyncStorage.removeItem(key),
+};
+
 export function FocusHomeScreen() {
   const { palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
   const focus = useFocus();
+  const trials = useSkinTrials();
   const { navigate, showToast, user } = useApp();
   const { t: tSkin } = useTranslation('skins');
   const { t } = useTranslation('focus');
@@ -75,14 +96,55 @@ export function FocusHomeScreen() {
     return () => { mounted = false; };
   }, [user]);
 
-  // 未拥有的付费皮肤（未登录恒锁；登录后以权益键为准，未知时不判锁）
+  // 未拥有的付费皮肤（未登录恒锁；登录后以权益键为准，未知时不判锁）。
+  // 试用中皮肤放行——24h 窗口内等同可用（到期由回落守卫收尾）。
   const isLocked = (skin: SkinManifest): boolean => {
     if (skin.accessType !== "paid") return false;
     if (user === null) return true;
+    if (trials.isTrialActive(skin.slug)) return false;
     if (!ownedKnown) return false;
     const product = productsBySlug[skin.slug];
     return product !== undefined && !ownedKeys.includes(product.entitlementKey);
   };
+
+  // 试用到期回落守卫（拥有判定与 isLocked 同源：商品目录 + 权益键）
+  const isOwnedSlug = useCallback(
+    (slug: string) => {
+      const product = productsBySlug[slug];
+      return product !== undefined && ownedKeys.includes(product.entitlementKey);
+    },
+    [productsBySlug, ownedKeys],
+  );
+  useTrialExpiryGuard({ isOwnedSlug });
+
+  // —— 夜猫子场景推荐卡（F4）：本地画像（近14天 ≥3 次本地 22-5 点完成）+
+  // 未拥有 + 未试用 + 关闭冷却已过。关闭记录挂 AsyncStorage（7 天冷却）。
+  // dismissedAt: undefined=读取中（不显示，防闪现）；null=从未关闭；number=关闭时刻。
+  const [dismissedAt, setDismissedAt] = useState<number | null | undefined>(undefined);
+  useEffect(() => {
+    let mounted = true;
+    const prefs = createRecommendationPrefsRepository(storageDriver);
+    void prefs.dismissedAt(NIGHT_OWL_TARGET_SLUG).then((at) => {
+      if (mounted) setDismissedAt(at);
+    });
+    return () => { mounted = false; };
+  }, []);
+  const nightOwlVisible = useMemo(() => {
+    if (dismissedAt === undefined) return false;
+    return shouldShowNightOwlCard({
+      stats: nightOwlStats(focus.history, Date.now()),
+      product: productsBySlug[NIGHT_OWL_TARGET_SLUG] ?? null,
+      ownedKeys,
+      trialActive: trials.isTrialActive(NIGHT_OWL_TARGET_SLUG),
+      dismissedAtUtc: dismissedAt,
+      now: Date.now(),
+    });
+  }, [dismissedAt, focus.history, ownedKeys, productsBySlug, trials]);
+  const dismissNightOwlCard = useCallback(() => {
+    const now = Date.now();
+    setDismissedAt(now);
+    void createRecommendationPrefsRepository(storageDriver).dismiss(NIGHT_OWL_TARGET_SLUG, now);
+  }, []);
 
   // 快切环绕：按注册表顺序（内置默认 + 已拉取的云端皮肤）±1，未选中过/数据
   // 异常从首位起算；跳过判锁皮肤
@@ -185,6 +247,24 @@ export function FocusHomeScreen() {
         <View style={[styles.greeting, { top: insets.top + 24 }]} pointerEvents="none">
           <Text style={styles.greetingText}>{t('greeting')}</Text>
         </View>
+
+        {/* 夜猫子场景推荐卡：结果板上方（不进固定 196 板内，独立悬浮） */}
+        {nightOwlVisible ? (
+          <View
+            style={[
+              styles.nudgeWrap,
+              { bottom: Math.max(insets.bottom + space.x2, 92) + 196 + space.x3 },
+            ]}
+            pointerEvents="box-none"
+          >
+            <NightOwlRecommendCard
+              slug={NIGHT_OWL_TARGET_SLUG}
+              nightSessions={nightOwlStats(focus.history, Date.now()).nightSessions}
+              onTap={() => navigate("store.skinDetail", { skinSlug: NIGHT_OWL_TARGET_SLUG })}
+              onDismiss={dismissNightOwlCard}
+            />
+          </View>
+        ) : null}
 
         {/* 底部结果板（高约 196、左右 16、悬浮 Tab 之上）：
             iOS 26 悬浮 Tab 约 80pt 高且场景延伸其下，insets.bottom 应含之；
@@ -289,6 +369,12 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     paddingHorizontal: space.x5,
     paddingVertical: space.x4,
     justifyContent: "space-between",
+  },
+  // 夜猫子推荐卡容器：与结果板同边距，悬于其上（不进固定板高）
+  nudgeWrap: {
+    position: "absolute",
+    left: space.x4,
+    right: space.x4,
   },
   boardEmpty: {
     ...type.body,

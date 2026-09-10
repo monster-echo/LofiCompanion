@@ -6,6 +6,7 @@ import { useApp } from '../state/AppStore';
 import { styles } from '../theme/styles';
 import { useTranslation } from 'react-i18next';
 import { i18n } from '../i18n/core';
+import { errorMessageOf } from '../data/errorCopy';
 
 type ViewState<T> =
   | Readonly<{ status: 'loading' }>
@@ -127,6 +128,6 @@ async function load<T>(
     const value = await operation();
     update(empty(value) ? { status: 'empty' } : { status: 'success', data: value });
   } catch (error) {
-    update({ status: 'error', message: error instanceof Error ? error.message : i18n.t('profile:loadFailed') });
+    update({ status: 'error', message: errorMessageOf(error, i18n.t('profile:loadFailed')) });
   }
 }

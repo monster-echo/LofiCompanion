@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AchievementTile } from '../../../design-system/AchievementTile';
 import { AppIcon, IconName } from '../../../design-system/AppIcon';
+import { mediaActionBorder, mediaActionGlass } from '../../../design-system/derivedTokens';
 import { useApp } from '../../../state/AppStore';
 import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
@@ -285,14 +286,17 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   emptyCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    // 主 CTA 玻璃蓝：与首页同语言（半透明雨蓝+浅蓝描边），前景随主题翻转
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: space.x1,
   },
   emptyCtaText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    color: p.textPrimary,
   },
   pressed: {
     opacity: 0.82,

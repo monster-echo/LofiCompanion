@@ -129,30 +129,58 @@ describe('陪伴状态机', () => {
     expect(renewed.next.state).toBe('ready'); // completed --> ready: new.session
   });
 
-  it('playing 不可打断时高优先级事件入队，但基态转移立即生效', () => {
+  it('playing 不可打断时高优先级系统事件入队，但基态转移立即生效', () => {
     const drinking = drinkingNow();
-    const paused = dispatch(drinking, 'focus.paused', at(1000));
-    expect(paused.next.state).toBe('paused'); // 基态立即变化
-    expect(paused.next.playing?.eventType).toBe('wellness.drink'); // 喝水继续播
-    expect(paused.next.queue).toEqual([{ eventType: 'focus.paused', queuedAt: T0 + 1000 }]);
-    expect(paused.next.lastFiredAt['focus.paused']).toBeUndefined(); // 入队不记录冷却
+    const started = dispatch(drinking, 'focus.started', at(1000));
+    expect(started.next.state).toBe('focusing'); // 基态立即变化
+    expect(started.next.playing?.eventType).toBe('wellness.drink'); // 喝水继续播
+    expect(started.next.queue).toEqual([{ eventType: 'focus.started', queuedAt: T0 + 1000 }]);
+    expect(started.next.lastFiredAt['focus.started']).toBeUndefined(); // 入队不记录冷却
   });
 
-  it('播放结束后 advance 弹出队首（最高优先级）事件开始播放', () => {
-    const paused = dispatch(drinkingNow(), 'focus.paused', at(1000)).next;
-    const after = advance(paused, T0 + 5000, manifest); // 喝水 4000ms 已播完
-    expect(after.next.playing).toEqual({
+  it('用户意图事件无条件打断：喝水（不可打断）播放中点暂停立即切 paused 动作', () => {
+    const drinking = drinkingNow();
+    const paused = dispatch(drinking, 'focus.paused', at(1000));
+    expect(paused.next.state).toBe('paused');
+    expect(paused.next.playing).toEqual({
       eventType: 'focus.paused',
       state: 'paused',
       baseAtStart: 'paused',
+      startedAt: T0 + 1000,
+      durationMs: 4000,
+    });
+    expect(paused.next.queue).toEqual([]); // 被打断的动作直接让位，不入队
+    expect(paused.next.lastFiredAt['focus.paused']).toBe(T0 + 1000);
+    expect(paused.effects).toEqual([
+      { kind: 'swapPoster', state: 'paused' },
+      { kind: 'autoReturn', afterMs: 4000 },
+    ]);
+  });
+
+  it('用户意图事件无条件打断：paused 动作播放中点恢复立即切回 focusing', () => {
+    const drinking = drinkingNow();
+    const paused = dispatch(drinking, 'focus.paused', at(1000)).next;
+    const resumed = dispatch(paused, 'focus.resumed', at(1500));
+    expect(resumed.next.state).toBe('focusing');
+    expect(resumed.next.playing?.eventType).toBe('focus.resumed');
+    expect(resumed.next.playing?.startedAt).toBe(T0 + 1500); // 立即开播，非入队
+  });
+
+  it('播放结束后 advance 弹出队首（最高优先级）事件开始播放', () => {
+    const queued = dispatch(drinkingNow(), 'focus.started', at(1000)).next;
+    const after = advance(queued, T0 + 5000, manifest); // 喝水 4000ms 已播完
+    expect(after.next.playing).toEqual({
+      eventType: 'focus.started',
+      state: 'focusing',
+      baseAtStart: 'focusing',
       startedAt: T0 + 5000,
       durationMs: 4000,
     });
     expect(after.next.queue).toEqual([]);
-    expect(after.next.state).toBe('paused');
-    expect(after.next.lastFiredAt['focus.paused']).toBe(T0 + 5000);
+    expect(after.next.state).toBe('focusing');
+    expect(after.next.lastFiredAt['focus.started']).toBe(T0 + 5000);
     expect(after.effects).toEqual([
-      { kind: 'swapPoster', state: 'paused' },
+      { kind: 'swapPoster', state: 'focusing' },
       { kind: 'autoReturn', afterMs: 4000 },
     ]);
   });
@@ -172,34 +200,34 @@ describe('陪伴状态机', () => {
     const dropped = dispatch(s, 'focus.loop', at(400));
     expect(dropped.next.queue).toHaveLength(3);
 
-    // focus.paused(90) 高于队内最低(10) → 挤掉 focus.loop
-    const evicted = dispatch(s, 'focus.paused', at(500));
+    // break.started(80) 高于队内最低(10) → 挤掉 focus.loop
+    const evicted = dispatch(s, 'break.started', at(500));
     expect(evicted.next.queue.map((q) => q.eventType)).toEqual([
       'focus.started',
       'break.started',
-      'focus.paused',
+      'break.started',
     ]);
   });
 
   it('弹队首按优先级取最高，而非入队先后', () => {
     let s = drinkingNow();
-    s = dispatch(s, 'focus.started', at(100)).next; // 80，先入队
-    s = dispatch(s, 'focus.paused', at(200)).next; // 90，后入队
+    s = dispatch(s, 'focus.loop', at(100)).next; // 10，先入队
+    s = dispatch(s, 'focus.started', at(200)).next; // 80，后入队
     const after = advance(s, T0 + 4000, manifest);
-    expect(after.next.playing?.eventType).toBe('focus.paused');
-    expect(after.next.queue.map((q) => q.eventType)).toEqual(['focus.started']);
+    expect(after.next.playing?.eventType).toBe('focus.started');
+    expect(after.next.queue.map((q) => q.eventType)).toEqual(['focus.loop']);
   });
 
   it('advance 丢弃超过 10s 的过期队列事件；恰好 10s 仍保鲜', () => {
-    const queued = dispatch(drinkingNow(), 'focus.paused', at(1000)).next;
+    const queued = dispatch(drinkingNow(), 'focus.started', at(1000)).next;
     const boundary = advance(queued, T0 + 11_000, manifest); // 队龄恰好 10000ms
-    expect(boundary.next.playing?.eventType).toBe('focus.paused');
+    expect(boundary.next.playing?.eventType).toBe('focus.started');
 
-    const expired = advance(queued, T0 + 11_001, manifest); // 10001ms → 过期
+    const expired = advance(dispatch(drinkingNow(), 'focus.started', at(1000)).next, T0 + 11_001, manifest); // 10001ms → 过期
     expect(expired.next.playing).toBeNull();
     expect(expired.next.queue).toEqual([]);
-    expect(expired.next.state).toBe('paused'); // 播放期间基态已变 → 回当前基态
-    expect(expired.effects).toEqual([{ kind: 'swapPoster', state: 'paused' }]);
+    expect(expired.next.state).toBe('focusing'); // 基态未变 → 回清单 returnState
+    expect(expired.effects).toEqual([{ kind: 'swapPoster', state: 'focusing' }]);
   });
 
   it('reduce motion：动作时长降为 1000ms', () => {
@@ -211,13 +239,12 @@ describe('陪伴状态机', () => {
     expect(effects).toContainEqual({ kind: 'autoReturn', afterMs: 1000 });
   });
 
-  it('暂停后恢复：pause 动作播完回基态 paused，resume 重新播放 focusing', () => {
+  it('暂停后恢复：用户即时不排队——开场动作被打断，paused 播完回基态，resume 立即开播', () => {
     let s = initialState('focusing');
-    s = dispatch(s, 'focus.started', CTX).next; // 播 focusing
-    s = dispatch(s, 'focus.paused', at(1000)).next; // focus.started 不可打断 → 入队，基态 paused
-    s = advance(s, T0 + 5000, manifest).next; // 播完 focusing（4000ms），弹出 paused 动作
+    s = dispatch(s, 'focus.started', CTX).next; // 播 focusing 开场（不可打断的旧语义已废除）
+    s = dispatch(s, 'focus.paused', at(1000)).next; // 用户意图 → 立即打断开场
     expect(s.playing?.eventType).toBe('focus.paused');
-    s = advance(s, T0 + 9500, manifest).next; // paused 动作播完（9000ms），回基态
+    s = advance(s, T0 + 5000, manifest).next; // paused 动作播完（1000..5000），回基态
     expect(s.playing).toBeNull();
     expect(s.state).toBe('paused');
 
@@ -230,6 +257,17 @@ describe('陪伴状态机', () => {
       startedAt: T0 + 9500,
       durationMs: 4000,
     });
+  });
+
+  it('用户动作打断后，队列中的系统事件在其动作播完时照常弹出', () => {
+    let s = drinkingNow(); // 喝水播放中
+    s = dispatch(s, 'focus.started', at(100)).next; // 系统事件 → 入队
+    s = dispatch(s, 'focus.paused', at(200)).next; // 用户意图 → 打断喝水立即播 paused
+    expect(s.playing?.eventType).toBe('focus.paused');
+    expect(s.queue.map((q) => q.eventType)).toEqual(['focus.started']); // 队列保留
+    const after = advance(s, T0 + 4200, manifest); // paused 动作播完（200+4000）
+    expect(after.next.playing?.eventType).toBe('focus.started');
+    expect(after.next.queue).toEqual([]);
   });
 
   it('可打断的播放动作被更高优先级事件替换', () => {

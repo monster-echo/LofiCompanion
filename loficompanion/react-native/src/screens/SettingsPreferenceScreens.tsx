@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
-import { AppButton, AppCard, ListRow, PageHeader, ToggleRow } from '../design-system/components';
+import {
+  AppButton, AppCard, KeyboardAvoidingScreen, ListRow, PageHeader, ToggleRow,
+} from '../design-system/components';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { useApp } from '../state/AppStore';
 import { styles } from '../theme/styles';
@@ -9,7 +11,7 @@ import { saveLocaleOverride } from '../data/storage';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
-export type PreferenceKind = 'notifications' | 'general' | 'privacy' | 'appearance' | 'language';
+export type PreferenceKind = 'notifications' | 'general' | 'privacy' | 'language';
 
 export function PreferenceScreen({ kind, title }: Readonly<{
   kind: PreferenceKind;
@@ -25,8 +27,7 @@ export function PreferenceScreen({ kind, title }: Readonly<{
       showToast(text('saved'), 'success');
     }
   };
-  const pageTitle = kind === 'appearance' ? text('appearance')
-    : kind === 'language' ? text('language')
+  const pageTitle = kind === 'language' ? text('language')
     : kind === 'notifications' ? text('notifications')
     : kind === 'general' ? text('general')
     : kind === 'privacy' ? text('privacy')
@@ -74,16 +75,6 @@ function PreferenceFields({ enabled, kind, option, setEnabled, setOption }: Read
       void i18n.changeLanguage(value);
     }
   };
-  if (kind === 'appearance') return <>
-    {(['system', 'light', 'dark'] as const).map((value) => (
-      <ListRow
-        key={value}
-        label={text(value)}
-        onPress={() => setOption(value)}
-        value={option === value ? text('selected') : ''}
-      />
-    ))}
-  </>;
   if (kind === 'language') return <>
     <ListRow label={text('chinese')} onPress={() => chooseLanguage('zh-CN')} value={option === 'zh-CN' ? text('selected') : ''} />
     <ListRow label={text('english')} onPress={() => chooseLanguage('en-US')} value={option === 'en-US' ? text('selected') : ''} />
@@ -92,7 +83,6 @@ function PreferenceFields({ enabled, kind, option, setEnabled, setOption }: Read
 }
 
 function preferenceInitial(kind: PreferenceKind, settings?: Readonly<Record<string, unknown>>) {
-  if (kind === 'appearance') return { enabled: true, option: String(settings?.theme ?? 'system') };
   if (kind === 'language') return { enabled: true, option: String(settings?.language ?? 'zh-CN') };
   const key = kind === 'notifications' ? 'notificationsEnabled'
     : kind === 'privacy' ? 'analyticsEnabled' : 'autoplayEnabled';
@@ -104,7 +94,6 @@ function preferencePatch(
   enabled: boolean,
   option: string,
 ): Readonly<Record<string, string | number | boolean>> {
-  if (kind === 'appearance') return { theme: option };
   if (kind === 'language') return { language: option };
   if (kind === 'notifications') return { notificationsEnabled: enabled };
   if (kind === 'privacy') return { analyticsEnabled: enabled };
@@ -129,9 +118,12 @@ export function DeleteAccountScreen() {
     onConfirm: async () => { if (await deleteAccount(password)) replace('home'); },
   });
   return (
-    <View style={styles.page}>
+    <KeyboardAvoidingScreen style={styles.page}>
       <PageHeader title={t('deleteAccountTitle')} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={styles.scrollContent}
+      >
         <Text style={styles.secondary}>{t('deleteAccountReauthHint')}</Text>
         <TextInput
           accessibilityLabel={t('currentPassword')}
@@ -150,6 +142,6 @@ export function DeleteAccountScreen() {
           onPress={requestDeletion}
         />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingScreen>
   );
 }

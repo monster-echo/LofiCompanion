@@ -31,7 +31,7 @@ export const focus = {
   resumeAction: 'Resume',
   endAction: 'End',
   endConfirmTitle: 'End this session early?',
-  endConfirmStay: 'Keep going a little longer',
+  endConfirmStay: 'Keep going',
   endConfirmLeave: 'End session',
   endConfirmKept: "The {{n}} minutes you focused are saved — the rest won't count.",
   endConfirmKeptZero: "This session is under a minute, so it won't be counted.",

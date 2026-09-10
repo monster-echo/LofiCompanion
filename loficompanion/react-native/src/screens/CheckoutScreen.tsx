@@ -5,6 +5,7 @@ import { AppButton, AppCard, PageHeader } from '../design-system/components';
 import { useApp } from '../state/AppStore';
 import { styles } from '../theme/styles';
 import { formatPrice } from './MembershipScreen';
+import { planDisplayName } from '../domain/membershipCopy';
 
 export function CheckoutScreen() {
   const { t } = useTranslation('membership');
@@ -21,7 +22,7 @@ export function CheckoutScreen() {
       <PageHeader title={t('checkoutTitle')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <AppCard>
-          <Text style={styles.heading}>{plan?.name ?? planId}</Text>
+          <Text style={styles.heading}>{plan ? planDisplayName(plan, t) : planId}</Text>
           {plan ? <Text style={styles.secondary}>{formatPrice(plan, t)}</Text> : null}
           {plan?.provider === 'mock' ? <Text style={styles.caption}>{t('checkoutMockNotice')}</Text> : null}
           {/* 自动续期披露（App Store 审核指南 3.1.2 / Play 支付政策）：名称/价格/周期
@@ -29,7 +30,7 @@ export function CheckoutScreen() {
           <Text style={styles.secondary}>{t('checkoutDisclosureTitle')}</Text>
           <Text style={styles.caption}>
             {t('checkoutDisclosure', {
-              plan: plan?.name ?? planId ?? '',
+              plan: plan ? planDisplayName(plan, t) : planId ?? '',
               price: plan ? formatPrice(plan, t) : '',
               store: Platform.OS === 'android' ? t('storeGoogle') : t('storeApple'),
             })}

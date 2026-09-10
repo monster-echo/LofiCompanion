@@ -34,6 +34,12 @@ export interface MusicController extends FocusMusicEffects {
   setAmbientActive(active: boolean): void;
   /** 选曲：会话中调用立即切换，空闲时仅记录（下轮生效） */
   selectTrack(track: MusicTrack): void;
+  /**
+   * 房间 Radio（自习室）：传非空列表即进入随机轮播模式（一曲播完随机换下一
+   * 曲，相邻不重曲）；传 null 回归单曲循环（选中曲目）。列表优先于 selectTrack
+   * ——Radio 模式下选曲仅记录、不打断轮播。
+   */
+  setPlaylist(tracks: readonly MusicTrack[] | null): void;
   /** 测试/开发释放底层播放器 */
   dispose(): void;
 }

@@ -33,3 +33,48 @@ export function storePoster(
     return null;
   }
 }
+
+/**
+ * 已物化皮肤的本地 loop 视频（详情页预览叠层用）：与 storePoster 同语义，
+ * 取 stateAsset(...).loopVideo；未物化/无视频返回 null（调用方回落公开
+ * 视频端点，再不行退海报静图）。
+ */
+export function storeLoopVideo(
+  skins: readonly SkinManifest[],
+  slug: string,
+  state: CompanionState,
+): number | { readonly uri: string } | null {
+  const manifest = findSkinManifestByIdOrSlug(skins, slug);
+  if (!manifest) return null;
+  try {
+    const video = stateAsset(manifest, state).loopVideo;
+    if (video === undefined) return null;
+    if (typeof video === 'number') return video || null;
+    return video;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 卡片海报（ SkinPreviewCard/商店卡/会员横滑/房间列表等 ~358pt 小画幅）：
+ * 云端皮肤优先用已落盘的卡片缩略图（960 宽 JPEG），缺省回落 storePoster
+ * 全图（内置皮肤与缩略图未就位的旧缓存）。详情大图/会员 hero 不走这里。
+ */
+export function storeCardPoster(
+  skins: readonly SkinManifest[],
+  slug: string,
+  state: CompanionState,
+): number | { readonly uri: string } | null {
+  const manifest = findSkinManifestByIdOrSlug(skins, slug);
+  if (!manifest) return null;
+  try {
+    const asset = stateAsset(manifest, state);
+    if (asset.cardPoster) return asset.cardPoster;
+    const poster = asset.poster;
+    if (typeof poster === 'number') return poster || null;
+    return poster;
+  } catch {
+    return null;
+  }
+}

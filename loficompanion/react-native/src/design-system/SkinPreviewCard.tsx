@@ -7,6 +7,7 @@ import { skinDisplayName } from '../features/skins/domain/registry';
 import { radii, space, type, ThemeColors } from "../theme/tokens";
 import { useThemeStyles } from '../theme/useThemeStyles';
 import { AppIcon } from "./AppIcon";
+import { mediaGlassControl } from "./derivedTokens";
 import { useTranslation } from 'react-i18next';
 
 type SkinPreviewCardProps = Readonly<{
@@ -41,7 +42,9 @@ export function SkinPreviewCard({
   const styles = useThemeStyles(makeStyles);
   const { t } = useTranslation('skins');
   const displayName = skinDisplayName(manifest, locale);
-  const poster = stateAsset(manifest, "ready").poster;
+  // 卡片小画幅：云端皮肤优先用落盘缩略图（960 宽），内置/旧缓存回落全图
+  const readyAsset = stateAsset(manifest, "ready");
+  const poster = readyAsset.cardPoster ?? readyAsset.poster;
 
   return (
     <Pressable
@@ -119,7 +122,8 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   namePill: {
     borderRadius: radii.round,
-    backgroundColor: "rgba(6,16,28,0.55)", // night.950 @55%，压住文字不压图片；压在海报影像上，主题无关
+    // 压住文字不压图片；压在海报影像上，主题无关（媒体玻璃控件档）
+    backgroundColor: mediaGlassControl,
     paddingHorizontal: space.x3,
     paddingVertical: space.x1,
   },

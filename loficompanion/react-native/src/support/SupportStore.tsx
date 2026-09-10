@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { apiClient, ApiClientError } from '../data/apiClient';
+import { errorMessageOf } from '../data/errorCopy';
 import {
   HelpArticle,
   SupportTicket,
@@ -87,7 +88,7 @@ export function SupportProvider({ children }: Readonly<{ children: ReactNode }>)
       await openTicket(created.id);
       return true;
     } catch (error) {
-      showToast(errorMessage(error), 'error');
+      showToast(presentableError(error), 'error');
       return false;
     } finally {
       setBusy(false);
@@ -110,7 +111,7 @@ export function SupportProvider({ children }: Readonly<{ children: ReactNode }>)
       });
       return true;
     } catch (error) {
-      showToast(errorMessage(error), 'error');
+      showToast(presentableError(error), 'error');
       return false;
     } finally {
       setBusy(false);
@@ -124,7 +125,7 @@ export function SupportProvider({ children }: Readonly<{ children: ReactNode }>)
       showToast(i18n.t('errors:feedbackReceived'), 'success');
       return true;
     } catch (error) {
-      showToast(errorMessage(error), 'error');
+      showToast(presentableError(error), 'error');
       return false;
     } finally {
       setBusy(false);
@@ -156,14 +157,15 @@ export function SupportProvider({ children }: Readonly<{ children: ReactNode }>)
 }
 
 function errorState<T>(error: unknown): AsyncState<T> {
-  const message = errorMessage(error);
+  const message = presentableError(error);
   return error instanceof ApiClientError && error.status === 401
     ? { status: 'unauthorized' }
     : { status: 'error', message };
 }
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : i18n.t('errors:serverBusy');
+/** 支持域错误的统一兜底（服务端工单/帮助接口错误消息未本地化） */
+function presentableError(error: unknown) {
+  return errorMessageOf(error, i18n.t('errors:serverBusy'));
 }
 
 export function useSupport() {

@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import {
-  AppButton, AppCard, ListRow, OfflineBanner, PageHeader,
+  AppButton, AppCard, KeyboardAvoidingScreen, ListRow, OfflineBanner, PageHeader,
 } from '../design-system/components';
 import { SessionView } from '../domain/models';
 import { AppRoute } from '../navigation/routes';
 import { TranslationKey, usePreferences } from '../preferences/PreferencesProvider';
 import { useApp } from '../state/AppStore';
-import { SyncStatusRow } from '../features/sync/presentation/SyncStatusRow';
 import { styles } from '../theme/styles';
 import { useTranslation } from 'react-i18next';
+import { currentLanguage } from '../i18n/core';
 
 type SettingItem = Readonly<{
   policy?: string;
@@ -26,15 +26,10 @@ const groups: readonly SettingGroup[] = [
     { label: 'membership', route: 'membership.home' },
   ] },
   { title: 'appPreferences', items: [
-    { policy: 'notifications', label: 'notifications', route: 'settings.notifications' },
-    { policy: 'general', label: 'general', route: 'settings.general' },
-    { policy: 'appearance', label: 'appearance', route: 'settings.appearance' },
     { policy: 'language', label: 'language', route: 'settings.language' },
     { policy: 'appearance', label: 'textSize', route: 'settings.textSize' },
   ] },
   { title: 'privacySupport', items: [
-    { policy: 'analytics', label: 'privacy', route: 'settings.privacy' },
-    { label: 'permissions', route: 'settings.permissions' },
     { label: 'storage', route: 'settings.storage' },
     { label: 'help', route: 'settings.helpFeedback' },
     { label: 'legal', route: 'settings.legal' },
@@ -46,7 +41,6 @@ const groups: readonly SettingGroup[] = [
 export function SettingsScreen() {
   const { config, user } = useApp();
   const { text } = usePreferences();
-  const { t } = useTranslation('settings');
   const visible = (item: SettingItem) => !item.policy
     || config.settingsPolicy[item.policy]?.visibility === 'visible';
   return (
@@ -54,13 +48,6 @@ export function SettingsScreen() {
       <OfflineBanner />
       <PageHeader title={text('settings')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <AppCard>
-          <Text style={styles.heading}>{user?.displayName ?? text('guest')}</Text>
-          <Text style={styles.secondary}>
-            {user ? (user.hasEmail && user.email ? user.email : t('emailNotBound')) : text('signInSync')}
-          </Text>
-          <SyncStatusRow />
-        </AppCard>
         {groups.map((group) => (
           <View key={group.title}>
             <Text style={styles.sectionLabel}>{text(group.title)}</Text>
@@ -85,11 +72,6 @@ function settingValue(
   text: (key: TranslationKey) => string,
 ) {
   if (item.value) return item.value;
-  if (item.route === 'settings.appearance') {
-    return { system: text('system'), light: text('light'), dark: text('dark') }[
-      String(settings?.theme ?? 'system')
-    ];
-  }
   if (item.route === 'settings.language') {
     return settings?.language === 'en-US' ? text('english') : text('chinese');
   }
@@ -109,16 +91,12 @@ export function AccountSecurityScreen() {
     }
   };
   return (
-    <View style={styles.page}>
+    <KeyboardAvoidingScreen style={styles.page}>
       <PageHeader title={t('accountSecurity')} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <AppCard>
-          <ListRow
-            label={t('loginEmail')}
-            value={user ? (user.hasEmail && user.email ? user.email : t('emailNotBound')) : t('notSignedIn')}
-          />
-          <ListRow label={t('identityBinding')} value={t('emailPassword')} />
-        </AppCard>
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={styles.scrollContent}
+      >
         <TextInput
           accessibilityLabel={t('currentPassword')}
           onChangeText={setCurrent}
@@ -144,7 +122,7 @@ export function AccountSecurityScreen() {
           onPress={() => void submit()}
         />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingScreen>
   );
 }
 
@@ -179,5 +157,5 @@ export function DevicesScreen() {
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleString('zh-CN');
+  return new Date(value).toLocaleString(currentLanguage());
 }

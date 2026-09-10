@@ -48,8 +48,6 @@ import { DanmakuInputBar } from './DanmakuInputBar';
 const WEAKEN_AFTER_MS = 5000;
 const RESTORE_MS = 160;
 const WEAKEN_MS = 600;
-/** 用户意图事件（暂停/恢复/完成）的画面叠化时长：短于清单 500ms，更跟手 */
-const FAST_CROSSFADE_MS = 260;
 /** 开场：顶部 chrome 淡入时长 */
 const ENTER_FADE_MS = 200;
 
@@ -72,12 +70,12 @@ export function StudyRoomActiveScreen() {
   // sheet（快捷设置）是主题化 UI 层：内容令牌走主题（亮色暖纸白面板+暗字）；
   // 影像 chrome 仍用模块级 semantic 主题无关层
   const sheetStyles = useThemeStyles(makeSheetStyles);
-  // 减少动态是无障碍全局偏好（FocusProvider 注入），房间页与专注页同源；
-  // companion 状态机同源复用：人物随当前专注会话流转（专注中=伏案写字），
-  // 硬编码 'ready' 会让人物永远保持待机（issue：自习室人物不写字）。
-  const { reducedMotion, skins, companion } = useFocus();
+  // 减少动态是无障碍全局偏好（FocusProvider 注入），房间页与专注页同源。
+  // 画面固定态：房间是集体氛围场景，恒按 room.yaml displayState 循环
+  // （自习室=伏案写字），不随个人专注会话的六态状态机流转（个人态只在专注页表达）。
+  const { reducedMotion, skins } = useFocus();
   const { muted, setMuted, keepAwake, setKeepAwake } = useFocusQuickPrefs();
-  useMusicLibrary(signedIn);
+  const { tracks } = useMusicLibrary(signedIn);
 
   const [quickMenu, setQuickMenu] = useState(false);
   const [screenReader, setScreenReader] = useState(false);
@@ -94,12 +92,6 @@ export function StudyRoomActiveScreen() {
   const roomSkin = findSkinManifestByIdOrSlug(skins, room.id);
   const roomManifest = roomSkin ?? DEFAULT_SKIN_MANIFEST;
   const roomDisplayName = roomName(room, locale);
-  // 用户意图事件（暂停/恢复/完成）与专注页同款短叠化，画面响应更跟手
-  const playingEvent = companion.playing?.eventType;
-  const fastCrossfade =
-    playingEvent === 'focus.paused' ||
-    playingEvent === 'focus.resumed' ||
-    playingEvent === 'focus.completed';
 
   // 进房 = 建连（弹幕/presence）+ 音乐在场（ambient：无需专注会话）；退出全部释放
   const enteredAt = useRef(0);
@@ -202,6 +194,14 @@ export function StudyRoomActiveScreen() {
     getMusicController().setMuted(muted);
   }, [muted]);
 
+  // 房间 Radio：进房后全部可用曲目随机轮播（相邻不重曲），退出回归个人选曲
+  // 的单曲循环。远端清单到货（tracks 引用变化）原地换列表，不打断正在播的曲目。
+  useEffect(() => {
+    const music = getMusicController();
+    music.setPlaylist(tracks);
+    return () => music.setPlaylist(null);
+  }, [tracks]);
+
   // 服务端 reject 的即时反馈（按 at 去重）
   const lastReject = state.lastReject;
   const consumedRejectAt = useRef(0);
@@ -231,9 +231,8 @@ export function StudyRoomActiveScreen() {
           {roomSkin ? (
             <ImmersiveMediaSurface
               manifest={roomManifest}
-              state={companion.playing ? companion.playing.state : companion.state}
+              state={room.displayState}
               reducedMotion={reducedMotion}
-              crossfadeMs={fastCrossfade ? FAST_CROSSFADE_MS : undefined}
               style={styles.mediaFill}
             />
           ) : (

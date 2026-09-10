@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
+import { currentLanguage } from '../i18n/core';
 import {
-  AppButton, AppCard, ListRow, OfflineBanner, PageHeader,
+  AppButton, AppCard, KeyboardAvoidingScreen, ListRow, OfflineBanner, PageHeader,
 } from '../design-system/components';
 import { AsyncState } from '../state/asyncState';
 import { useApp } from '../state/AppStore';
@@ -102,11 +103,14 @@ export function SupportPage({ title, children }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <View style={styles.page}>
+    <KeyboardAvoidingScreen style={styles.page}>
       <OfflineBanner />
       <PageHeader title={title} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>{children}</ScrollView>
-    </View>
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={styles.scrollContent}
+      >{children}</ScrollView>
+    </KeyboardAvoidingScreen>
   );
 }
 
@@ -169,7 +173,7 @@ function statusLabel(status: string, t: TFunction<'support'>) {
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleString('zh-CN');
+  return new Date(value).toLocaleString(currentLanguage());
 }
 
 const localStyles = StyleSheet.create({

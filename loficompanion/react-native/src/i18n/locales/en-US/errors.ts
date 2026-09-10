@@ -21,6 +21,15 @@ export const errors = {
   requestFailed: 'Request failed',
   badResponse: 'Server returned unrecognized data',
   networkUnreachable: "Can't reach the server — check your connection and retry",
+  // Client-side translations for high-frequency server error codes (data/errorCopy.ts map; server messages aren't localized)
+  invalidCredentials: 'Incorrect account or password',
+  usernameTaken: 'That username is taken',
+  emailTaken: 'That email is already registered',
+  passwordPolicy: "Password doesn't meet the requirements",
+  currentPasswordInvalid: 'Current password is incorrect',
+  codeInvalid: 'That code is incorrect',
+  codeExpired: 'That code has expired — request a new one',
+  codeLocked: 'Too many attempts — try again later',
   // Global error boundary fallback
   boundaryTitle: 'This page can\'t be displayed right now',
   boundaryHint: 'The error has been logged — please restart the app.',

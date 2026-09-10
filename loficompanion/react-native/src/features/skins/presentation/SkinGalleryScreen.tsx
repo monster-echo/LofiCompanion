@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../../data/apiClient';
 import type { SkinProductRemote } from '../../../data/apiClient';
 import { AppIcon } from '../../../design-system/AppIcon';
+import { mediaActionBorder, mediaActionGlass } from '../../../design-system/derivedTokens';
 import {
   SKIN_PREVIEW_CARD_HEIGHT,
   SKIN_PREVIEW_CARD_WIDTH,
@@ -21,6 +22,7 @@ import { usePreferences } from '../../../preferences/PreferencesProvider';
 import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useFocus } from '../../focus/application/FocusStore';
+import { useSkinTrials } from '../../store/application/SkinTrialProvider';
 import { formatPrice } from '../../store/domain/storeCatalog';
 import { findSkinManifestByIdOrSlug } from '../domain/registry';
 import type { SkinManifest } from '../domain/types';
@@ -36,6 +38,7 @@ import { i18n } from '../../../i18n/core';
  */
 export function SkinGalleryScreen() {
   const focus = useFocus();
+  const trials = useSkinTrials();
   const { back, navigate } = useApp();
   const { palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
@@ -71,9 +74,11 @@ export function SkinGalleryScreen() {
     return () => { mounted = false; };
   }, []);
 
-  /** 已拥有判定：免费恒真；付费/Plus 看服务端权益键（目录外按未拥有降级） */
+  /** 已拥有判定：免费恒真；付费/Plus 看服务端权益键（目录外按未拥有降级）。
+   *  试用中皮肤视同可用（24h 窗口内可应用；到期由首页回落守卫收尾）。 */
   const isOwned = (manifest: SkinManifest): boolean => {
     if (manifest.accessType === 'free') return true;
+    if (trials.isTrialActive(manifest.slug)) return true;
     const product = productsBySlug[manifest.slug];
     return product !== undefined && entitlementKeys.includes(product.entitlementKey);
   };
@@ -100,7 +105,7 @@ export function SkinGalleryScreen() {
   return (
     <View style={styles.screen}>
       {/* App bar 56（避让状态栏）：左返回 44×44，标题居中 */}
-      <View style={[styles.header, { paddingTop: insets.top, height: 56 + insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, height: 48 + insets.top }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={i18n.t('common:back')}
@@ -109,7 +114,8 @@ export function SkinGalleryScreen() {
         >
           <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
-        <Text style={styles.headerTitle}>{t('galleryTitle')}</Text>
+        {/* 绝对定位标题须显式锚定 top（Yoga 对无 top 的绝对子元素不再居中，会贴 padding 原点=灵动岛下） */}
+        <Text style={[styles.headerTitle, { top: insets.top, lineHeight: 48 }]}>{t('galleryTitle')}</Text>
       </View>
 
       <ScrollView
@@ -179,7 +185,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     backgroundColor: p.canvas,
   },
   header: {
-    height: 56,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
@@ -242,7 +248,10 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   cta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    // 主 CTA 玻璃蓝：与首页同语言（半透明雨蓝+浅蓝描边），前景随主题翻转
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     paddingHorizontal: space.x5,
     alignItems: 'center',
     justifyContent: 'center',
@@ -252,7 +261,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   ctaText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    color: p.textPrimary,
   },
   pressed: {
     opacity: 0.82,

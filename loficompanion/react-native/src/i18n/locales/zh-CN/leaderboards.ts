@@ -46,6 +46,7 @@ export const leaderboards = {
   refreshLabel: '刷新榜单',
   shareCode: '{{label}}：{{code}}（在 LofiCompanion 输入即可加入）',
   acceptFailed: '添加失败',
+  avatarFallback: '友',
   groupNameRequired: '先给小组起个名字',
 
   // S11 小组详情

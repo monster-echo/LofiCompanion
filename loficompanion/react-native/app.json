@@ -6,7 +6,7 @@
       "lofi-companion"
     ],
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "web": {
       "bundler": "metro"
     },
@@ -15,14 +15,10 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FFFFFF",
-          "image": "./assets/splash-icon.png",
-          "imageWidth": 88,
-          "resizeMode": "contain",
-          "dark": {
-            "backgroundColor": "#002357",
-            "image": "./assets/splash-icon-dark.png"
-          }
+          "backgroundColor": "#0D1624",
+          "image": "./assets/splash-icon-dark.png",
+          "imageWidth": 256,
+          "resizeMode": "contain"
         }
       ],
       "expo-web-browser",

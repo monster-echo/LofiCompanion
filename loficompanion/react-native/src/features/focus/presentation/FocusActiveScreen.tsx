@@ -18,6 +18,7 @@ import { AppIcon } from "../../../design-system/AppIcon";
 import { mediaGlassControl, mediaTextShadow } from "../../../design-system/derivedTokens";
 import { CompletionBurst } from "../../../design-system/CompletionBurst";
 import { PressableScale } from "../../../design-system/PressableScale";
+import { StudyResultSheet } from "../../../design-system/StudyResultSheet";
 import { replaceRoute } from "../../../navigation/navigationRef";
 import { useApp } from "../../../state/AppStore";
 import { fonts } from "../../../design-system/fonts";
@@ -44,8 +45,8 @@ import { i18n } from "../../../i18n/core";
  * （二级菜单：屏幕常亮 / 静音）与调节主题；时钟大数字居中下，其下暂停/
  * 结束胶囊。挂载 5s 后
  * 进入沉浸弱化：除时钟外全部控制件完全隐藏，任意触碰 160ms 恢复；读屏
- * 开启时不自动弱化。1s interval 驱动 tick；到点自动 complete 并原位替换
- * 为完成页。
+ * 开启时不自动弱化。1s interval 驱动 tick；到点自动 complete：全屏
+ * completed 媒体庆祝停留后，结果 sheet 原位滑入（完成结算并入本屏，不跳页）。
  */
 
 /** 弱化：开始 5s 后触发；恢复 160ms；弱化淡入 600ms（doc-07 §10 只规范恢复值）。
@@ -56,9 +57,14 @@ const WEAKEN_MS = 600;
 const CHROME_OPACITY = 0;
 /** 用户意图事件（暂停/恢复/完成）的画面叠化时长：短于清单 500ms，更跟手 */
 const FAST_CROSSFADE_MS = 260;
-/** 完成庆祝停留：归零后让 completed 视频 + 绽放播够再进结算页（reducedMotion 减半） */
+/** 完成庆祝停留：归零后让 completed 视频 + 绽放播够再滑入结果 sheet（reducedMotion 减半） */
 const CELEBRATE_HOLD_MS = 1400;
 const CELEBRATE_HOLD_REDUCED_MS = 600;
+/** 结果标题入场：sheet 上滑前 200ms 自上 -8dp 沉降淡入（原 S06 编排） */
+const TITLE_DELAY_MS = 200;
+const TITLE_MS = 240;
+const REDUCED_TITLE_MS = 100;
+const TITLE_OFFSET = -8;
 /** 开场编排：底部时钟上浮 + 徽章/快捷钮错峰淡入（与 sit-down 视频呼应的仪式感） */
 const ENTER_STACK_MS = 320;
 const ENTER_BADGE_MS = 250;
@@ -79,13 +85,15 @@ export function FocusActiveScreen() {
   // 影像 chrome 仍用模块级 semantic 主题无关层
   const sheetStyles = useThemeStyles(makeSheetStyles);
   const { t } = useTranslation('focus');
-  const { showToast, back, signedIn } = useApp();
+  const { showToast, back, signedIn, replace } = useApp();
   const insets = useSafeAreaInsets();
   const [ending, setEnding] = useState(false);
   const [quickMenu, setQuickMenu] = useState(false);
   const [screenReader, setScreenReader] = useState(false);
   const [weakened, setWeakened] = useState(false);
   const [celebrating, setCelebrating] = useState(false);
+  // 结算覆盖层：庆祝停留结束后滑入结果 sheet（原 S06 完成页并入本屏）
+  const [showResult, setShowResult] = useState(false);
   const { muted, setMuted, keepAwake, setKeepAwake } = useFocusQuickPrefs();
   const music = useMusicLibrary(signedIn);
 
@@ -102,6 +110,8 @@ export function FocusActiveScreen() {
   // 暂停暗角与时钟呼吸（画面语言；恢复即时清除）
   const vignette = useRef(new Animated.Value(0)).current;
   const breath = useRef(new Animated.Value(1)).current;
+  // 结果标题入场（沉降淡入，与 sheet 上滑错峰）
+  const titleIn = useRef(new Animated.Value(0)).current;
 
   // 音乐门控：lofi 仅在专注画面与自习室在场时出声（首页/成就/我的恒静默）；
   // 失焦/卸载即暂停，回焦续播。会话状态由 orchestrate 侧驱动，此处只报画面在场。
@@ -114,6 +124,10 @@ export function FocusActiveScreen() {
 
   const session = focus.activeSession;
   const paused = session?.status === "paused";
+  // 结算模式：complete() 提交后 activeSession 为 null、completions 就位——
+  // 全屏 completed 媒体保留在本屏，结果 sheet 覆盖其上（不再跳转完成页）
+  const completion = focus.completions;
+  const resultMode = !session && completion !== null;
   const mediaState = focus.companion.playing
     ? focus.companion.playing.state
     : focus.companion.state;
@@ -204,14 +218,22 @@ export function FocusActiveScreen() {
     };
   }, []);
 
-  // Android 返回不退出专注：仅唤醒界面
+  // Android 返回：会话中仅唤醒界面（退出走结束确认）；结算态=今天到此为止
+  const finishToday = useCallback(() => {
+    focus.actions.acknowledgeCompletions();
+    replace('home');
+  }, [focus.actions, replace]);
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (resultMode) {
+        finishToday();
+        return true;
+      }
       wake();
       return true;
     });
     return () => sub.remove();
-  }, [wake]);
+  }, [wake, resultMode, finishToday]);
 
   // ---- 静音开关 → 音乐控制器（挂载即同步一次，兜住会话恢复场景）----
   useEffect(() => {
@@ -304,7 +326,7 @@ export function FocusActiveScreen() {
     return () => loop.stop();
   }, [paused, focus.reducedMotion, breath]);
 
-  // ---- 完成：到点结算，庆祝停留（completed 视频 + 绽放）后再原位替换完成页 ----
+  // ---- 完成：到点结算，庆祝停留（completed 视频全程可见）后原位滑入结果 sheet ----
   useEffect(() => {
     if (!session || session.status !== "active") return;
     if (focus.remainingSeconds > 0 || completedRef.current) return;
@@ -314,11 +336,25 @@ export function FocusActiveScreen() {
     // 停留片刻让仪式感播完，不再瞬时跳页打断
     setCelebrating(true);
     const hold = focus.reducedMotion ? CELEBRATE_HOLD_REDUCED_MS : CELEBRATE_HOLD_MS;
-    celebrateTimer.current = setTimeout(() => replaceRoute("focus.complete"), hold);
+    celebrateTimer.current = setTimeout(() => setShowResult(true), hold);
   }, [session, focus.remainingSeconds, focus.actions, focus.reducedMotion]);
 
-  if (!session) {
-    // complete/abandon 已提交、替换导航进行中的一帧空壳
+  // 结果标题入场：sheet 上滑前自上沉降淡入（原 S06 编排随页并入）
+  useEffect(() => {
+    if (!showResult || !completion) return;
+    Animated.sequence([
+      Animated.delay(focus.reducedMotion ? 0 : TITLE_DELAY_MS),
+      Animated.timing(titleIn, {
+        toValue: 1,
+        duration: focus.reducedMotion ? REDUCED_TITLE_MS : TITLE_MS,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [showResult, completion, focus.reducedMotion, titleIn]);
+
+  if (!session && !resultMode) {
+    // abandon 已提交、back() 弹模态进行中的一帧空壳
     return <View style={styles.screen} />;
   }
 
@@ -361,6 +397,8 @@ export function FocusActiveScreen() {
   ];
 
   const confirmEnd = () => {
+    // 结束确认仅在会话中可达（结算覆盖层无结束入口）；session 为 null 的帧不响应
+    if (!session) return;
     const keptMinutes = Math.round(computeEffective(session, Date.now()) / 60);
     setEnding(false);
     focus.actions.abandon(Date.now());
@@ -371,6 +409,13 @@ export function FocusActiveScreen() {
     // back 弹出模态回原地（不 replace('home')：其内部是 resetToRoutes 整栈
     // 重建，规模大且会触发 guard 重定向）；落地页由根逻辑/guard 决定
     back();
+  };
+
+  // 结算覆盖层内容（原 S06 完成页并入本屏）。（成就 Tab 隐藏期间不展示
+  // 「新成就」庆祝：发放记账照常进行，恢复入口时改回读 completions.grants）
+  const again = () => {
+    focus.actions.acknowledgeCompletions();
+    replaceRoute('focus.setup');
   };
 
   // 全屏由路由呈现层（fullScreenModal + 边到边）承担；TouchableWithoutFeedback
@@ -400,40 +445,45 @@ export function FocusActiveScreen() {
             style={[styles.mediaFill, styles.vignette, { opacity: vignette }]}
           />
 
-          {/* 左上：主题名 + 陪伴状态（概念图）；外层开场淡入、内层弱化 chrome */}
-          <Animated.View
-            style={[styles.skinBadge, { top: insets.top + 14, opacity: enterBadge }]}
-          >
-            <Animated.View style={{ opacity: chrome }}>
-              <Text style={styles.skinName}>{skinDisplayName(focus.skin, locale)}</Text>
-              <View style={styles.statusRow}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>
-                  {t(`status.${session.activity}`)}
-                </Text>
-              </View>
+          {/* 左上：主题名 + 陪伴状态（概念图）；外层开场淡入、内层弱化 chrome。
+              结算态隐藏（会话已提交，画面让位给 completed 媒体 + 结果 sheet） */}
+          {session ? (
+            <Animated.View
+              style={[styles.skinBadge, { top: insets.top + 14, opacity: enterBadge }]}
+            >
+              <Animated.View style={{ opacity: chrome }}>
+                <Text style={styles.skinName}>{skinDisplayName(focus.skin, locale)}</Text>
+                <View style={styles.statusRow}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.statusText}>
+                    {t(`status.${session.activity}`)}
+                  </Text>
+                </View>
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
+          ) : null}
 
-          {/* 右上入口：快捷设置（二级菜单：屏幕常亮 / 静音）+ 调节主题 */}
-          <Animated.View
-            style={[styles.quickBarWrap, { top: insets.top + 8, opacity: enterQuick }]}
-          >
-            <Animated.View style={{ opacity: chrome }}>
-              <PressableScale
-                accessibilityRole="button"
-                accessibilityLabel={t('quickMenuLabel')}
-                onPress={() => {
-                  wake();
-                  setQuickMenu(true);
-                }}
-                reducedMotion={focus.reducedMotion}
-                style={styles.tuneButton}
-              >
-                <AppIcon name="sliders" color={semantic.textPrimary} size={20} />
-              </PressableScale>
+          {/* 右上入口：快捷设置（二级菜单：屏幕常亮 / 静音）+ 调节主题；结算态隐藏 */}
+          {session ? (
+            <Animated.View
+              style={[styles.quickBarWrap, { top: insets.top + 8, opacity: enterQuick }]}
+            >
+              <Animated.View style={{ opacity: chrome }}>
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel={t('quickMenuLabel')}
+                  onPress={() => {
+                    wake();
+                    setQuickMenu(true);
+                  }}
+                  reducedMotion={focus.reducedMotion}
+                  style={styles.tuneButton}
+                >
+                  <AppIcon name="sliders" color={semantic.textPrimary} size={20} />
+                </PressableScale>
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
+          ) : null}
 
           {/* 快捷设置二级菜单：常亮/静音开关行，点行切换（静音为预置，音频落地后生效）。
               入口在右上，菜单下拉锚定顶部（不遮时钟） */}
@@ -519,7 +569,9 @@ export function FocusActiveScreen() {
               不再叠加文字横幅——保持沉浸画面无打断（doc-08 §6） */}
 
           {/* 中下：时钟大数字 → 暂停/结束胶囊（概念图布局）；外层开场入场编排
-              （上浮 24dp + 淡入），内层内容常驻（弱化只作用于时钟以下的 chrome） */}
+              （上浮 24dp + 淡入），内层内容常驻（弱化只作用于时钟以下的 chrome）。
+              结算态隐藏：时钟/控件让位给 completed 媒体 + 结果 sheet */}
+          {session ? (
           <Animated.View
             style={[
               styles.bottomStack,
@@ -585,9 +637,10 @@ export function FocusActiveScreen() {
               </View>
             </Animated.View>
           </Animated.View>
+          ) : null}
 
           {/* 结束二次确认 sheet（补底部安全区） */}
-          {ending ? (
+          {session && ending ? (
             <SheetOverlay
               onClose={() => setEnding(false)}
               closeLabel={t('endConfirmStay')}
@@ -631,6 +684,48 @@ export function FocusActiveScreen() {
                 </Pressable>
               </View>
             </SheetOverlay>
+          ) : null}
+
+          {/* 结算覆盖层（原 S06 完成页并入）：completed 全屏媒体为背景，
+              标题沉降淡入 + 结果 sheet 底部滑入；CTA 原位替换导航 */}
+          {resultMode && completion ? (
+            <>
+              <Animated.View
+                style={[
+                  styles.resultTitleWrap,
+                  { top: insets.top + 24 },
+                  {
+                    opacity: titleIn,
+                    transform: [
+                      {
+                        translateY: titleIn.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [TITLE_OFFSET, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+                pointerEvents="none"
+              >
+                <Text style={styles.resultTitle}>{t('completeTitle')}</Text>
+              </Animated.View>
+              <StudyResultSheet
+                visible
+                sessionSeconds={computeEffective(
+                  completion.session,
+                  completion.session.completedAtUtc ?? Date.now(),
+                )}
+                todayMinutes={completion.todayMinutes}
+                weekMinutes={completion.weekMinutes}
+                weekTarget={focus.week.targetMinutes}
+                primaryAction={{ label: t('againAction'), onPress: again }}
+                secondaryAction={{ label: t('finishToday'), onPress: finishToday }}
+                reducedMotion={focus.reducedMotion}
+                // StudyResultSheet 是独立窗口表面：CTA 需要 安全区 + 12
+                bottomInset={insets.bottom}
+              />
+            </>
           ) : null}
         </View>
       </TouchableWithoutFeedback>
@@ -746,6 +841,16 @@ const styles = StyleSheet.create({
   pillText: {
     ...type.bodyStrong,
     color: semantic.textPrimary,
+  },
+  // 结算覆盖层标题：压在 completed 影像上（onMedia 固定浅色 + 媒体文字投影）
+  resultTitleWrap: {
+    position: "absolute",
+    left: 20,
+  },
+  resultTitle: {
+    ...type.title1,
+    color: semantic.onMedia,
+    ...mediaTextShadow,
   },
   // 结束确认 sheet 样式已拆到 makeSheetStyles（主题化 UI 层，随亮暗翻转）
   pressed: {

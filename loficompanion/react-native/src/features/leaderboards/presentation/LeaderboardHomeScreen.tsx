@@ -2,14 +2,18 @@ import React, { useEffect, useState } from 'react';
 import {
   Image, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, TextInput, View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../../data/apiClient';
+import { errorMessageOf } from '../../../data/errorCopy';
 import type {
   GroupLeaderboardViewRemote, LeaderboardRankingRemote,
 } from '../../../data/apiClient';
 import { readMyGroup, saveMyGroup, type MyGroupRef } from '../../../data/storage';
 import { AppIcon } from '../../../design-system/AppIcon';
+import { KeyboardAvoidingScreen } from '../../../design-system/components';
 import {
-  achievementBorder, achievementSoft, rankAccentColors, rankAccentSoft,
+  achievementBorder, achievementSoft, mediaActionBorder, mediaActionGlass,
+  rankAccentColors, rankAccentSoft,
 } from '../../../design-system/derivedTokens';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
@@ -30,6 +34,7 @@ type Segment = 'friends' | 'group';
 export function LeaderboardHomeScreen() {
   const { t } = useTranslation('leaderboards');
   const { palette } = usePreferences();
+  const insets = useSafeAreaInsets();
   const styles = useThemeStyles(makeStyles);
   const { user, navigate, showToast } = useApp();
   const [segment, setSegment] = useState<Segment>('friends');
@@ -99,7 +104,7 @@ export function LeaderboardHomeScreen() {
       showToast(t('acceptSuccess', { nickname: result.friend.nickname }), 'success');
       await friends.reload();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : t('acceptFailed'), 'error');
+      showToast(errorMessageOf(error, t('acceptFailed')), 'error');
     } finally {
       setAcceptBusy(false);
     }
@@ -127,7 +132,7 @@ export function LeaderboardHomeScreen() {
       setGroupName('');
       await adoptGroup(created, t('groupCreated', { name: created.name }));
     } catch (error) {
-      showToast(error instanceof Error ? error.message : t('createFailed'), 'error');
+      showToast(errorMessageOf(error, t('createFailed')), 'error');
     } finally {
       setGroupBusy(false);
     }
@@ -144,15 +149,16 @@ export function LeaderboardHomeScreen() {
       setJoinCode('');
       await adoptGroup(joined, t('groupJoined', { name: joined.name }));
     } catch (error) {
-      showToast(error instanceof Error ? error.message : t('joinFailed'), 'error');
+      showToast(errorMessageOf(error, t('joinFailed')), 'error');
     } finally {
       setGroupBusy(false);
     }
   };
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
+    <KeyboardAvoidingScreen style={styles.screen}>
+      {/* 顶部安全区自包含：与商店/画廊头部同款避让（灵动岛机型 insets.top≈59） */}
+      <View style={[styles.header, { paddingTop: insets.top, height: 48 + insets.top }]}>
         <View style={styles.headerSlot} />
         <Text style={styles.headerTitle}>{t('screenTitle')}</Text>
         <Pressable
@@ -191,6 +197,7 @@ export function LeaderboardHomeScreen() {
       <View style={styles.listArea}>
         {segment === 'friends' ? (
           <ScrollView
+            automaticallyAdjustKeyboardInsets
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
@@ -222,6 +229,7 @@ export function LeaderboardHomeScreen() {
           </ScrollView>
         ) : (
           <ScrollView
+            automaticallyAdjustKeyboardInsets
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
@@ -272,7 +280,7 @@ export function LeaderboardHomeScreen() {
         ) : null}
       </View>
 
-    </View>
+    </KeyboardAvoidingScreen>
   );
 }
 
@@ -327,7 +335,7 @@ function RankRow({ entry }: Readonly<{ entry: LeaderboardRankingRemote }>) {
         <Image source={{ uri: entry.avatarUrl }} style={styles.avatar} />
       ) : (
         <View style={[styles.avatar, styles.avatarFallback]}>
-          <Text style={styles.avatarInitial}>{avatarInitial(entry.nickname)}</Text>
+          <Text style={styles.avatarInitial}>{avatarInitial(entry.nickname, t('avatarFallback'))}</Text>
         </View>
       )}
       <Text style={styles.nickname} numberOfLines={1}>{entry.nickname}</Text>
@@ -349,7 +357,7 @@ function SelfCard({ entry, onRules }: Readonly<{
           <Image source={{ uri: entry.avatarUrl }} style={styles.selfAvatar} />
         ) : (
           <View style={[styles.selfAvatar, styles.avatarFallback]}>
-            <Text style={styles.avatarInitial}>{avatarInitial(entry.nickname)}</Text>
+            <Text style={styles.avatarInitial}>{avatarInitial(entry.nickname, t('avatarFallback'))}</Text>
           </View>
         )}
         <View style={styles.selfMeta}>
@@ -619,7 +627,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     backgroundColor: p.canvas,
   },
   header: {
-    height: 56,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: space.x4,
@@ -886,25 +894,30 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     minWidth: 72,
     minHeight: 48,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    // 主 CTA 玻璃蓝：与首页同语言（半透明雨蓝+浅蓝描边），前景随主题翻转
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.x3,
   },
   acceptButtonText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    color: p.textPrimary,
   },
   primaryButton: {
     minHeight: 48,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButtonText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    color: p.textPrimary,
   },
   secondaryButton: {
     minHeight: 44,

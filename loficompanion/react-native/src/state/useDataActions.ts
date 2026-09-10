@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction, useMemo } from 'react';
 import { apiClient, ApiClientError } from '../data/apiClient';
+import { errorMessageOf } from '../data/errorCopy';
 import { saveSessionToken } from '../data/storage';
 import {
   AppUser,
@@ -134,14 +135,12 @@ export function useDataActions(
             : error instanceof ApiClientError ? (error.status === 0 ? 'offline' : 'api_error')
               : 'exception',
         });
-        if (error instanceof ApiClientError) {
-          setPurchaseState(error.status === 0
-            ? { kind: 'offline' }
-            : { kind: 'error', message: error.message });
+        if (error instanceof ApiClientError && error.status === 0) {
+          setPurchaseState({ kind: 'offline' });
         } else {
           setPurchaseState({
             kind: 'error',
-            message: error instanceof Error ? error.message : i18n.t('errors:purchaseFailed'),
+            message: errorMessageOf(error, i18n.t('errors:purchaseFailed')),
           });
         }
         return false;

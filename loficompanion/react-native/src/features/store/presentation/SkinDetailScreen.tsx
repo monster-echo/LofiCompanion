@@ -1,6 +1,12 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   Image,
   Platform,
@@ -12,10 +18,16 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { apiClient, ApiClientError, skinPosterUrl } from '../../../data/apiClient';
+import {
+  apiClient,
+  ApiClientError,
+  skinStatePosterUrl,
+  skinStateVideoUrl,
+} from '../../../data/apiClient';
 import type { SkinProductRemote } from '../../../data/apiClient';
 import { telemetry } from '../../../telemetry/Telemetry';
 import { AppIcon } from '../../../design-system/AppIcon';
+import { mediaActionBorder, mediaActionGlass } from '../../../design-system/derivedTokens';
 import { createPaymentProvider } from '../../../payment/paymentFactory';
 import { IapError } from '../../../payment/iapPaymentProvider';
 import type { RootParamList } from '../../../navigation/navigationRef';
@@ -30,9 +42,12 @@ import { SheetOverlay } from '../../focus/presentation/SheetOverlay';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
 import type { CompanionState } from '../../skins/domain/types';
 import { findSkinManifestByIdOrSlug, skinDisplayName } from '../../skins/domain/registry';
+import { SkinPackError } from '../../skins/application/skinPackController';
 import { createPendingOrderRepository } from '../data/pendingOrderRepository';
+import { useSkinTrials } from '../application/SkinTrialProvider';
 import {
   formatPrice,
+  isWithinWindow,
   newSkinOrderIdempotencyKey,
   resolveRecovery,
 } from '../domain/storeCatalog';
@@ -40,8 +55,10 @@ import { useTranslation } from 'react-i18next';
 import { i18n } from '../../../i18n/core';
 import {
   DETAIL_PREVIEW_STATES,
+  storeLoopVideo,
   storePoster,
 } from './storePosters';
+import { DetailPreviewVideo } from './DetailPreviewVideo';
 
 /**
  * S15 皮肤详情与购买（doc-08 §16，P1-A Task 3）。push 页、未登录可浏览：
@@ -49,9 +66,10 @@ import {
  * 名称 / 官方标识 / 状态数 / 商用说明；价格来自服务端（加载中按钮骨架不可
  * 点）。主 CTA：paid →「$X 永久解锁」（确认 sheet → 幂等下单 → 按订单
  * provider 走原生 IAP 验证 → 解锁反馈）；premium →「加入 Plus」（Plus 订阅
- * 流未上线，点击给「即将上线」反馈——偏离已记录）；已拥有 →「立即使用」。
- * 购买 pending 防重复点击；中断（网络/进程终止）后凭本地 lastOrderId 记录
- * 在下次进入时轮询查单恢复终态（docs/05 §5）。
+ * 流未上线，点击给「即将上线」反馈——偏离已记录）；已拥有未物化 →「下载
+ * 资源包并使用」（资源包按需模型：CTA 原位变内联进度条，完成自动选入回
+ * 首页）；已物化 →「立即使用」。购买 pending 防重复点击；中断（网络/进程
+ * 终止）后凭本地 lastOrderId 记录在下次进入时轮询查单恢复终态（docs/05 §5）。
  */
 
 const PREVIEW_HEIGHT = 390;
@@ -77,6 +95,7 @@ export function SkinDetailScreen() {
   const skinSlug = params?.skinSlug ?? '';
   const { user, navigate, back, showToast } = useApp();
   const focus = useFocus();
+  const trials = useSkinTrials();
   const { locale, palette } = usePreferences();
   const { t } = useTranslation('store');
   const styles = useThemeStyles(makeStyles);
@@ -86,6 +105,8 @@ export function SkinDetailScreen() {
 
   const [ownedKeys, setOwnedKeys] = useState<readonly string[]>([]);
   const [previewState, setPreviewState] = useState<CompanionState>('ready');
+  // 公开海报加载失败（离线/未发布）：退回占位，不留破图/黑块
+  const [previewFailed, setPreviewFailed] = useState(false);
   const [ctaPhase, setCtaPhase] = useState<CtaPhase>('idle');
   const [sheetOpen, setSheetOpen] = useState(false);
   const mountedRef = useRef(true);
@@ -96,6 +117,10 @@ export function SkinDetailScreen() {
     if (signedIn) {
       // 会员键（auth）∪ 皮肤键（biz）聚合
       try { keys = await apiClient.ownedEntitlementKeys(); } catch { /* 降级 */ }
+      // 试用记录对账（服务端是「试过没有」的唯一真相；失败保持保守）
+      void apiClient.skinTrials()
+        .then(({ trials: records }) => trials.reconcileFromServer(records))
+        .catch(() => undefined);
     }
     setOwnedKeys(keys);
     const { products } = await apiClient.skinProducts();
@@ -111,14 +136,27 @@ export function SkinDetailScreen() {
   const owned = !product
     || product.accessType === 'free'
     || ownedKeys.includes(product.entitlementKey);
+  // Plus 会员价（展示口径）：Plus 用户 + 限时窗口内 + 服务端配置了折扣 SKU。
+  // 实际扣款由服务端按 Plus 身份选 SKU——显示价与扣款价同口径。
+  const isPlus = ownedKeys.includes('catalog.premium.active');
+  const plusPriceLabel = product
+    && product.accessType === 'paid'
+    && isPlus
+    && isWithinWindow(product, Date.now())
+    && product.plusPriceMinor != null
+    ? formatPrice(product.plusPriceMinor, product.currency)
+    : null;
   const priceLabel = product && product.accessType === 'paid'
-    ? formatPrice(product.priceMinor, product.currency)
+    ? plusPriceLabel ?? formatPrice(product.priceMinor, product.currency)
     : null;
 
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  // 换皮肤/切预览态：清除海报失败标记，给新的公开海报一次加载机会
+  useEffect(() => { setPreviewFailed(false); }, [skinSlug, previewState]);
 
   // —— 中断恢复（docs/05 §5）：进入详情时查本地 lastOrderId，轮询查单恢复终态
   const runRecovery = useCallback(async () => {
@@ -195,6 +233,8 @@ export function SkinDetailScreen() {
         // 权益已入账后才 finish 交易（未 finish 的交易可自愈重试）
         await provider.finish?.(result).catch(() => undefined);
         await pendingOrders.clear(skinSlug);
+        // 试用中购买：收尾试用记录（purchased），皮肤保留不回落
+        void trials.markEnded(skinSlug, 'purchased');
         setOwnedKeys((keys) => keys.includes(target.entitlementKey)
           ? keys
           : [...keys, target.entitlementKey]);
@@ -223,7 +263,7 @@ export function SkinDetailScreen() {
     } finally {
       setCtaPhase('idle');
     }
-  }, [showToast, skinSlug]);
+  }, [showToast, skinSlug, trials]);
 
   // 恢复购买：模板 restore 端点按 active entitlements 返回键（皮肤键自然包含）
   const restorePurchases = useCallback(async () => {
@@ -250,29 +290,95 @@ export function SkinDetailScreen() {
     }
   }, [navigate, product, showToast, signedIn]);
 
-  // 已拥有：注册表（内置+已拉取云端）内的皮肤直接应用并回首页；仍缺失时
-  // 先触发一轮远端拉取再重试一次（购买后清单尚未就位的场景），还不行才
-  // 诚实反馈而非静默失败。
+  // —— 资源包按需下载（资源包模型）：已拥有但未物化 → CTA「下载资源包并使用」。
+  // 进度真源是 pack controller（useSyncExternalStore 订阅）；中途退页下载继续，
+  // 重进本页自动重挂进度。成功且页面仍挂载才自动选入并回首页。
+  const packStatus = useSyncExternalStore(
+    focus.pack.subscribe,
+    () => focus.pack.statusFor(skinSlug),
+  );
+  const materialized = findSkinManifestByIdOrSlug(focus.skins, skinSlug) !== undefined;
+  const packDownloading = packStatus.phase === 'downloading';
+  const packFailed = packStatus.phase === 'failed';
+  const packPercent = Math.round(packStatus.ratio * 100);
+
+  const startDownload = useCallback(() => {
+    void focus.actions.downloadSkinPack(skinSlug)
+      .then((manifest) => {
+        if (!mountedRef.current) return;
+        focus.actions.selectSkin(manifest.id);
+        back();
+        showToast(t('packDone'), 'success');
+      })
+      .catch((error: unknown) => {
+        if (!mountedRef.current) return;
+        const kind = error instanceof SkinPackError ? error.kind : 'manifest';
+        if (kind === 'gated') showToast(t('packGated'), 'info');
+        else if (kind === 'busy') showToast(t('packBusy'), 'info');
+        else showToast(t('packFailed'), 'error');
+      });
+  }, [back, focus.actions, showToast, skinSlug, t]);
+
+  // 已拥有且已物化：注册表（内置+已获资源包）内的皮肤直接应用并回首页
   const useOwnedSkin = useCallback(() => {
-    const apply = (): boolean => {
-      const manifest = findSkinManifestByIdOrSlug(focus.skins, skinSlug);
-      if (!manifest) return false;
-      focus.actions.selectSkin(manifest.id);
-      back();
-      return true;
-    };
-    if (apply()) return;
-    focus.actions.refreshSkins();
-    // 拉取是异步的：给一轮事件循环后重试（P0 简化，不引入 loading 态）
-    setTimeout(() => {
-      if (!apply()) showToast(t('manifestPending'), 'info');
-    }, 1500);
-  }, [back, focus.actions, showToast, skinSlug]);
+    const manifest = findSkinManifestByIdOrSlug(focus.skins, skinSlug);
+    if (!manifest) return;
+    focus.actions.selectSkin(manifest.id);
+    back();
+  }, [back, focus.actions, skinSlug]);
+
+  // —— 免费试用（24h 随便用，每皮肤限一次；服务端 409 是「试过」的兜底）——
+  // 开启成功即记录（fallbackSkinId = 当前皮肤，供到期回落）并自动链资源包
+  // 下载（门禁已放行），完成后原下载回调自动选入回首页。
+  const startTrial = useCallback(() => {
+    if (!signedIn) {
+      showToast(t('trialSignIn'), 'info');
+      navigate('auth.signIn');
+      return;
+    }
+    if (!product) return;
+    void (async () => {
+      try {
+        const result = await apiClient.startSkinTrial(product.skinId);
+        if (result.status === 'owned') {
+          setOwnedKeys((keys) => keys.includes(product.entitlementKey)
+            ? keys
+            : [...keys, product.entitlementKey]);
+          return;
+        }
+        const expiresAtUtc = Date.parse(result.expiresAt);
+        if (Number.isNaN(expiresAtUtc)) {
+          showToast(t('trialFailed'), 'error');
+          return;
+        }
+        await trials.markStarted({
+          slug: skinSlug,
+          expiresAtUtc,
+          fallbackSkinId: focus.selectedSkinId,
+        });
+        showToast(t('trialStartedToast'), 'success');
+        startDownload();
+      } catch (error) {
+        if (error instanceof ApiClientError && error.code === 'SKIN_TRIAL_ALREADY_USED') {
+          showToast(t('trialUsedNote'), 'info');
+        } else {
+          showToast(t('trialFailed'), 'error');
+        }
+      }
+    })();
+  }, [focus.selectedSkinId, navigate, product, signedIn, skinSlug, startDownload, showToast, t, trials]);
+
+  // 试用状态：'active' → CTA 变「试用中·使用/下载」；'none' → 出「免费试 24 小时」
+  const trialStatus = trials.statusFor(skinSlug);
 
   const previewPoster = storePoster(focus.skins, skinSlug, previewState)
-    // 未购/未拉取的皮肤清单不在本地：ready 态至少用公开海报兜底，
-    // 其余状态仍按缺失走占位（真实四态预览需购后清单落盘）
-    ?? (previewState === 'ready' ? { uri: skinPosterUrl(skinSlug) } : null);
+    // 未购/未拉取的皮肤清单不在本地：四态全部用公开海报兜底（服务端请求态
+    // 缺失自动回落 ready），占位图只剩离线/未发布的最终兜底
+    ?? { uri: skinStatePosterUrl(skinSlug, previewState) };
+  // 预览视频：已物化用本地文件，未物化走公开预览视频端点（该态无视频时
+  // 服务端 404 → expo-video 停在透明态，海报静图兜底）
+  const previewVideo = storeLoopVideo(focus.skins, skinSlug, previewState)
+    ?? { uri: skinStateVideoUrl(skinSlug, previewState) };
   // 信息区状态数：皮肤清单已就位时用真实状态数
   const skinManifest = findSkinManifestByIdOrSlug(focus.skins, skinSlug);
   const previewWidth = windowWidth;
@@ -282,7 +388,7 @@ export function SkinDetailScreen() {
   return (
     <View style={styles.screen}>
       {/* App bar 56（避让状态栏）：返回 44×44，标题居中 */}
-      <View style={[styles.header, { paddingTop: insets.top, height: 56 + insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, height: 48 + insets.top }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={i18n.t('common:back')}
@@ -291,7 +397,8 @@ export function SkinDetailScreen() {
         >
           <AppIcon name="arrow-left" color={palette.textPrimary} size={22} />
         </Pressable>
-        <Text style={styles.headerTitle}>{t('appBarTitle')}</Text>
+        {/* 绝对定位标题须显式锚定 top（Yoga 对无 top 的绝对子元素不再居中，会贴 padding 原点=灵动岛下） */}
+        <Text style={[styles.headerTitle, { top: insets.top, lineHeight: 48 }]}>{t('appBarTitle')}</Text>
       </View>
 
       {state.status === 'error' ? (
@@ -313,11 +420,13 @@ export function SkinDetailScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* 媒体预览 390（doc-08 §16）；无本地海报的皮肤渲染占位，不用虚构截图 */}
+          {/* 媒体预览 390（doc-08 §16）：海报四态公开兜底 + loop 视频叠层；占位
+              仅剩离线/未发布的最终兜底（不用虚构截图） */}
           <View style={[styles.preview, { width: previewWidth, height: PREVIEW_HEIGHT }]}>
-            {previewPoster ? (
+            {previewPoster && !previewFailed ? (
               <Image
                 source={previewPoster}
+                onError={() => setPreviewFailed(true)}
                 style={{
                   position: 'absolute',
                   left: 0,
@@ -335,6 +444,16 @@ export function SkinDetailScreen() {
                 </Text>
               </View>
             )}
+            {/* 氛围预览：静音 loop 视频（本地文件或公开端点）；减少动态用户与
+                下载进行中（进度条覆盖）不挂载，省电省流量 */}
+            {!focus.reducedMotion && !packDownloading ? (
+              <DetailPreviewVideo
+                source={previewVideo}
+                active
+                width={previewWidth}
+                height={PREVIEW_HEIGHT}
+              />
+            ) : null}
           </View>
 
           {/* 四态切换 segmented control */}
@@ -383,7 +502,8 @@ export function SkinDetailScreen() {
         </ScrollView>
       )}
 
-      {/* 底部主 CTA（避让 Home 条）：价格加载中骨架不可点；pending 防重复点击 */}
+      {/* 底部主 CTA（避让 Home 条）：价格加载中骨架不可点；pending 防重复点击；
+          下载中 CTA 原位变内联进度条（资源包模型） */}
       <View style={[styles.ctaArea, { paddingBottom: space.x3 + insets.bottom }]}>
         {!productReady ? (
           <View style={styles.ctaSkeleton} accessibilityLabel={t('priceLoading')}>
@@ -393,46 +513,121 @@ export function SkinDetailScreen() {
           <View style={styles.ctaSkeleton} accessibilityLabel={t('processing')}>
             <Text style={styles.ctaSkeletonText}>{t('processing')}</Text>
           </View>
-        ) : owned ? (
+        ) : packDownloading ? (
+          <View
+            style={styles.packProgress}
+            accessibilityLabel={t('packDownloadingA11y')}
+            accessibilityRole="progressbar"
+            accessibilityValue={{ min: 0, max: 100, now: packPercent }}
+          >
+            <View style={styles.packProgressTrack}>
+              <View style={[styles.packProgressFill, { width: `${packPercent}%` }]} />
+            </View>
+            <Text style={styles.packProgressText}>
+              {t('packProgress', {
+                percent: packPercent,
+                done: packStatus.assetsDone,
+                total: packStatus.assetsTotal,
+              })}
+            </Text>
+          </View>
+        ) : !owned ? (
+          trialStatus === 'active' ? (
+            // 试用中（24h 窗口）：未物化走资源包下载（门禁已放行），已物化直接用
+            !materialized ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={packFailed ? t('downloadRetry') : t('downloadPackCta')}
+                onPress={startDownload}
+                style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
+              >
+                <AppIcon
+                  name={packFailed ? 'alert' : 'palette'}
+                  color={palette.textPrimary}
+                  size={18}
+                />
+                <Text style={styles.ctaText}>{packFailed ? t('downloadRetry') : t('downloadPackCta')}</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('trialActiveUse')}
+                onPress={useOwnedSkin}
+                style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
+              >
+                <AppIcon name="check" color={palette.textPrimary} size={18} />
+                <Text style={styles.ctaText}>{t('trialActiveUse')}</Text>
+              </Pressable>
+            )
+          ) : product.accessType === 'premium' ? (
+            // 偏离记录：Plus 订阅流未上线（模板 membership 页为演示态）——
+            // 点击只给「即将上线」反馈，不发起购买（docs/08 §16 主 CTA 语义保留）
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('joinPlus')}
+              onPress={() => showToast(t('plusComingSoon'), 'info')}
+              style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
+            >
+              <AppIcon name="crown" color={palette.textPrimary} size={18} />
+              <Text style={styles.ctaText}>{t('joinPlus')}</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.ctaColumn}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={priceLabel ? t('unlockForever', priceLabel) : ''}
+                onPress={() => {
+                  if (!signedIn) {
+                    // docs/08 §15：未登录可浏览，购买时进入登录
+                    showToast(t('signInRequired'), 'info');
+                    navigate('auth.signIn');
+                    return;
+                  }
+                  setSheetOpen(true);
+                }}
+                style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
+              >
+                <Text style={styles.ctaText}>
+                  {priceLabel ? t('unlockForever', { price: priceLabel }) : t('priceLoading')}
+                </Text>
+              </Pressable>
+              {/* 免费试 24 小时（仅服务端确认未试过时出——'unknown' 保守隐藏） */}
+              {trialStatus === 'none' ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('trialCta')}
+                  onPress={startTrial}
+                  style={({ pressed }) => [styles.sheetRestore, pressed && styles.pressed]}
+                >
+                  <Text style={styles.sheetRestoreText}>{t('trialCta')}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          )
+        ) : !materialized ? (
+          // 已拥有（免费/已购）但资源包未落地：首次点击下载，失败重试只补缺
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={packFailed ? t('downloadRetry') : t('downloadPackCta')}
+            onPress={startDownload}
+            style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
+          >
+            <AppIcon
+              name={packFailed ? 'alert' : 'palette'}
+              color={palette.textPrimary}
+              size={18}
+            />
+            <Text style={styles.ctaText}>{packFailed ? t('downloadRetry') : t('downloadPackCta')}</Text>
+          </Pressable>
+        ) : (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('ownedUse')}
             onPress={useOwnedSkin}
             style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
           >
-            <AppIcon name="check" color={palette.canvasDeep} size={18} />
+            <AppIcon name="check" color={palette.textPrimary} size={18} />
             <Text style={styles.ctaText}>{t('ownedUse')}</Text>
-          </Pressable>
-        ) : product.accessType === 'premium' ? (
-          // 偏离记录：Plus 订阅流未上线（模板 membership 页为演示态）——
-          // 点击只给「即将上线」反馈，不发起购买（docs/08 §16 主 CTA 语义保留）
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('joinPlus')}
-            onPress={() => showToast(t('plusComingSoon'), 'info')}
-            style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
-          >
-            <AppIcon name="crown" color={palette.canvasDeep} size={18} />
-            <Text style={styles.ctaText}>{t('joinPlus')}</Text>
-          </Pressable>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={priceLabel ? t('unlockForever', priceLabel) : ''}
-            onPress={() => {
-              if (!signedIn) {
-                // docs/08 §15：未登录可浏览，购买时进入登录
-                showToast(t('signInRequired'), 'info');
-                navigate('auth.signIn');
-                return;
-              }
-              setSheetOpen(true);
-            }}
-            style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
-          >
-            <Text style={styles.ctaText}>
-              {priceLabel ? t('unlockForever', { price: priceLabel }) : t('priceLoading')}
-            </Text>
           </Pressable>
         )}
       </View>
@@ -444,6 +639,9 @@ export function SkinDetailScreen() {
           <View style={styles.sheetRows}>
             <InfoRow label={t('confirmProduct')} value={product.skinName} />
             <InfoRow label={t('confirmPrice')} value={priceLabel ?? ''} />
+            {plusPriceLabel ? (
+              <InfoRow label={t('confirmPlusPrice')} value={plusPriceLabel} />
+            ) : null}
             <InfoRow label={t('confirmType')} value={t('confirmPermanent')} />
           </View>
           <Pressable
@@ -495,7 +693,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     backgroundColor: p.canvas,
   },
   header: {
-    height: 56,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: space.x2,
@@ -619,7 +817,10 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   cta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    // 主 CTA 玻璃蓝：与首页同语言（半透明雨蓝+浅蓝描边），前景随主题翻转
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     paddingHorizontal: space.x5,
     flexDirection: 'row',
     alignItems: 'center',
@@ -628,7 +829,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   ctaText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    color: p.textPrimary,
   },
   ctaSkeleton: {
     minHeight: 52,
@@ -641,6 +842,37 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   ctaSkeletonText: {
     ...type.bodyStrong,
     color: p.textMuted,
+  },
+  packProgress: {
+    minHeight: 52,
+    borderRadius: radii.control,
+    backgroundColor: p.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.x2,
+    paddingHorizontal: space.x4,
+    paddingVertical: space.x2,
+  },
+  packProgressTrack: {
+    alignSelf: 'stretch',
+    height: 6,
+    borderRadius: radii.small,
+    backgroundColor: p.borderSoft,
+    overflow: 'hidden',
+  },
+  packProgressFill: {
+    height: '100%',
+    borderRadius: radii.small,
+    backgroundColor: p.actionPrimary,
+  },
+  packProgressText: {
+    ...type.caption,
+    color: p.textSecondary,
+  },
+  // 付费主 CTA + 试用次级按钮的纵排容器
+  ctaColumn: {
+    gap: space.x2,
+    alignSelf: 'stretch',
   },
   sheetTitle: {
     ...type.title3,

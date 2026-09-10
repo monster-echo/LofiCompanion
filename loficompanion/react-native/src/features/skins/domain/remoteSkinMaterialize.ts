@@ -5,6 +5,7 @@ import type {
   SkinManifest,
   SkinStateAsset,
 } from './types';
+import { rainyStudyRoomManifest } from './rainyStudyRoom.generated';
 
 /**
  * 远端 manifest 的纯物化逻辑（node 可测）：服务端 manifest JSON
@@ -117,8 +118,9 @@ export function materializeManifest(
       states: assets,
       eventMappings: parseEventMappings(raw.eventMappings),
       themeTokens: {
-        accent: typeof tokens.accent === 'string' ? tokens.accent : '#4F8FE8',
-        surface: typeof tokens.surface === 'string' ? tokens.surface : '#0D1B2B',
+        // 缺省回落内置皮肤的取值（skin.yaml themeTokens 的唯一数据源）
+        accent: typeof tokens.accent === 'string' ? tokens.accent : rainyStudyRoomManifest.themeTokens.accent,
+        surface: typeof tokens.surface === 'string' ? tokens.surface : rainyStudyRoomManifest.themeTokens.surface,
       },
       ...(typeof animation.crossfadeMs === 'number' && typeof animation.focalZoom === 'number'
         ? { animation: { crossfadeMs: animation.crossfadeMs, focalZoom: animation.focalZoom } }

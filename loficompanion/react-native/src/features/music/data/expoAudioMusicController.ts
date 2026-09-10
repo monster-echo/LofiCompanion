@@ -2,6 +2,7 @@ import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import type { AudioPlayer, AudioSource } from 'expo-audio';
 import { invalidateAssetUrl, resolveAssetUrl } from '../../../data/apiClient';
 import { BUNDLED_TRACKS } from './bundledTracks';
+import { shuffleNextIndex } from '../domain/musicLibrary';
 import type { MusicController } from '../domain/musicController';
 import type { MusicTrack } from '../domain/musicTypes';
 
@@ -14,6 +15,8 @@ import type { MusicTrack } from '../domain/musicTypes';
  *  - 远端曲目播放地址 24h 预签名：恢复时超 12h 强制重签；播放出错重签一次，
  *    仍失败回退内置首曲（不阻塞专注流程）。
  *  - 播放器懒创建 + loop=true：循环由原生层完成（后台无 JS 定时器也不断）。
+ *  - 房间 Radio（自习室 setPlaylist）：多曲随机轮播，一曲播完（didJustFinish）
+ *    随机换下一曲、相邻不重曲；列表优先于选中单曲，选曲仅记录不打断轮播。
  */
 
 /** 预签名 GET 有效 24h：半日以上的暂停恢复时强制重换地址 */
@@ -21,9 +24,27 @@ const URL_TTL_MS = 12 * 60 * 60 * 1000;
 /** 混音电平：音乐是陪伴层（未来雨声环境音在其上再叠），绝不盖过提示音 */
 const MUSIC_VOLUME = 0.6;
 
+/**
+ * expo-audio 播放状态事件的最小结构类型。AudioPlayer 的 addListener 继承自
+ * expo-modules-core 的 SharedObject，而本仓库当前 node_modules 布局下该包仅
+ * 嵌套于 expo/（skipLibCheck 抑制库内报错），tsc 看不到基类成员——运行时
+ * API 以官方文档为准，这里按文档签名窄化接线。
+ */
+interface PlaybackStatusUpdate {
+  didJustFinish: boolean;
+}
+interface StatusUpdateEmitter {
+  addListener(
+    eventName: 'playbackStatusUpdate',
+    listener: (status: PlaybackStatusUpdate) => void,
+  ): { remove(): void };
+}
+
 export interface MusicControllerDeps {
   /** 注入测试桩；缺省走 apiClient 的会话级缓存签发路径 */
   resolveUrl?: (objectKey: string, opts?: { fresh?: boolean }) => Promise<string | null>;
+  /** Radio 随机换曲的随机源；测试注入确定性序列（缺省 Math.random） */
+  rng?: () => number;
 }
 
 async function defaultResolveUrl(
@@ -49,11 +70,18 @@ export function createExpoAudioMusicController(
   let muted = false;
   /** 当前曲目（null = 尚未确定，apply 时落首个内置） */
   let current: MusicTrack | null = null;
+  /** 房间 Radio 列表（自习室）：非空时轮播优先于单曲循环 */
+  let playlist: readonly MusicTrack[] | null = null;
+  /** Radio 当前曲目下标（-1 = 尚未起播，apply 时随机落点） */
+  let playlistIndex = -1;
   /** 已加载到播放器的源标识：`bundled:<id>` 或 objectKey（换曲/重签才 replace） */
   let loadedKey: string | null = null;
   let resolvedAt = 0;
   /** 竞态防护：异步换曲完成后若已再次换曲则丢弃本次结果 */
   let loadSeq = 0;
+
+  /** Radio 换曲的随机源：deps 可注入测试序列（缺省 Math.random） */
+  const rng = deps.rng ?? Math.random;
 
   async function ensureAudioMode(): Promise<void> {
     if (audioModeReady) return;
@@ -77,10 +105,25 @@ export function createExpoAudioMusicController(
       player = createAudioPlayer(null);
       player.loop = true;
       player.volume = MUSIC_VOLUME;
+      // 一曲播完：Radio 模式随机换下一曲。单曲循环 loop=true 原生层自动重播，
+      // 不会触发 didJustFinish，此分支只在 Radio 生效。
+      (player as unknown as StatusUpdateEmitter).addListener(
+        'playbackStatusUpdate',
+        (status) => {
+          if (status.didJustFinish) onTrackFinished();
+        },
+      );
     } catch {
       player = null;
     }
     return player;
+  }
+
+  /** Radio 一曲播完：随机落下一曲（相邻不重曲）后按当前门控续播 */
+  function onTrackFinished(): void {
+    if (!playlist || playlist.length === 0) return;
+    playlistIndex = shuffleNextIndex(playlistIndex, playlist.length, rng);
+    sync();
   }
 
   /** 解析当前曲目应播放的源；远端解析失败 → 回退内置首曲（null = 无声可播） */
@@ -104,9 +147,28 @@ export function createExpoAudioMusicController(
     return { source: fallback.bundledModule, key: `bundled:${fallback.id}` };
   }
 
+  /** 播放目标：Radio 列表优先（未落点时随机初始化），否则选中单曲/首个内置 */
+  function resolveTarget(): MusicTrack | null {
+    if (playlist && playlist.length > 0) {
+      if (playlistIndex < 0 || playlistIndex >= playlist.length) {
+        playlistIndex = shuffleNextIndex(-1, playlist.length, rng);
+      }
+      return playlist[playlistIndex] as MusicTrack;
+    }
+    return current ?? BUNDLED_TRACKS[0] ?? null;
+  }
+
   /** 把播放器对齐到（当前曲目 × 想听与否）的目标态；loadSeq 防换曲竞态 */
   async function apply(shouldPlay: boolean, opts: { freshUrl?: boolean } = {}): Promise<void> {
-    const target = current ?? BUNDLED_TRACKS[0] ?? null;
+    // 停止不依赖曲源：退出房间/静音/会话暂停的 pause 即时直达。若排在换曲
+    // 换签的 await 之后，慢网络下 pause 会被丢弃或迟到——离开画面后音乐继续播。
+    // 同时作废在途加载（迟到的 play 不得盖过已生效的暂停）。
+    if (!shouldPlay) {
+      loadSeq += 1;
+      player?.pause();
+      return;
+    }
+    const target = resolveTarget();
     if (!target) return;
     const seq = ++loadSeq;
     await ensureAudioMode();
@@ -116,12 +178,13 @@ export function createExpoAudioMusicController(
       const resolved = await sourceFor(target, opts);
       if (seq !== loadSeq) return; // 期间又换曲/重置：丢弃本次加载
       if (!resolved) return;
+      // Radio 多曲轮播关原生循环（播完走 didJustFinish 换曲）；单曲态原生循环
+      activePlayer.loop = playlist !== null && playlist.length > 1 ? false : true;
       if (loadedKey !== resolved.key) {
         activePlayer.replace(resolved.source);
         loadedKey = resolved.key;
       }
-      if (shouldPlay) activePlayer.play();
-      else activePlayer.pause();
+      activePlayer.play();
     } catch {
       // 加载失败保持现状（静音/暂停态），下一次事件再试
     }
@@ -163,8 +226,25 @@ export function createExpoAudioMusicController(
     selectTrack(track: MusicTrack) {
       if (current?.id === track.id && current.source === track.source) return;
       current = track;
-      loadedKey = null;
-      resolvedAt = 0;
+      // Radio 模式下选曲仅记录意图（退出房间后生效），不打断轮播——
+      // 清 loadedKey 会强制 replace 当前 Radio 曲源导致重播
+      if (!playlist) {
+        loadedKey = null;
+        resolvedAt = 0;
+      }
+      sync();
+    },
+    setPlaylist(tracks) {
+      const next = tracks && tracks.length > 0 ? [...tracks] : null;
+      if (next === null && playlist === null) return;
+      // 曲库原地更新（远端清单到货）不打断正在播的曲目；列表消失回归单曲
+      const playingId =
+        playlist && playlistIndex >= 0 && playlistIndex < playlist.length
+          ? (playlist[playlistIndex] as MusicTrack).id
+          : null;
+      playlist = next;
+      playlistIndex =
+        next && playingId !== null ? next.findIndex((t) => t.id === playingId) : -1;
       sync();
     },
     dispose() {
@@ -176,6 +256,8 @@ export function createExpoAudioMusicController(
       }
       player = null;
       loadedKey = null;
+      playlist = null;
+      playlistIndex = -1;
       sessionActive = false;
     },
   };

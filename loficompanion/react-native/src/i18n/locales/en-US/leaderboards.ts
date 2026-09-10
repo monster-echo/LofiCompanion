@@ -45,6 +45,7 @@ export const leaderboards = {
   refreshLabel: 'Refresh leaderboard',
   shareCode: '{{label}}: {{code}} — enter it in LofiCompanion to join',
   acceptFailed: "Couldn't add friend",
+  avatarFallback: 'F',
   groupNameRequired: 'Give your group a name first',
 
   // S11 小组详情

@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
+import { currentLanguage } from '../i18n/core';
 import { AppIcon, IconName } from '../design-system/AppIcon';
 import { NotificationItem } from '../domain/models';
 import { usePreferences } from '../preferences/PreferencesProvider';
@@ -80,7 +81,7 @@ function relativeTime(value: string, t: TFunction<'common'>) {
   if (hours < 24) return t('hoursAgo', { n: hours });
   const days = Math.floor(hours / 24);
   if (days < 7) return t('daysAgo', { n: days });
-  return new Date(value).toLocaleDateString('zh-CN');
+  return new Date(value).toLocaleDateString(currentLanguage());
 }
 
 const makeCardStyles = (p: ThemeColors) => StyleSheet.create({

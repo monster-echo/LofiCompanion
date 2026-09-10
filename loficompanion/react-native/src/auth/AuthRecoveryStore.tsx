@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { apiClient } from '../data/apiClient';
+import { errorMessageOf } from '../data/errorCopy';
 import { useApp } from '../state/AppStore';
 import { i18n } from '../i18n/core';
 
@@ -102,7 +103,7 @@ export function AuthRecoveryProvider({ children }: Readonly<{ children: ReactNod
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : i18n.t('errors:tryAgain');
+  return errorMessageOf(error, i18n.t('errors:tryAgain'));
 }
 
 export function useAuthRecovery() {

@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../../../design-system/AppIcon';
+import { mediaActionBorder, mediaActionGlass } from '../../../design-system/derivedTokens';
 import { WeeklyProgressCard } from '../../../design-system/WeeklyProgressCard';
 import { useApp } from '../../../state/AppStore';
 import { usePreferences } from '../../../preferences/PreferencesProvider';
@@ -123,7 +124,7 @@ function Header({ onBack }: Readonly<{ onBack: () => void }>) {
   // 顶部安全区自包含（全局垫充已移除）
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.header, { paddingTop: insets.top, height: 56 + insets.top }]}>
+    <View style={[styles.header, { paddingTop: insets.top, height: 48 + insets.top }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('backLabel')}
@@ -155,7 +156,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
     backgroundColor: p.canvas,
   },
   header: {
-    height: 56,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: space.x2,
@@ -286,7 +287,10 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   emptyCta: {
     minHeight: 52,
     borderRadius: radii.control,
-    backgroundColor: p.actionPrimary,
+    // 主 CTA 玻璃蓝：与首页同语言（半透明雨蓝+浅蓝描边），前景随主题翻转
+    backgroundColor: mediaActionGlass,
+    borderWidth: 1,
+    borderColor: mediaActionBorder,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.x6,
@@ -295,7 +299,7 @@ const makeStyles = (p: ThemeColors) => StyleSheet.create({
   },
   emptyCtaText: {
     ...type.bodyStrong,
-    color: p.canvasDeep,
+    color: p.textPrimary,
   },
   pressed: {
     opacity: 0.82,

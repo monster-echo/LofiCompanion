@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, radii, spacing } from '../theme/tokens';
+import { mediaActionBorder, mediaActionGlass } from './derivedTokens';
 
 export const buttonStyles = StyleSheet.create({
   base: {
@@ -11,7 +12,9 @@ export const buttonStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.x2,
   },
-  primary: { backgroundColor: colors.brand },
+  // primary 玻璃蓝与全 app 主 CTA 同语言（半透明雨蓝 + 浅蓝描边）；
+  // 启用态前景由 AppButton 按主题给 textPrimary，禁用/danger 在组件内覆写
+  primary: { backgroundColor: mediaActionGlass, borderWidth: 1, borderColor: mediaActionBorder },
   secondary: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
   danger: { backgroundColor: colors.error },
   pressed: { opacity: 0.78 },
@@ -23,7 +26,7 @@ export const buttonStyles = StyleSheet.create({
 
 export const componentStyles = StyleSheet.create({
   header: {
-    height: 58,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
