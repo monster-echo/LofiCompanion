@@ -74,4 +74,10 @@ export const store = {
   nightOwlBody: "You've been focusing late — try Midnight Workstation",
   nightOwlCta: 'Take a look',
   nightOwlDismiss: 'Dismiss',
+  // Server product rows carry a single (Chinese) skin_name: official slug →
+  // bilingual display name, translated at render time in the detail screen /
+  // confirm sheet; unregistered slugs fall back to the server name
+  skinNames: {
+    'midnight-workstation': 'Midnight Workstation',
+  },
 } as const;

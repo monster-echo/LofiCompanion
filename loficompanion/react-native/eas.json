@@ -9,7 +9,7 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_APP_ID": "loficompanion",
-        "EXPO_PUBLIC_APP_ENVIRONMENT": "development"
+        "EXPO_PUBLIC_APP_ENVIRONMENT": "production"
       }
     },
     "preview": {

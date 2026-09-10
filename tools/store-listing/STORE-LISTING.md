@@ -9,9 +9,9 @@
 | 名称 Name（≤30） | `Lofi Companion - 专注陪伴` |
 | 副标题 Subtitle（≤30） | `lofi 音乐 · 专注 · 自习室` |
 | 类别 | 主：效率（Productivity）；副：音乐（Music） |
-| Support URL | `https://auth.zhongbei.tech/support?app=lofi-companion` |
-| Marketing URL | `https://auth.zhongbei.tech/marketing?app=lofi-companion` |
-| 隐私政策 URL | `https://auth.zhongbei.tech/legal/privacy?app=lofi-companion` |
+| Support URL | `https://auth.zhongbei.tech/support?app=loficompanion` |
+| Marketing URL | `https://auth.zhongbei.tech/marketing?app=loficompanion` |
+| 隐私政策 URL | `https://auth.zhongbei.tech/legal/privacy?app=loficompanion` |
 | 用户隐私选择 URL | 留空（无广告/跨应用追踪 SDK） |
 | 版权 | `© 2026 苏州终北科技有限公司` |
 | 价格 | 免费 + App 内购买 |
@@ -75,7 +75,7 @@ Lofi Companion 是一位安静的专注伙伴：选一位陪伴角色，放一�
 | 应用名称（≤30） | `Lofi Companion - 专注陪伴` |
 | 简短说明（≤80） | `lofi 音乐陪伴专注：自习室弹幕、成就房间、皮肤商店` |
 | 完整说明 | 同 ASC 描述（可复用） |
-| 隐私政策 | `https://auth.zhongbei.tech/legal/privacy?app=lofi-companion` |
+| 隐私政策 | `https://auth.zhongbei.tech/legal/privacy?app=loficompanion` |
 | 数据安全表单 | 按 ASC 隐私标签同口径填写（不收集/不共享用于广告） |
 | 内容分级问卷 | 无暴力/无博彩/无广告 → Everyone |
 | 目标受众 | 13+（含青少年学习场景，勿选 ≤12 儿童向） |

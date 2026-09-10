@@ -147,8 +147,16 @@ export function PageHeader({
     ]}>
       {/* 绝对定位标题必须显式锚定 top：Yoga 3 对无 top 的绝对子元素不再受
           alignItems 居中约束，会贴到 padding 原点（=灵动岛正下方）；
-          lineHeight=头部行高 48 使单行标题垂直居中。 */}
-      <Text style={[componentStyles.headerTitle, { color: palette.text, top: insets.top, lineHeight: 48 }]}>{title}</Text>
+          lineHeight=头部行高 48 使单行标题垂直居中。头部按固定单行设计，
+          长标题必须截断——折行的第二行会溢出头部叠到正文上
+          （订阅条款英文标题 "Subscription & Auto-Renewal Terms" 曾触发）。 */}
+      <Text
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        style={[componentStyles.headerTitle, { color: palette.text, top: insets.top, lineHeight: 48 }]}
+      >
+        {title}
+      </Text>
       <View style={componentStyles.headerSide}>
         {canGoBack ? (
           <IconButton label={t('back')} icon="arrow-left" onPress={back} />
@@ -188,6 +196,7 @@ export function AppCard({ children }: Readonly<{ children: ReactNode }>) {
 
 export function ListRow({
   label,
+  description,
   route,
   icon,
   iconColor,
@@ -197,6 +206,8 @@ export function ListRow({
   analyticsId,
 }: Readonly<{
   label: string;
+  /** 标题下方的说明行：独占整行宽度，长文案自然换行（区别于右侧挤压易折行的 value） */
+  description?: string;
   route?: AppRoute;
   icon?: IconName;
   iconColor?: string;
@@ -226,7 +237,10 @@ export function ListRow({
           size={20}
         />
       ) : null}
-      <Text style={[styles.rowText, destructive && componentStyles.destructive]}>{label}</Text>
+      <View style={styles.rowContent}>
+        <Text style={[styles.rowLabel, destructive && componentStyles.destructive]}>{label}</Text>
+        {description ? <Text style={styles.secondary}>{description}</Text> : null}
+      </View>
       {value ? <Text style={styles.secondary}>{value}</Text> : null}
       {action ? <AppIcon name="chevron-right" color={palette.textSecondary} size={18} /> : null}
     </Pressable>

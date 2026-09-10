@@ -359,7 +359,7 @@ export const legalDocuments: Readonly<Record<LegalLocale, LegalDocumentSet>> = {
       ],
     },
     subscription: {
-      title: 'Subscription & Auto-Renewal Terms',
+      title: 'Subscription Terms',
       summary: 'Covers subscription products, payment, renewal, cancellation, restoring purchases, and refunds.',
       effectiveDate: 'August 31, 2026',
       sections: [

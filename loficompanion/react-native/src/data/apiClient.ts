@@ -811,10 +811,18 @@ if (!APP_ID) {
   throw new Error('EXPO_PUBLIC_APP_ID 未配置：请在 .env 中设置该 App 的 app_id 后再启动。');
 }
 
-// environment（development/staging/production 等）也必须显式配置，未配置即启动报错。
+// environment 必须显式配置，且只允许 production：development/staging 已下线
+// （服务端对未初始化 app×环境直接 404 CONFIG_NOT_FOUND），环境误配要在启动时
+// 响亮失败，而不是静默拿到错误环境的配置。NODE_ENV=test（vitest）豁免——
+// 联调用例固定 development 打本地 MobileStarter 实例（vitest.config.ts / testServer.ts）。
 const APP_ENVIRONMENT = process.env.EXPO_PUBLIC_APP_ENVIRONMENT?.trim();
 if (!APP_ENVIRONMENT) {
   throw new Error('EXPO_PUBLIC_APP_ENVIRONMENT 未配置：请在 .env 中设置该 App 的 environment 后再启动。');
+}
+if (APP_ENVIRONMENT !== 'production' && process.env.NODE_ENV !== 'test') {
+  throw new Error(
+    `EXPO_PUBLIC_APP_ENVIRONMENT 仅支持 production（development/staging 已下线）：当前为 ${APP_ENVIRONMENT}。`,
+  );
 }
 
 function clientHeaders() {

@@ -4,6 +4,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { AuthProviderIcon } from './AuthProviderIcon';
 import { useApp } from '../state/AppStore';
 import { useTranslation } from 'react-i18next';
@@ -16,10 +17,6 @@ WebBrowser.maybeCompleteAuthSession();
 const githubDiscovery = {
   authorizationEndpoint: 'https://github.com/login/oauth/authorize',
   tokenEndpoint: 'https://github.com/login/oauth/access_token',
-};
-const googleDiscovery = {
-  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenEndpoint: 'https://oauth2.googleapis.com/token',
 };
 
 export function SocialAuthButtons({
@@ -36,7 +33,10 @@ export function SocialAuthButtons({
   const { t } = useTranslation('auth');
   const socialStyles = useThemeStyles(makeStyles);
   const [appleAvailable, setAppleAvailable] = useState(false);
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'mobilestarter', path: 'oauth' });
+  // scheme 必须与 app.json 的 expo.scheme 一致，否则 OAuth 回调无法返回本 app；
+  // 该 URI 同时要登记到 provider 控制台（GitHub 回调 URL）。Google 已改走原生
+  // SDK（Google 关闭 Web 客户端自定义 scheme 重定向的口子），不走这条回调。
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'lofi-companion', path: 'oauth' });
   const nonce = useMemo(() => Crypto.randomUUID(), []);
   const githubId = authProviderConfig.github?.clientId ?? 'not-configured';
   const googleId = authProviderConfig.google?.clientId ?? 'not-configured';
@@ -46,14 +46,6 @@ export function SocialAuthButtons({
     scopes: ['read:user', 'user:email'],
     usePKCE: true,
   }, githubDiscovery);
-  const [, googleResponse, promptGoogle] = AuthSession.useAuthRequest({
-    clientId: googleId,
-    redirectUri,
-    responseType: AuthSession.ResponseType.IdToken,
-    scopes: ['openid', 'profile', 'email'],
-    usePKCE: false,
-    extraParams: { nonce },
-  }, googleDiscovery);
 
   useEffect(() => {
     void AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
@@ -72,17 +64,31 @@ export function SocialAuthButtons({
     }
   }, [githubRequest, githubResponse, redirectUri, showToast, socialSignIn]);
 
-  useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      void socialSignIn({
-        provider: 'google',
-        idToken: googleResponse.params.id_token,
-        nonce,
-      });
-    } else if (googleResponse?.type === 'error') {
-      showToast(t('googleFailed'), 'error');
+  // Google：原生 SDK 弹账号选择器，直接拿 idToken 交服务端验签（aud/签名）。
+  // SDK 不支持注入 nonce，故不向服务端传 nonce（服务端对缺省 nonce 跳过校验）。
+  // 服务端 clientIds 按平台下发：ios 槽= iOS 类型客户端；android 槽= Web 类型
+  // 客户端（Android 端 requestIdToken(webClientId) 才会返回 idToken，其 aud 即
+  // 该 Web id；app 本身的授权由控制台里 Android 客户端的 package+SHA-1 登记，
+  // 那个 id 不进代码）。Android 缺 webClientId 时 idToken 为 null、登录静默失败。
+  const signInWithGoogle = async () => {
+    if (onBeforeAuthenticate && !onBeforeAuthenticate()) return;
+    if (Platform.OS === 'android') {
+      await GoogleSignin.hasPlayServices();
+      GoogleSignin.configure({ webClientId: googleId });
+    } else {
+      GoogleSignin.configure({ iosClientId: googleId });
     }
-  }, [googleResponse, showToast, socialSignIn]);
+    try {
+      const response = await GoogleSignin.signIn();
+      const idToken = response.type === 'success' ? response.data.idToken : null;
+      if (!idToken) return; // 用户取消
+      await socialSignIn({ provider: 'google', idToken });
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'SIGN_IN_CANCELLED') {
+        showToast(t('googleFailed'), 'error');
+      }
+    }
+  };
 
   const signInWithApple = async () => {
     if (onBeforeAuthenticate && !onBeforeAuthenticate()) return;
@@ -130,9 +136,7 @@ export function SocialAuthButtons({
           enabled={authProviders.google}
           label="Google"
           name="google"
-          onPress={() => {
-            if (!onBeforeAuthenticate || onBeforeAuthenticate()) void promptGoogle();
-          }}
+          onPress={() => void signInWithGoogle()}
         />
       ) : null}
       {authProviderPolicy.github ? (

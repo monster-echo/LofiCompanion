@@ -26,6 +26,12 @@
       "@react-native-firebase/analytics",
       "@react-native-firebase/crashlytics",
       "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.176973136863-0f9o3aldllhcqrbtqqpsnjbt42s79b5s"
+        }
+      ],
       "./plugins/withModularHeaders",
       "expo-video",
       [

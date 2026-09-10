@@ -75,4 +75,9 @@ export const store = {
   nightOwlBody: '最近你常在深夜完成专注，试试深夜工作台',
   nightOwlCta: '去看看',
   nightOwlDismiss: '关闭推荐',
+  // 服务端商品行 skin_name 只有中文单列（无本地化）：官方皮肤 slug → 双语名，
+  // 详情页/确认 sheet 渲染期翻译；未登记 slug 回落服务端名（SkinDetailScreen）
+  skinNames: {
+    'midnight-workstation': '深夜工作台',
+  },
 } as const;

@@ -9,3 +9,4 @@ loficompanion/react-native/GoogleService-Info.plist
 
 # Apple 签名私钥（ASC/App Store Server API 的 .p8）——一律放 ~/.secrets/，绝不入库
 *.p8
+node_modules/

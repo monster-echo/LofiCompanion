@@ -48,6 +48,12 @@ function createStyles(palette: ThemeColors, textScale: number) {
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   rowText: { flex: 1, color: palette.text, fontSize: 16 * textScale },
+  // ListRow 纵向容器内的 label：不能带 flex——rowText 的 flex:1 是给横向行
+  // 占宽用的，放进纵向容器会变成竖向 flexBasis:0%，自动高度下把文本压塌
+  rowLabel: { color: palette.text, fontSize: 16 * textScale },
+  // ListRow 的 label+description 纵向容器：description 独占整行宽度，
+  // 长文案/大字号下自然折行而不是被右侧 value 挤压
+  rowContent: { flex: 1, gap: spacing.x1 },
   input: {
     minHeight: 52,
     borderWidth: 1,

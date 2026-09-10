@@ -10,7 +10,7 @@ import {
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { useTranslation } from 'react-i18next';
 import { styles } from '../theme/styles';
-import { radii, spacing } from '../theme/tokens';
+import { spacing } from '../theme/tokens';
 
 type LegalType = 'privacy' | 'terms' | 'subscription';
 
@@ -74,12 +74,27 @@ export function LegalIndexScreen() {
     <View style={styles.page}>
       <PageHeader title={t('indexTitle')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.heading}>{t('indexIntro')}</Text>
-        <Text style={styles.secondary}>{t('indexHeading')}</Text>
+        <Text style={styles.secondary}>{t('indexIntro')}</Text>
         <AppCard>
-          <ListRow label={t('privacyLabel')} route="settings.privacyPolicy" value={t('privacyValue')} />
-          <ListRow label={t('termsLabel')} route="settings.termsOfService" value={t('termsValue')} />
-          <ListRow label={t('subscriptionLabel')} route="settings.subscriptionTerms" value={t('subscriptionValue')} />
+          {/* 两行式行：描述独占整行宽度，任何语言/字号都不被右侧挤压折行 */}
+          <ListRow
+            icon="lock"
+            label={t('privacyLabel')}
+            description={t('privacyDescription')}
+            route="settings.privacyPolicy"
+          />
+          <ListRow
+            icon="book"
+            label={t('termsLabel')}
+            description={t('termsDescription')}
+            route="settings.termsOfService"
+          />
+          <ListRow
+            icon="crown"
+            label={t('subscriptionLabel')}
+            description={t('subscriptionDescription')}
+            route="settings.subscriptionTerms"
+          />
         </AppCard>
       </ScrollView>
     </View>
@@ -99,17 +114,16 @@ export function SubscriptionTermsScreen() {
 }
 
 function LegalDocumentScreen({ type }: Readonly<{ type: LegalType }>) {
-  const { palette } = usePreferences();
   const { t } = useTranslation('legal');
   const doc = useResolvedLegal(type);
   return (
     <View style={styles.page}>
       <PageHeader title={doc.title} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={[legalStyles.hero, { backgroundColor: palette.brandSoft }]}>
-          <Text style={styles.title}>{doc.title}</Text>
-          <Text style={styles.secondary}>{t('versionLine', { revision: doc.revision, locale: doc.localeTag })}</Text>
-        </View>
+        {/* 标题只留在 PageHeader：原 hero 卡与头部重复；版本信息收成一条 caption */}
+        <Text style={styles.caption}>
+          {t('versionLine', { revision: doc.revision, locale: doc.localeTag })}
+        </Text>
         {doc.sections.map((section, index) => (
           <View key={`${section.title}-${index}`} style={legalStyles.section}>
             {section.title !== '' ? <Text style={styles.heading}>{section.title}</Text> : null}
@@ -124,19 +138,6 @@ function LegalDocumentScreen({ type }: Readonly<{ type: LegalType }>) {
 }
 
 const legalStyles = StyleSheet.create({
-  hero: {
-    borderRadius: radii.card,
-    padding: spacing.x5,
-    gap: spacing.x3,
-  },
   section: { gap: spacing.x3, paddingVertical: spacing.x2 },
   copy: { lineHeight: 25 },
-  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.x3 },
-  bullet: {
-    width: 6,
-    height: 6,
-    borderRadius: radii.round,
-    marginTop: 9,
-  },
-  bulletText: { flex: 1, lineHeight: 25 },
 });

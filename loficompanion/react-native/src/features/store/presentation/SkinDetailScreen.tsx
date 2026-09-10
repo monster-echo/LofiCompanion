@@ -487,7 +487,10 @@ export function SkinDetailScreen() {
           <View style={styles.infoCard}>
             <View style={styles.nameRow}>
               <Text style={styles.skinName}>
-                {product?.skinName ?? (() => { const m = findSkinManifestByIdOrSlug(focus.skins, skinSlug); return m ? skinDisplayName(m, locale) : focus.skin.name; })()}
+                {product
+                  // 服务端 skin_name 单语（中文）：官方皮肤 slug 走 i18n 渲染期翻译
+                  ? i18n.t(`store:skinNames.${product.slug}`, { defaultValue: product.skinName })
+                  : (() => { const m = findSkinManifestByIdOrSlug(focus.skins, skinSlug); return m ? skinDisplayName(m, locale) : focus.skin.name; })()}
               </Text>
             </View>
             <View style={styles.creatorRow}>
@@ -637,7 +640,10 @@ export function SkinDetailScreen() {
         <SheetOverlay onClose={() => setSheetOpen(false)} bottomInset={insets.bottom}>
           <Text style={styles.sheetTitle}>{t('confirmTitle')}</Text>
           <View style={styles.sheetRows}>
-            <InfoRow label={t('confirmProduct')} value={product.skinName} />
+            <InfoRow
+              label={t('confirmProduct')}
+              value={i18n.t(`store:skinNames.${product.slug}`, { defaultValue: product.skinName })}
+            />
             <InfoRow label={t('confirmPrice')} value={priceLabel ?? ''} />
             {plusPriceLabel ? (
               <InfoRow label={t('confirmPlusPrice')} value={plusPriceLabel} />
