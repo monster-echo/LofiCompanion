@@ -30,7 +30,11 @@ export const auth = {
   placeholderCode: '6-digit code',
   codeSent: 'Code sent',
   codeSentTo: 'Code sent to {{email}}',
-  consentRequired: 'Please read and accept the Terms of Service and Privacy Policy first',
+  // Consent confirm dialog (shown when submitting without checking the box)
+  consentConfirmTitle: 'Terms of Service & Privacy Policy',
+  consentConfirmMessage: 'To better protect your rights, please read and agree to our Terms of Service and Privacy Policy.',
+  consentAgree: 'Agree',
+  consentDecline: 'Decline',
   forgotAction: 'Forgot password',
   createAccountAction: 'Create account',
   consentCheckbox: 'Agree to Terms of Service and Privacy Policy',

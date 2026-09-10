@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppButton, KeyboardAvoidingScreen, PageHeader } from '../design-system/components';
 import { usePreferences } from '../preferences/PreferencesProvider';
 import { useApp } from '../state/AppStore';
@@ -53,6 +53,7 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
     ?? 'unknown';
 
   const submit = async () => {
+    // 找回/验证/改密不创建账号，无需协议授权
     if (mode === 'forgot') {
       await recovery.requestCode(email);
       return;
@@ -65,9 +66,9 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
       await recovery.resetPassword(password);
       return;
     }
+    // 首次登录/注册前必须完成协议授权（合规：任何账号创建路径都要拦截）
+    if (!(await ensureConsent())) return;
     if (mode === 'phone') {
-      // 首次登录/注册前必须完成协议授权（合规：任何账号创建路径都要拦截）
-      if (!ensureConsent()) return;
       if (!phoneCodeSent) {
         if (await requestPhoneCode(phone)) {
           setPhoneCodeSent(true);
@@ -78,7 +79,6 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
       await verifyPhoneCode(phone, code);
       return;
     }
-    if ((mode === 'signIn' || mode === 'signUp') && !ensureConsent()) return;
     if (mode === 'signUp') {
       await signUp({ email, password, username, consentVersion: termsRevision });
     } else {
@@ -86,11 +86,23 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
     }
   };
 
-  const ensureConsent = () => {
-    if (agreed) return true;
-    showToast(t('consentRequired'), 'info');
-    return false;
-  };
+  // 未勾选时弹确认对话框（与其他 App 一致）：点「同意」自动勾选并继续本次操作，
+  // 点「不同意」仅关闭。返回 Promise 以便社交登录按钮 await 后再放行。
+  const ensureConsent = () =>
+    new Promise<boolean>((resolve) => {
+      if (agreed) {
+        resolve(true);
+        return;
+      }
+      Alert.alert(
+        t('consentConfirmTitle'),
+        t('consentConfirmMessage'),
+        [
+          { text: t('consentDecline'), style: 'cancel', onPress: () => resolve(false) },
+          { text: t('consentAgree'), onPress: () => { setAgreed(true); resolve(true); } },
+        ],
+      );
+    });
 
   return (
     <KeyboardAvoidingScreen style={styles.page}>
@@ -204,10 +216,8 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
             />
           </>
         ) : null}
-      </ScrollView>
-      {/* 授权勾选固定在页面最底部（不随内容滚动/居中） */}
-      {mode === 'signIn' || mode === 'signUp' || mode === 'phone' ? (
-        <View style={authStyles.consentFooter}>
+        {/* 授权勾选随表单内容滚动/居中（合规拦截由 submit 的 ensureConsent 兜底） */}
+        {mode === 'signIn' || mode === 'signUp' || mode === 'phone' ? (
           <View style={authStyles.consentRow}>
             <Pressable
               accessibilityRole="checkbox"
@@ -241,8 +251,8 @@ export function AuthScreen({ mode }: Readonly<{ mode: AuthMode }>) {
               >{t('privacyLabel')}</Text>
             </Text>
           </View>
-        </View>
-      ) : null}
+        ) : null}
+      </ScrollView>
     </KeyboardAvoidingScreen>
   );
 }
@@ -274,11 +284,8 @@ function isValid(input: AuthInput) {
 const authStyles = StyleSheet.create({
   content: { flexGrow: 1, justifyContent: 'center', padding: spacing.x6, gap: spacing.x4 },
   copy: { gap: spacing.x2, marginBottom: spacing.x3 },
-  consentFooter: {
-    paddingHorizontal: spacing.x6,
-    paddingBottom: spacing.x5,
-  },
   consentRow: {
+    marginTop: spacing.x1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

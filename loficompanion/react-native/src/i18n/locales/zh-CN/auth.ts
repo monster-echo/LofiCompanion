@@ -33,7 +33,11 @@ export const auth = {
   // 流程反馈
   codeSent: '验证码已发送',
   codeSentTo: '验证码已发送至 {{email}}',
-  consentRequired: '请先阅读并同意用户协议与隐私政策',
+  // 协议确认弹窗（未勾选就点登录/注册/社交登录时，替代 toast）
+  consentConfirmTitle: '服务协议及隐私保护',
+  consentConfirmMessage: '为了更好地保障您的合法权益，请阅读并同意以下协议《用户协议》《隐私政策》',
+  consentAgree: '同意',
+  consentDecline: '不同意',
   // 次级入口
   forgotAction: '忘记密码',
   createAccountAction: '创建账号',

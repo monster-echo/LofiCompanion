@@ -21,7 +21,7 @@ const githubDiscovery = {
 
 export function SocialAuthButtons({
   onBeforeAuthenticate,
-}: Readonly<{ onBeforeAuthenticate?: () => boolean }>) {
+}: Readonly<{ onBeforeAuthenticate?: () => boolean | Promise<boolean> }>) {
   const {
     authProviders,
     authProviderPolicy,
@@ -71,7 +71,7 @@ export function SocialAuthButtons({
   // 该 Web id；app 本身的授权由控制台里 Android 客户端的 package+SHA-1 登记，
   // 那个 id 不进代码）。Android 缺 webClientId 时 idToken 为 null、登录静默失败。
   const signInWithGoogle = async () => {
-    if (onBeforeAuthenticate && !onBeforeAuthenticate()) return;
+    if (onBeforeAuthenticate && !(await onBeforeAuthenticate())) return;
     if (Platform.OS === 'android') {
       await GoogleSignin.hasPlayServices();
       GoogleSignin.configure({ webClientId: googleId });
@@ -91,7 +91,7 @@ export function SocialAuthButtons({
   };
 
   const signInWithApple = async () => {
-    if (onBeforeAuthenticate && !onBeforeAuthenticate()) return;
+    if (onBeforeAuthenticate && !(await onBeforeAuthenticate())) return;
     try {
       const result = await AppleAuthentication.signInAsync({
         nonce,
@@ -145,7 +145,9 @@ export function SocialAuthButtons({
           label="GitHub"
           name="github"
           onPress={() => {
-            if (!onBeforeAuthenticate || onBeforeAuthenticate()) void promptGitHub();
+            void (async () => {
+              if (!onBeforeAuthenticate || (await onBeforeAuthenticate())) promptGitHub();
+            })();
           }}
         />
       ) : null}
@@ -155,7 +157,9 @@ export function SocialAuthButtons({
           label={t('labelPhoneShort')}
           name="phone"
           onPress={() => {
-            if (!onBeforeAuthenticate || onBeforeAuthenticate()) navigate('auth.phone');
+            void (async () => {
+              if (!onBeforeAuthenticate || (await onBeforeAuthenticate())) navigate('auth.phone');
+            })();
           }}
         />
       ) : null}
