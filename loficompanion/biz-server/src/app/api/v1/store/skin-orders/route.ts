@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { handleError, ok } from '@/lib/http';
 import { requireIdentity } from '@/lib/identity';
 import { getClientPlatform } from '@/lib/client-platform';
+import { extractBearerToken } from '@/auth/jwt';
 import { createSkinOrder, newSkinOrderIdempotencyKey } from '@/features/store/data/order-service';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,8 @@ export async function POST(request: NextRequest) {
       skinId: input.skinId,
       idempotencyKey,
       platform: getClientPlatform(request),
+      // 原样转发 Bearer：Plus 折扣定价在服务端判定（查询失败降级原价）
+      authorization: extractBearerToken(request.headers.get('authorization')) ?? '',
     });
     return ok(order, 201);
   } catch (error) {

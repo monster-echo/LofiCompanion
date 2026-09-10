@@ -19,6 +19,11 @@ export interface SkinProductView {
   currency: string;
   status: string;
   provider: string;
+  /** 限时发售窗口（ISO；null=无窗口）。窗口过滤在客户端——目录不过滤 */
+  availableFrom: string | null;
+  availableUntil: string | null;
+  /** Plus 会员价（分；null=无折扣 SKU） */
+  plusPriceMinor: number | null;
 }
 
 function toView(row: SkinProduct): SkinProductView {
@@ -43,6 +48,9 @@ function toView(row: SkinProduct): SkinProductView {
     currency: row.currency,
     status: row.status,
     provider: row.provider,
+    availableFrom: row.available_from ?? null,
+    availableUntil: row.available_until ?? null,
+    plusPriceMinor: row.plus_price_minor ?? null,
   };
 }
 
@@ -60,7 +68,7 @@ export async function findSkinProductBySkinId(skinId: string): Promise<SkinProdu
   return row ? toView(row) : undefined;
 }
 
-/** 发布/登记通道的幂等 upsert：未提供的 provider/storeProductIds 保留现值。 */
+/** 发布/登记通道的幂等 upsert：未提供的 provider/storeProductIds/窗口保留现值。 */
 export async function upsertSkinProduct(input: {
   skinId: string;
   slug: string;
@@ -71,6 +79,11 @@ export async function upsertSkinProduct(input: {
   currency: string;
   provider?: string;
   storeProductIds?: Record<string, string>;
+  /** 限时窗口：undefined=保留现值；null=显式清除 */
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  /** Plus 会员价：undefined=保留现值；null=清除折扣 */
+  plusPriceMinor?: number | null;
 }): Promise<void> {
   const now = new Date().toISOString();
   const existing = await getDb().skinProduct.findUnique({ where: { skin_id: input.skinId } });
@@ -87,9 +100,12 @@ export async function upsertSkinProduct(input: {
         currency: input.currency,
         status: 'active',
         updated_at: now,
-        // 支付配置是运维态：调用方未显式提供时保留库内现值
+        // 支付/运营配置是运维态：调用方未显式提供时保留库内现值
         ...(input.provider !== undefined ? { provider: input.provider } : {}),
         ...(input.storeProductIds !== undefined ? { store_product_ids: storeProductIds } : {}),
+        ...(input.availableFrom !== undefined ? { available_from: input.availableFrom } : {}),
+        ...(input.availableUntil !== undefined ? { available_until: input.availableUntil } : {}),
+        ...(input.plusPriceMinor !== undefined ? { plus_price_minor: input.plusPriceMinor } : {}),
       },
     });
     return;
@@ -107,6 +123,9 @@ export async function upsertSkinProduct(input: {
       currency: input.currency,
       status: 'active',
       provider: input.provider ?? 'store',
+      available_from: input.availableFrom ?? null,
+      available_until: input.availableUntil ?? null,
+      plus_price_minor: input.plusPriceMinor ?? null,
       created_at: now,
       updated_at: now,
     },

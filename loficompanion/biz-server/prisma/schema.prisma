@@ -223,19 +223,26 @@ model StudyRoomMessage {
 // 商品行：价格/SKU/权益键是商店目录与门禁依据。provider 是业务启用标识
 //（'mock'=模拟支付仅开发；'store'=原生商店 IAP，验证按客户端平台分流）。
 model SkinProduct {
-  id                String @id
-  skin_id           String @map("skin_id")
+  id                String  @id
+  skin_id           String  @map("skin_id")
   slug              String
-  skin_name         String @map("skin_name")
-  access_type       String @default("paid") @map("access_type")
-  entitlement_key   String @map("entitlement_key")
-  store_product_ids String @default("{}") @map("store_product_ids")
-  price_minor       Int    @map("price_minor")
-  currency          String @default("USD")
-  status            String @default("active")
-  provider          String @default("store")
-  created_at        String @map("created_at")
-  updated_at        String @map("updated_at")
+  skin_name         String  @map("skin_name")
+  access_type       String  @default("paid") @map("access_type")
+  entitlement_key   String  @map("entitlement_key")
+  store_product_ids String  @default("{}") @map("store_product_ids")
+  price_minor       Int     @map("price_minor")
+  currency          String  @default("USD")
+  status            String  @default("active")
+  provider          String  @default("store")
+  // 限时发售窗口（ISO 字符串；可空=常态无窗口）。客户端负责窗口内徽标/
+  // 窗外隐藏——目录永远返回全部 active 商品（过期剔除会破坏详情页 owned 判定）
+  available_from    String? @map("available_from")
+  available_until   String? @map("available_until")
+  // Plus 会员价（分；可空=无折扣 SKU）。实际选中 plus storeProductId 时
+  // 记入订单 amount_minor；双 SKU 同 entitlement key
+  plus_price_minor  Int?    @map("plus_price_minor")
+  created_at        String  @map("created_at")
+  updated_at        String  @map("updated_at")
 
   @@unique([skin_id])
   @@map("skin_products")

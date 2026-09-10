@@ -32,7 +32,9 @@
  *     { "state": "focusing", "posterUrl": "focusing.png", "focalPointX": 0.5, "focalPointY": 0.38, "durationMs": 4000 }
  *   ]
  * }
- * accessType=paid 时可带 "priceMinor"（分）与 "entitlementKey"。
+ * accessType=paid 时可带 "priceMinor"（分）与 "entitlementKey"；可选
+ * "availableFrom"/"availableUntil"（ISO，限时发售窗口）与 "plusPriceMinor"
+ * （分，Plus 会员价——须先在 ASC/Play 配好 <SKU>.plus 折扣商品再开窗口）。
  */
 
 const BASE = (process.env.BIZ_BASE_URL ?? 'https://lofi-biz.zhongbei.tech').replace(/\/+$/, '');
@@ -144,9 +146,14 @@ if (accessType === 'paid') {
   publishBody.currency = manifest.currency;
   publishBody.entitlementKey = manifest.entitlementKey;
   // 支付配置透传（auth 商品行 upsert 会显式覆盖）：provider 'store'=原生 IAP；
-  // storeProductIds 平台 SKU 映射（manifest 顶层 provider/storeProductIds 可选携带）
+  // storeProductIds 平台 SKU 映射（manifest 顶层 provider/storeProductIds 可选携带；
+  // plusApple/plusGoogle=Plus 会员价 SKU 变体，双 SKU 同 entitlement key）
   if (manifest.provider !== undefined) publishBody.provider = manifest.provider;
   if (manifest.storeProductIds !== undefined) publishBody.storeProductIds = manifest.storeProductIds;
+  // 限时窗口与 Plus 价透传（null 显式清除窗口/折扣）
+  if (manifest.availableFrom !== undefined) publishBody.availableFrom = manifest.availableFrom;
+  if (manifest.availableUntil !== undefined) publishBody.availableUntil = manifest.availableUntil;
+  if (manifest.plusPriceMinor !== undefined) publishBody.plusPriceMinor = manifest.plusPriceMinor;
 }
 if (DRY_RUN) {
   console.log('DRY_RUN：跳过发布。manifest 结构校验通过。');

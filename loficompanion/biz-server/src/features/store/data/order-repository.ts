@@ -18,6 +18,8 @@ export interface InsertSkinOrderInput {
   amountMinor: number;
   currency: string;
   provider: string;
+  /** 实际选中的商店 SKU（Plus 折扣单为 plus 变体；缺省空串=mock 回显商品 id） */
+  storeProductId?: string;
 }
 
 /** 幂等插入：同 (user, idempotencyKey) 返回既有订单（同键同单）。 */
@@ -37,6 +39,7 @@ export async function insertSkinOrderIfAbsent(input: InsertSkinOrderInput): Prom
         amount_minor: input.amountMinor,
         currency: input.currency,
         provider: input.provider,
+        store_product_id: input.storeProductId ?? '',
         status: 'pending',
         created_at: new Date().toISOString(),
       },

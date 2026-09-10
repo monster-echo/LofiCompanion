@@ -1,6 +1,8 @@
-import { S3Client, HeadBucketCommand, CreateBucketCommand, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, HeadBucketCommand, CreateBucketCommand, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { ApiError } from '@/lib/http';
+// ApiError 取独立模块（http.ts 顶层 import next/server——node 测试/WS 导入链
+// 不能加载任何 Next API，见 apiError.ts 头注释）
+import { ApiError } from '@/lib/apiError';
 
 // 实现无关的 S3 适配器（搬迁自 loficompanion/server src/server/storage.ts，
 // biz 采用单桶模式）：对象存储可为 MinIO/腾讯 COS/阿里 OSS/Cloudflare R2/AWS
@@ -149,4 +151,30 @@ export async function signReadUrl(key: string, expiresIn = 3600): Promise<string
   if (PUBLIC_BASE) return `${PUBLIC_BASE}/${bucketForApp()}/${key}`;
   const command = new GetObjectCommand({ Bucket: bucketForApp(), Key: key });
   return getSignedUrl(client(), command, { expiresIn });
+}
+
+// ── 服务端对象读写（缩略图管线专用；客户端资产一律 presigned 直传）────────
+
+// 对象在位判定。任何失败（404/网络/未配置）都按缺失处理——调用方对「缺失」
+// 的动作要么是回落原图（读取路径），要么是重新生成（发布/回填路径），均安全。
+export async function objectExists(key: string): Promise<boolean> {
+  try {
+    await client().send(new HeadObjectCommand({ Bucket: bucketForApp(), Key: key }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function getObjectBuffer(key: string): Promise<Buffer> {
+  const result = await client().send(new GetObjectCommand({ Bucket: bucketForApp(), Key: key }));
+  const bytes = await result.Body?.transformToByteArray();
+  if (!bytes) throw new Error(`对象读取失败（空 Body）: ${key}`);
+  return Buffer.from(bytes);
+}
+
+export async function putObjectBuffer(key: string, body: Buffer, contentType: string): Promise<void> {
+  const bucket = bucketForApp();
+  await ensureBucket(bucket);
+  await client().send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }));
 }

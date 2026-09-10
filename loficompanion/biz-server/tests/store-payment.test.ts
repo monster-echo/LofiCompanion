@@ -77,6 +77,9 @@ describe('resolveStoreProductId', () => {
     currency: 'USD',
     status: 'active',
     provider: 'store',
+    availableFrom: null,
+    availableUntil: null,
+    plusPriceMinor: null,
     ...overrides,
   });
 

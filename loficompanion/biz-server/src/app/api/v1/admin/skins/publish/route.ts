@@ -17,6 +17,11 @@ const publishSchema = z.object({
   // 为平台 SKU 映射（apple/google/hms），ASC/Play 商品就绪后重发布即激活 IAP。
   provider: z.enum(['mock', 'store', 'apple', 'google', 'hms']).optional(),
   storeProductIds: z.record(z.string().max(8), z.string().min(1).max(200)).optional(),
+  // 限时发售窗口（ISO datetime；nullish 区分「未传=保留现值」与「null=清除」）；
+  // Plus 会员价（分，仅 paid 且必须 < priceMinor——业务校验在 publishSkin）
+  availableFrom: z.string().datetime().nullish(),
+  availableUntil: z.string().datetime().nullish(),
+  plusPriceMinor: z.number().int().positive().nullish(),
 });
 
 // POST /api/v1/admin/skins/publish —— 皮肤发布（免审核发新皮肤的写入通道）。

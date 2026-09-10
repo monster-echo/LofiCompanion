@@ -1,11 +1,15 @@
 import { Prisma } from '@prisma/client';
-import { ApiError } from '@/lib/http';
+// ApiError 取独立模块（http.ts 顶层 import next/server——node 测试/WS 导入链
+// 不能加载任何 Next API，见 apiError.ts 头注释）
+import { ApiError } from '@/lib/apiError';
 import { getDb } from '@/db';
-import { AUTH_BASE_URL, getAppId } from '@/env';
+import { getAppId } from '@/env';
 import type { AdminScope } from '@/lib/admin-auth';
 import { signUpload } from './storage';
+import { ensureSkinThumbs } from './thumbs';
 import { upsertSkinProduct } from '@/features/store/data/product-repository';
-import { listActiveSkinEntitlementKeys } from '@/features/store/data/entitlement-service';
+import { listUsableSkinEntitlementKeys } from '@/features/store/data/entitlement-service';
+import { fetchMembershipEntitlementKeys } from '@/features/store/data/membership-client';
 
 // 皮肤目录数据访问 + 发布服务（Prisma 搬迁自 loficompanion/server
 // skin-repository / skin-publish-service，docs/04 §3、P0-B/P1-A）：
@@ -81,10 +85,16 @@ export async function listPublishedSkins(): Promise<SkinSummary[]> {
   });
 }
 
-// 公开主题缩略图（GET /api/v1/skins/{id}/poster 用）：已发布且过审皮肤的
-// ready 态 poster objectKey。海报 objectKey 本就随公开目录下发，属营销资产，
-// 不走权益门禁；仅限已发布皮肤，未发布/未过审/无海报一律 null（404）。
-export async function getPublishedSkinPoster(skinIdOrSlug: string): Promise<string | null> {
+// 公开营销资产（GET /api/v1/skins/{id}/poster 与 /video 用）：已发布且过审
+// 皮肤的指定状态 poster/video objectKey。objectKey 本就随公开目录/manifest
+// 下发，属营销资产，不走权益门禁；仅限已发布皮肤，未发布/未过审一律 null
+// （404）。海报按态缺失回落 ready（客户端四态预览全兜底）；视频不回落——
+// 无该态视频就 404，客户端退回海报。
+export async function getPublishedSkinStateAsset(
+  skinIdOrSlug: string,
+  state: string | null,
+  field: 'posterUrl' | 'videoUrl',
+): Promise<string | null> {
   const db = getDb();
   const skin = await db.skin.findFirst({
     where: {
@@ -99,13 +109,27 @@ export async function getPublishedSkinPoster(skinIdOrSlug: string): Promise<stri
   });
   if (!manifest || typeof manifest.manifest !== 'string') return null;
   const parsed = JSON.parse(manifest.manifest) as {
-    states?: Array<{ state?: string; posterUrl?: string }>;
+    states?: Array<Record<string, unknown>>;
   };
-  const posterKey = parsed.states?.find((state) => state.state === 'ready')?.posterUrl ?? null;
-  if (!posterKey || /^https?:/i.test(posterKey) || /^s3:\/\//i.test(posterKey)) return null;
+  const keyOf = (entry: Record<string, unknown>): string | null =>
+    typeof entry[field] === 'string' && entry[field].length > 0 ? (entry[field] as string) : null;
+  const requested = state === null ? null : parsed.states?.find((entry) => entry.state === state);
+  const rawKey =
+    (requested !== undefined && requested !== null ? keyOf(requested) : null)
+    // 海报回落 ready：请求态不存在/该态无海报时保证有图可显
+    ?? (field === 'posterUrl'
+      ? parsed.states?.find((entry) => entry.state === 'ready')?.posterUrl ?? null
+      : null);
+  if (typeof rawKey !== 'string') return null;
+  if (!rawKey || /^https?:/i.test(rawKey) || /^s3:\/\//i.test(rawKey)) return null;
   // 与发布通道同级纪律：只签本租户前缀对象（堵租户前缀绕过）
-  if (!posterKey.toLowerCase().startsWith(`${getAppId().toLowerCase()}/`)) return null;
-  return posterKey;
+  if (!rawKey.toLowerCase().startsWith(`${getAppId().toLowerCase()}/`)) return null;
+  return rawKey;
+}
+
+/** ready 态海报（目录/卡片兜底的历史入口，行为不变）。 */
+export async function getPublishedSkinPoster(skinIdOrSlug: string): Promise<string | null> {
+  return getPublishedSkinStateAsset(skinIdOrSlug, 'ready', 'posterUrl');
 }
 
 export async function getCurrentManifest(
@@ -152,32 +176,15 @@ async function assertSkinEntitlement(
   const entitlementKey = accessType === 'premium'
     ? 'catalog.premium.active'
     : `skin.official.${slug}`;
-  // P4 商店域迁入：paid 的所有权数据在本地 skin_entitlements；premium 是会员
-  // 域权益，仍转发 auth 查询。
+  // P4 商店域迁入：paid 的所有权数据在本地 skin_entitlements（可用键集 =
+  // 拥有键 + 窗口内试用键——试用用户可拉清单，商店「已拥有」语义不含试用）；
+  // premium 是会员域权益，仍转发 auth 查询。
   const keys = accessType === 'paid'
-    ? await listActiveSkinEntitlementKeys(auth.userId)
-    : await fetchUserEntitlementKeys(auth.authorization);
+    ? await listUsableSkinEntitlementKeys(auth.userId, new Date().toISOString())
+    : await fetchMembershipEntitlementKeys(auth.authorization);
   if (!keys.includes(entitlementKey)) {
     throw new ApiError(403, 'SKIN_NOT_ENTITLED', `尚未获得皮肤权益：${entitlementKey}`);
   }
-}
-
-/** 转发用户 Bearer 到 auth 权益查询（aud=JWT_AUDIENCE 的用户 token 原样转发）。 */
-async function fetchUserEntitlementKeys(authorization: string): Promise<string[]> {
-  let response: Response;
-  try {
-    response = await fetch(`${AUTH_BASE_URL}/api/v1/membership/entitlements`, {
-      headers: { authorization },
-      cache: 'no-store',
-    });
-  } catch {
-    throw new ApiError(502, 'ENTITLEMENTS_UNAVAILABLE', '权益服务暂不可用', true);
-  }
-  if (!response.ok) {
-    throw new ApiError(502, 'ENTITLEMENTS_UNAVAILABLE', '权益服务暂不可用', true);
-  }
-  const body = (await response.json()) as { data?: { keys?: string[] } };
-  return body.data?.keys ?? [];
 }
 
 // ── 发布服务（原 skin-publish-service）────────────────────────────────────
@@ -197,14 +204,21 @@ export interface PublishSkinInput {
   /** 支付启用标识（auth 商品行）：'mock'=模拟支付；'store'=原生商店 IAP
    *  （真实适配器由 auth verify 按客户端平台分流）；缺省 mock */
   provider?: 'mock' | 'store' | 'apple' | 'google' | 'hms';
-  /** 平台商店 SKU 映射（apple/google/hms）；auth upsert 未提供时保留现值 */
+  /** 平台商店 SKU 映射（apple/google/hms/plusApple/plusGoogle）；upsert 未提供时保留现值 */
   storeProductIds?: Record<string, string>;
+  /** 限时发售窗口（ISO）；undefined=保留现值、null=显式清除 */
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  /** Plus 会员价（分）；仅 paid、必须 < priceMinor；null=清除折扣 */
+  plusPriceMinor?: number | null;
 }
 
 export interface PublishSkinResult {
   skinId: string;
   slug: string;
   manifestVersion: number;
+  /** 卡片缩略图生成结果（best-effort；failed>0 可经管理端回填补齐） */
+  thumbs: { generated: number; exists: number; failed: number };
 }
 
 interface ManifestStateLike {
@@ -278,6 +292,43 @@ function validateInput(input: PublishSkinInput): void {
   if (input.accessType === 'paid' && (input.priceMinor ?? 0) <= 0) {
     throw new ApiError(400, 'INVALID_PRICE', 'paid 皮肤必须提供正的 priceMinor（分）');
   }
+  validateAvailabilityWindow(input);
+}
+
+/**
+ * 限时窗口与 Plus 会员价纪律（纯函数，node 可测）：
+ *  - availableFrom/availableUntil 必须可解析为 ISO 时间，且 from < until；
+ *  - plusPriceMinor 仅 paid 有效（free/premium 携带即拒），且必须 < priceMinor
+ *    （折扣 SKU 无意义/倒挂都会造成显示价与扣款价错位）。
+ */
+export function validateAvailabilityWindow(input: {
+  accessType: string;
+  priceMinor?: number;
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  plusPriceMinor?: number | null;
+}): void {
+  if (input.availableFrom != null || input.availableUntil != null) {
+    const fromMs = input.availableFrom != null ? Date.parse(input.availableFrom) : null;
+    const untilMs = input.availableUntil != null ? Date.parse(input.availableUntil) : null;
+    if (input.availableFrom != null && Number.isNaN(fromMs)) {
+      throw new ApiError(400, 'INVALID_AVAILABILITY', `availableFrom 不是可解析的 ISO 时间: ${input.availableFrom}`);
+    }
+    if (input.availableUntil != null && Number.isNaN(untilMs)) {
+      throw new ApiError(400, 'INVALID_AVAILABILITY', `availableUntil 不是可解析的 ISO 时间: ${input.availableUntil}`);
+    }
+    if (fromMs !== null && untilMs !== null && fromMs >= untilMs) {
+      throw new ApiError(400, 'INVALID_AVAILABILITY', 'availableFrom 必须早于 availableUntil');
+    }
+  }
+  if (input.plusPriceMinor != null) {
+    if (input.accessType !== 'paid') {
+      throw new ApiError(400, 'INVALID_AVAILABILITY', 'plusPriceMinor 仅 paid 皮肤有效');
+    }
+    if (input.plusPriceMinor <= 0 || input.plusPriceMinor >= (input.priceMinor ?? 0)) {
+      throw new ApiError(400, 'INVALID_AVAILABILITY', 'plusPriceMinor 必须为正且小于 priceMinor');
+    }
+  }
 }
 
 /** 海报直传：发布脚本先调这个拿 presigned PUT（admin 作用域的租户/环境前缀）。 */
@@ -313,6 +364,9 @@ async function registerPaidProduct(
     ...(input.storeProductIds !== undefined
       ? { storeProductIds: input.storeProductIds }
       : {}),
+    ...(input.availableFrom !== undefined ? { availableFrom: input.availableFrom } : {}),
+    ...(input.availableUntil !== undefined ? { availableUntil: input.availableUntil } : {}),
+    ...(input.plusPriceMinor !== undefined ? { plusPriceMinor: input.plusPriceMinor } : {}),
   });
 }
 
@@ -325,7 +379,7 @@ export async function publishSkin(
   void scope;
   // manifest 内的 slug/id 以服务端为准改写，客户端伪造的 id 不入库
   const now = new Date().toISOString();
-  let result: PublishSkinResult;
+  let result: Omit<PublishSkinResult, 'thumbs'>;
   try {
     result = await getDb().$transaction(async (tx) => {
       const skinId = `skin-${input.slug}`;
@@ -407,8 +461,12 @@ export async function publishSkin(
     await registerPaidProduct(result.skinId, input);
   }
 
+  // 卡片缩略图（best-effort）：事务提交后逐状态生成 .thumb.jpg。失败不回滚
+  // 发布（读取端缺 thumb 自动回落原图，可经 POST /admin/skins/thumbs 回填）。
+  const thumbs = await ensureSkinThumbs(input.manifest);
+
   void actor;
-  return result;
+  return { ...result, thumbs };
 }
 
 /** 发布脚本 verify 用：全量清单（含未发布），带当前版本号。 */

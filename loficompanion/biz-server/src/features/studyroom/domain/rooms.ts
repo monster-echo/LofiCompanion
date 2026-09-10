@@ -1,6 +1,7 @@
-// 自习室房间目录：房间 = 内置皮肤主题，id 与 RN 侧皮肤 slug 一致
-// （react-native/src/features/studyroom/domain/rooms.ts 的孪生定义；
-// 仓库无共享包，两侧需同步维护）。
+// 自习室房间目录：房间 = 内置皮肤主题，id 与 RN 侧皮肤 slug 一致。
+// 唯一数据源 = react-native/assets/study-rooms/*/room.yaml（生成
+// rooms.generated.ts）；本清单为校验端孪生，由 scripts/check-rooms.mjs
+// （挂 react-native CI）比对 id 集合与顺序，不一致即红。
 
 export const STUDY_ROOM_IDS = [
   'rainy-study-room',

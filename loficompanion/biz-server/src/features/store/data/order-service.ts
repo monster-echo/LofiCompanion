@@ -13,6 +13,10 @@ import {
 } from './order-repository';
 import { grantSkinEntitlementInTx, hasActiveSkinEntitlement } from './entitlement-service';
 import {
+  fetchMembershipEntitlementKeys,
+  isPlusKeys,
+} from './membership-client';
+import {
   paymentProviderForPlatform,
   storeKeyForPlatform,
 } from './payment-adapters';
@@ -52,15 +56,34 @@ async function findSkinIdOrSlug(skinIdOrSlug: string): Promise<{ id: string; slu
 
 // 平台商店 SKU 解析：native provider 必须已配置映射，mock 回退商品 id
 //（MockPaymentProvider 票据只回显 productId，验证不看映射）。
-export function resolveStoreProductId(product: SkinProductView, platform: ClientPlatform): string {
+// Plus 折扣（opts.plus）：storeProductIds 配置了 plusApple/plusGoogle 变体时
+// 优先选中——双 SKU 同 entitlement key；未配置回落基础 SKU（折扣是增益不是
+// 门槛，Plus 用户不因缺折扣 SKU 而买不了）。
+export function resolveStoreProductId(
+  product: SkinProductView,
+  platform: ClientPlatform,
+  opts?: Readonly<{ plus?: boolean }>,
+): string {
   if (product.provider === 'mock') return product.id;
   const storeKey = storeKeyForPlatform(platform);
   if (!storeKey) throw new ApiError(404, 'PRODUCT_NOT_MAPPED', '当前平台不支持商店内购');
-  const storeProductId = product.storeProductIds[storeKey];
+  const plusVariant = opts?.plus === true ? product.storeProductIds[`plus${storeKey[0].toUpperCase()}${storeKey.slice(1)}`] : undefined;
+  const storeProductId = plusVariant ?? product.storeProductIds[storeKey];
   if (!storeProductId) {
     throw new ApiError(404, 'PRODUCT_NOT_MAPPED', `皮肤商品未配置 ${storeKey} 商品 ID`);
   }
   return storeProductId;
+}
+
+// 订单金额口径（与 resolveStoreProductId 同一 plus 判定结果配套调用）：
+// 实际选中 plus SKU 时取 plusPriceMinor（配置缺失兜底原价），否则原价。
+export function resolvePriceMinor(
+  product: SkinProductView,
+  opts?: Readonly<{ plus?: boolean }>,
+): number {
+  return opts?.plus === true && product.plusPriceMinor != null
+    ? product.plusPriceMinor
+    : product.priceMinor;
 }
 
 function toSkinOrderView(
@@ -75,7 +98,8 @@ function toSkinOrderView(
     skinId: product.skinId,
     slug,
     entitlementKey: product.entitlementKey,
-    priceMinor: product.priceMinor,
+    // 订单行金额是真源（Plus 折扣单 = plus 价；历史单不受目录调价影响）
+    priceMinor: order.amount_minor,
     currency: product.currency,
     status: order.status as SkinOrderStatus,
     provider: order.provider,
@@ -91,9 +115,13 @@ export type CreateSkinOrderInput = Readonly<{
   skinId: string;
   idempotencyKey: string;
   platform: ClientPlatform;
+  /** 用户 Bearer（Plus 折扣判定用）；缺失/查询失败一律按非 Plus 原价下单 */
+  authorization: string;
 }>;
 
 // 幂等下单：同 (user, idempotencyKey) 返回同一订单；免费皮肤/无商品/下架均拒绝。
+// Plus 折扣：auth 权益查询失败降级非 Plus（原价）——下单是关键路径，不因
+// 会员服务抖动失败；实际选中 SKU/金额落订单行（查单/审计不靠目录重算）。
 export async function createSkinOrder(input: CreateSkinOrderInput): Promise<SkinOrderView> {
   const skin = await findSkinIdOrSlug(input.skinId);
   if (!skin) throw new ApiError(404, 'SKIN_NOT_FOUND', '皮肤不存在');
@@ -102,16 +130,27 @@ export async function createSkinOrder(input: CreateSkinOrderInput): Promise<Skin
   if (product.status !== 'active') {
     throw new ApiError(422, 'SKIN_PRODUCT_INACTIVE', '该皮肤商品已下架');
   }
-  const storeProductId = resolveStoreProductId(product, input.platform);
+  let plus = false;
+  if (input.authorization) {
+    try {
+      plus = isPlusKeys(await fetchMembershipEntitlementKeys(input.authorization));
+    } catch (error) {
+      // 降级原价；留痕防客诉黑洞（「我是 Plus 为什么扣原价」）
+      console.warn('[skin-order] plus entitlement lookup failed, fallback to base price', error);
+    }
+  }
+  const storeProductId = resolveStoreProductId(product, input.platform, { plus });
+  const amountMinor = resolvePriceMinor(product, { plus });
 
   const order = await insertSkinOrderIfAbsent({
     userId: input.userId,
     skinId: product.skinId,
     entitlementKey: product.entitlementKey,
     idempotencyKey: input.idempotencyKey,
-    amountMinor: product.priceMinor,
+    amountMinor,
     currency: product.currency,
     provider: product.provider,
+    storeProductId: product.provider === 'mock' ? '' : storeProductId,
   });
   const entitled = await hasActiveSkinEntitlement(input.userId, product.entitlementKey);
   return toSkinOrderView(order, product, skin.slug, storeProductId, entitled);
