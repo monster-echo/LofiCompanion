@@ -69,7 +69,8 @@ import { DetailPreviewVideo } from './DetailPreviewVideo';
  * 流未上线，点击给「即将上线」反馈——偏离已记录）；已拥有未物化 →「下载
  * 资源包并使用」（资源包按需模型：CTA 原位变内联进度条，完成自动选入回
  * 首页）；已物化 →「立即使用」。购买 pending 防重复点击；中断（网络/进程
- * 终止）后凭本地 lastOrderId 记录在下次进入时轮询查单恢复终态（docs/05 §5）。
+ * 终止）后凭本地 lastOrderId 记录在下次进入时轮询查单恢复终态（docs/05 §5）；
+ * 记录按下单账号隔离，查单 404（跨账号残留死单）视为终态清除。
  */
 
 const PREVIEW_HEIGHT = 390;
@@ -160,9 +161,9 @@ export function SkinDetailScreen() {
 
   // —— 中断恢复（docs/05 §5）：进入详情时查本地 lastOrderId，轮询查单恢复终态
   const runRecovery = useCallback(async () => {
-    if (!signedIn) return;
+    if (!signedIn || !user) return;
     let orderId: string | null = null;
-    try { orderId = await pendingOrders.load(skinSlug); } catch { return; }
+    try { orderId = await pendingOrders.load(skinSlug, user.id); } catch { return; }
     if (!orderId) return;
     setCtaPhase('recovering');
     showToast(t('recoveryFound'), 'info');
@@ -187,20 +188,30 @@ export function SkinDetailScreen() {
           setCtaPhase('idle');
           return;
         }
-      } catch { /* 网络/服务波动，继续下一轮 */ }
+      } catch (error) {
+        // 404 = 订单不存在或不属于当前账号（跨账号/跨环境的本地残留）：
+        // 恢复无意义，清记录终止——否则每次进页无限轮询同一死单
+        if (error instanceof ApiClientError && error.status === 404) {
+          await pendingOrders.clear(skinSlug).catch(() => undefined);
+          if (mountedRef.current) setCtaPhase('idle');
+          return;
+        }
+        /* 网络/服务波动，继续下一轮 */
+      }
     }
     // 轮询到上限仍非终态：保留本地记录，下次进入继续恢复
     if (mountedRef.current) {
       showToast(t('recoveryStuck'), 'info');
       setCtaPhase('idle');
     }
-  }, [showToast, signedIn, skinSlug]);
+  }, [showToast, signedIn, user, skinSlug]);
 
   useEffect(() => { void runRecovery(); }, [runRecovery]);
 
   // —— 购买流（对齐 useDataActions.purchase 范式）：幂等下单 → 记录 lastOrderId →
   // 按订单 provider 选 mock/原生 IAP → 验证 → 权益入账后 finish → 解锁反馈
   const confirmPurchase = useCallback(async (target: SkinProductRemote) => {
+    if (!user) return; // 入口（CTA/sheet）已强制登录，此处兜底收窄类型
     setSheetOpen(false);
     setCtaPhase('purchasing');
     // 皮肤购买漏斗（本路径绕过 run()，此前购买失败/取消在遥测里零痕迹）
@@ -212,7 +223,7 @@ export function SkinDetailScreen() {
         target.skinId,
         newSkinOrderIdempotencyKey(),
       );
-      await pendingOrders.save(skinSlug, order.orderId);
+      await pendingOrders.save(skinSlug, order.orderId, user.id);
       const provider = createPaymentProvider(order);
       let result;
       try {
@@ -263,7 +274,7 @@ export function SkinDetailScreen() {
     } finally {
       setCtaPhase('idle');
     }
-  }, [showToast, skinSlug, trials]);
+  }, [showToast, user, skinSlug, trials]);
 
   // 恢复购买：模板 restore 端点按 active entitlements 返回键（皮肤键自然包含）
   const restorePurchases = useCallback(async () => {
