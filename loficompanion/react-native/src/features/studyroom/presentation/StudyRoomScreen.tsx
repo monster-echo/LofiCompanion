@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useSyncExternalStore } from "react";
 import {
   Image,
   Platform,
@@ -16,6 +16,7 @@ import { PressableScale } from "../../../design-system/PressableScale";
 import {
   mediaBorderSoft,
   mediaGlassControl,
+  mediaGlassHeavy,
 } from "../../../design-system/derivedTokens";
 import { radii, space, type, type ThemeColors } from "../../../theme/tokens";
 import { useThemeStyles } from "../../../theme/useThemeStyles";
@@ -24,21 +25,24 @@ import { stateAsset } from "../../skins/domain/resolve";
 import { skinPosterUrl } from "../../../data/apiClient";
 import { findSkinManifestByIdOrSlug } from "../../skins/domain/registry";
 import { useFocus } from "../../focus/application/FocusStore";
+import { telemetry } from "../../../telemetry/Telemetry";
 import { fetchRoomCounts } from "../data/roomsClient";
 import { STUDY_ROOMS, roomName, type StudyRoomDef } from "../domain/rooms";
+import { enterRoomPack } from "../application/roomPackGate";
 
 /**
  * S-自习室 Tab 根页：公开自习室列表（先选房、后进入）。房间 = 皮肤主题，
  * 海报即皮肤 ready 态（从皮肤注册表解析：内置默认 + 已拉取缓存的云端皮肤，
  * 未拉取过的房间显示主题化占位）；在线人数来自 WS 服务的内存态（GET /rooms，
- * 聚焦刷新 + 15s 轮询兜底，无需建连）。点卡片进入 studyroom.active
- * 全屏房间——视频与 lofi 声音只在房间内出现。
+ * 聚焦刷新 + 15s 轮询兜底，无需建连）。点卡片经进房素材闸门（roomPackGate）
+ * 进入 studyroom.active 全屏房间——包未落盘先下载（卡片内联进度），未购付费
+ * /失败落海报兜底进房；视频与 lofi 声音只在房间内出现。
  */
 
 const COUNTS_POLL_MS = 15_000;
 
 export function StudyRoomScreen() {
-  const { navigate } = useApp();
+  const { navigate, showToast } = useApp();
   const { locale, palette } = usePreferences();
   const styles = useThemeStyles(makeStyles);
   const { t } = useTranslation("studyroom");
@@ -48,6 +52,18 @@ export function StudyRoomScreen() {
     () => fetchRoomCounts(),
     [],
   );
+  // 进房素材闸门：房间包未落盘时先下载再进（免费/已购/试用中都能拉全）。
+  // preparingRoom 驱动卡片内联进度（真源是 pack controller，与详情页同款订阅）；
+  // gated（未购付费）/失败落海报兜底进房——房间始终可进。
+  const [preparingRoom, setPreparingRoom] = useState<string | null>(null);
+  const packStatus = useSyncExternalStore(
+    focus.pack.subscribe,
+    () => (preparingRoom ? focus.pack.statusFor(preparingRoom) : null),
+  );
+  const packPercent =
+    packStatus && packStatus.phase === "downloading"
+      ? Math.round(packStatus.ratio * 100)
+      : 0;
 
   useEffect(() => {
     // 后台静默轮询：只更新在线人数数字（数据未变不重渲染），不亮下拉刷新
@@ -62,6 +78,30 @@ export function StudyRoomScreen() {
   const countFor = (room: StudyRoomDef): number | null => {
     if (state.status !== "ready") return null;
     return state.data.find((row) => row.roomId === room.id)?.onlineCount ?? 0;
+  };
+
+  const enterRoom = (room: StudyRoomDef) => {
+    if (preparingRoom) return; // 下载中不另起进房（busy 互斥在闸门兜底）
+    if (findSkinManifestByIdOrSlug(focus.skins, room.id) !== undefined) {
+      navigate("studyroom.active", { roomId: room.id });
+      return;
+    }
+    setPreparingRoom(room.id);
+    telemetry.track("studyroom_pack_gate", { room_id: room.id });
+    void enterRoomPack({
+      slug: room.id,
+      hasManifest: false,
+      downloadPack: focus.actions.downloadSkinPack,
+    }).then((outcome) => {
+      setPreparingRoom((current) => (current === room.id ? null : current));
+      if (outcome === "busy") {
+        showToast(t("packBusy"), "info");
+        return;
+      }
+      if (outcome === "error") showToast(t("packFailedEnter"), "error");
+      // ready/gated 都进房：gated 的解锁引导交给房间页锁提示 pill
+      navigate("studyroom.active", { roomId: room.id });
+    });
   };
 
   return (
@@ -104,12 +144,11 @@ export function StudyRoomScreen() {
               <PressableScale
                 key={room.id}
                 accessibilityRole="button"
+                accessibilityState={{ busy: preparingRoom === room.id }}
                 accessibilityLabel={`${t("enterRoom", { name })}，${
                   count === null ? "" : t("onlineNow", { n: count })
                 }`}
-                onPress={() =>
-                  navigate("studyroom.active", { roomId: room.id })
-                }
+                onPress={() => enterRoom(room)}
                 reducedMotion={focus.reducedMotion}
                 style={styles.card}
               >
@@ -124,6 +163,21 @@ export function StudyRoomScreen() {
                 ) : (
                   <View style={[imageFill, styles.cardPlaceholder]} />
                 )}
+                {preparingRoom === room.id ? (
+                  <View style={styles.packOverlay} pointerEvents="none">
+                    <View style={styles.packProgressTrack}>
+                      <View
+                        style={[
+                          styles.packProgressFill,
+                          { width: `${packPercent}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.packOverlayText}>
+                      {t("packPreparing", { percent: packPercent })}
+                    </Text>
+                  </View>
+                ) : null}
                 <View style={styles.cardBody}>
                   <View style={styles.nameChip}>
                     <Text style={styles.cardName}>{name}</Text>
@@ -212,6 +266,32 @@ const makeStyles = (p: ThemeColors) =>
     },
     cardPlaceholder: {
       backgroundColor: p.surfaceRaised,
+    },
+    // 进房素材下载中的卡片内联态（重纱压在海报上，进度条+文案）
+    packOverlay: {
+      ...absoluteFill,
+      backgroundColor: mediaGlassHeavy,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: space.x2,
+      paddingHorizontal: space.x5,
+    },
+    packProgressTrack: {
+      alignSelf: "stretch",
+      height: 4,
+      borderRadius: radii.round,
+      backgroundColor: mediaGlassControl,
+      overflow: "hidden",
+    },
+    packProgressFill: {
+      height: "100%",
+      borderRadius: radii.round,
+      backgroundColor: p.success,
+    },
+    packOverlayText: {
+      ...type.label,
+      color: p.onMedia,
+      fontVariant: ["tabular-nums"],
     },
     cardBody: {
       ...absoluteFill,

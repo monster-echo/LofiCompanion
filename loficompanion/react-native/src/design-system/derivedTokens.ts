@@ -42,6 +42,9 @@ export const mediaGlassControl = withAlpha(primitives.night[950], 0.5);
 /** 轻纱档：图像横幅上的轻覆盖（比控件档更透，只做可读性垫底） */
 export const mediaGlassSoft = withAlpha(primitives.night[950], 0.34);
 
+/** 重纱档：卡片级临时压暗（进房素材下载中，进度可读性优先于透出海报） */
+export const mediaGlassHeavy = withAlpha(primitives.night[950], 0.72);
+
 /** 暗玻璃上的固定浅色 hairline 边框（媒体层专用，不随主题翻转） */
 export const mediaBorderSoft = withAlpha(primitives.paper[100], 0.12);
 

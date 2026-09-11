@@ -386,12 +386,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: semantic.canvasDeep,
   },
+  // Fabric 下 RCTImageComponentView 不吃「仅四边 inset 的 absolute」——海报
+  // Image 会拿不到尺寸、整层不可见（黑屏只剩房间名/锁提示 chrome）。Image
+  // 必须显式宽高（对齐 StudyRoomScreen.imageFill / ImmersiveMediaSurface 既有解法；
+  // 同款样式传给 ImmersiveMediaSurface 容器 View 时 width/height 与 inset 等价）。
   mediaFill: {
     position: 'absolute',
     left: 0,
-    right: 0,
     top: 0,
-    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   topLeft: {
     position: 'absolute',

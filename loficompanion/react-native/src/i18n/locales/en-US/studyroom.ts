@@ -33,4 +33,8 @@ export const studyroom = {
   // Poster fallback for locked themes
   themeLockedHint: "Theme locked — tap to open the store",
   themeLockedCta: "Unlock this theme in the store",
+  // Room-entry media gate (list page): fetch the pack before entering; busy stays put; failures enter with poster fallback
+  packPreparing: "Preparing room media {{percent}}%",
+  packBusy: "Another pack is downloading — try again in a moment",
+  packFailedEnter: "Couldn't fetch the media — entering with the poster view",
 } as const;

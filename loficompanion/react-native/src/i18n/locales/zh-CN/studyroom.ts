@@ -33,4 +33,8 @@ export const studyroom = {
   // 未解锁主题的海报兜底态
   themeLockedHint: '该主题尚未解锁，点击前往商店',
   themeLockedCta: '前往商店解锁主题',
+  // 进房素材闸门（列表页）：包未落盘先下载再进；busy 拒进；失败海报兜底进
+  packPreparing: '正在准备房间素材 {{percent}}%',
+  packBusy: '已有素材包在下载，请稍候再试',
+  packFailedEnter: '素材暂时没拉下来，先用海报进入',
 } as const;
