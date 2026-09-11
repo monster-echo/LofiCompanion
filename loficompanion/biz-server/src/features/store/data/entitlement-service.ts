@@ -89,6 +89,28 @@ export async function listUsableSkinEntitlementKeys(
 }
 
 /**
+ * manifest 门禁的键匹配（纯函数，node 可测）：paid 放行正式键（购买）或
+ * 窗口内试用键（listUsable 已滤过期试用）；premium 只认会员键；free 恒放行
+ * （门禁调用方已先分流）。回归背景（2026-09-11）：试用发放 skin.trial.{slug}、
+ * 门禁只比 skin.official.{slug}——字面不等导致试用用户拉清单 403、详情页
+ * 「下载资源包并使用」秒失败变「下载失败，点击重试」死局。
+ */
+export function manifestEntitlementSatisfied(input: {
+  accessType: string;
+  slug: string;
+  keys: readonly string[];
+}): boolean {
+  if (input.accessType === 'premium') {
+    return input.keys.includes('catalog.premium.active');
+  }
+  if (input.accessType === 'paid') {
+    return input.keys.includes(`skin.official.${input.slug}`)
+      || input.keys.includes(`${TRIAL_KEY_PREFIX}${input.slug}`);
+  }
+  return true;
+}
+
+/**
  * 发放试用权益（一次性）：行已存在（无论是否过期）直接返回既存行，不重置
  * 窗口——「每皮肤限试一次」由 UNIQUE(user_id, entitlement_key) 行的存在性
  * 表达。窗口过期后由调用方（trial-service）拒绝复用。

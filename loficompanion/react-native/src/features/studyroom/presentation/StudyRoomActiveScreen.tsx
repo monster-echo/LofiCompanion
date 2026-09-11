@@ -26,7 +26,7 @@ import { radii, semantic, space, type, type ThemeColors } from '../../../theme/t
 import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { getMusicController } from '../../music/data/expoAudioMusicController';
 import { telemetry } from '../../../telemetry/Telemetry';
-import { skinPosterUrl, skinStateVideoUrl } from '../../../data/apiClient';
+import { skinStatePosterUrl, skinStateVideoUrl } from '../../../data/apiClient';
 import { useMusicLibrary } from '../../music/application/useMusicLibrary';
 import { useFocus } from '../../focus/application/FocusStore';
 import { useFocusQuickPrefs } from '../../focus/presentation/focusQuickPrefs';
@@ -251,9 +251,11 @@ export function StudyRoomActiveScreen() {
             />
           ) : (
             <>
-              {/* 公开海报垫底（视频就绪前/加载失败的兜底帧）+ 预览视频流 */}
+              {/* 公开海报垫底（视频就绪前/加载失败的兜底帧）+ 预览视频流。
+                  海报必须与视频同态（displayState）——混用默认 ready 海报 +
+                  focusing 视频会在起播瞬间「画面错乱」（两个场景构图不同） */}
               <Image
-                source={{ uri: skinPosterUrl(room.id) }}
+                source={{ uri: skinStatePosterUrl(room.id, room.displayState) }}
                 style={styles.mediaFill}
                 resizeMode="cover"
               />

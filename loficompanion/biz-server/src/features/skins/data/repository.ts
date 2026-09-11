@@ -8,7 +8,7 @@ import type { AdminScope } from '@/lib/admin-auth';
 import { signUpload } from './storage';
 import { ensureSkinThumbs } from './thumbs';
 import { upsertSkinProduct } from '@/features/store/data/product-repository';
-import { listUsableSkinEntitlementKeys } from '@/features/store/data/entitlement-service';
+import { listUsableSkinEntitlementKeys, manifestEntitlementSatisfied } from '@/features/store/data/entitlement-service';
 import { fetchMembershipEntitlementKeys } from '@/features/store/data/membership-client';
 
 // 皮肤目录数据访问 + 发布服务（Prisma 搬迁自 loficompanion/server
@@ -178,11 +178,11 @@ async function assertSkinEntitlement(
     : `skin.official.${slug}`;
   // P4 商店域迁入：paid 的所有权数据在本地 skin_entitlements（可用键集 =
   // 拥有键 + 窗口内试用键——试用用户可拉清单，商店「已拥有」语义不含试用）；
-  // premium 是会员域权益，仍转发 auth 查询。
+  // premium 是会员域权益，仍转发 auth 查询。键匹配走纯函数（含试用键放行）。
   const keys = accessType === 'paid'
     ? await listUsableSkinEntitlementKeys(auth.userId, new Date().toISOString())
     : await fetchMembershipEntitlementKeys(auth.authorization);
-  if (!keys.includes(entitlementKey)) {
+  if (!manifestEntitlementSatisfied({ accessType, slug, keys })) {
     throw new ApiError(403, 'SKIN_NOT_ENTITLED', `尚未获得皮肤权益：${entitlementKey}`);
   }
 }
