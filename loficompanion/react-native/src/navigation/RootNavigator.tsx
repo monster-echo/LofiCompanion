@@ -26,7 +26,7 @@ import {
   SubscriptionTermsScreen,
   TermsOfServiceScreen,
 } from '../screens/LegalScreens';
-import { AboutScreen, NotificationsScreen, OrdersScreen } from '../screens/DataScreens';
+import { AboutScreen, NotificationsScreen } from '../screens/DataScreens';
 import { SupportHomeScreen, TicketDetailScreen } from '../screens/SupportScreens';
 import { NewTicketScreen, ProductFeedbackScreen } from '../screens/SupportFormScreens';
 import { PermissionsScreen, StorageScreen, TextSizeScreen } from '../screens/SettingsUtilityScreens';
@@ -46,6 +46,7 @@ import { RoomScreen } from '../features/achievements/presentation/RoomScreen';
 import { GroupDetailScreen } from '../features/leaderboards/presentation/GroupDetailScreen';
 import { LeaderboardRulesScreen } from '../features/leaderboards/presentation/LeaderboardRulesScreen';
 import { WeeklySettlementScreen } from '../features/leaderboards/presentation/WeeklySettlementScreen';
+import { OrderCenterScreen } from '../features/orders/presentation/OrderCenterScreen';
 
 const Stack = createNativeStackNavigator<RootParamList>();
 
@@ -247,7 +248,7 @@ export function RootNavigator() {
       <Stack.Screen name="membership.home" component={MembershipScreen} />
       <Stack.Screen name="membership.plans" component={MembershipScreen} />
       <Stack.Screen name="membership.checkout" component={CheckoutScreen} />
-      <Stack.Screen name="membership.orders" component={OrdersScreen} />
+      <Stack.Screen name="membership.orders" component={OrderCenterScreen} />
 
       <Stack.Screen name="notifications.center" component={NotificationsScreen} />
 

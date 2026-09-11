@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Linking,
@@ -20,9 +20,10 @@ import { storeSkuOf, useStorePrices } from '../payment/useStorePrices';
 import { useApp } from '../state/AppStore';
 import { useFocus } from '../features/focus/application/FocusStore';
 import { storeCardPoster, storePoster } from '../features/store/presentation/storePosters';
-import { skinPosterUrl } from '../data/apiClient';
+import { apiClient, skinPosterUrl } from '../data/apiClient';
 import { telemetry } from '../telemetry/Telemetry';
 import type { BillingPlan, MembershipTier } from '../domain/models';
+import type { Subscription } from '../payment/paymentModels';
 import { planDisplayName, tierDisplaySummary } from '../domain/membershipCopy';
 import { primitives, radii, space, type, type ThemeColors } from '../theme/tokens';
 import { useThemeStyles } from '../theme/useThemeStyles';
@@ -78,6 +79,22 @@ export function MembershipScreen() {
     ?? config.tiers[0]
     ?? null;
 
+  // 订阅状态可见化（RC 状态机消费端转译）：membership/current 的 subscription
+  // 行是唯一来源——下次续费日期 / expired 徽章。best-effort：拉取失败不挡会员页。
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  useEffect(() => {
+    if (!user) { setSubscription(null); return; }
+    let mounted = true;
+    void apiClient.membershipCurrent()
+      .then((current) => { if (mounted) setSubscription(current.subscription); })
+      .catch(() => undefined);
+    return () => { mounted = false; };
+  }, [user]);
+  const subscriptionExpired = subscription?.status === 'expired';
+  const renewDate = subscription?.status === 'active' && subscription.renewAt
+    ? new Date(subscription.renewAt).toLocaleDateString(currentLanguage())
+    : null;
+
   // 默认选中推荐等级的首个方案（设计稿：年付高亮）；用户点选后以点选为准
   const defaultPlanId = useMemo(() => {
     const rec = config.tiers.find((tier) => tier.recommended);
@@ -123,11 +140,21 @@ export function MembershipScreen() {
           <>
             <MemberCard
               tierName={memberTier?.name ?? t('memberFallbackTitle')}
-              subtitle={t('memberCardSubtitle')}
+              subtitle={renewDate
+                ? t('renewsOn', { date: renewDate })
+                : subscriptionExpired
+                  ? t('subscriptionExpiredHint')
+                  : t('memberCardSubtitle')}
+              expired={subscriptionExpired}
               entitlements={displayTier?.entitlements ?? []}
               summary={displayTier ? tierDisplaySummary(displayTier, t) : ''}
             />
             <View style={localStyles.memberActions}>
+              {subscriptionExpired ? (
+                <View style={localStyles.memberAction}>
+                  <AppButton label={t('memberRenew')} icon="crown" onPress={() => navigate('membership.plans')} />
+                </View>
+              ) : null}
               <View style={localStyles.memberAction}>
                 <AppButton variant="secondary" label={t('memberManage')} icon="settings" onPress={openManageSubscriptions} />
               </View>
@@ -385,17 +412,20 @@ function PlanCard({
   );
 }
 
-/** 已订阅态：渐变会员卡（crown + 等级名 + 生效中 + 权益 checklist） */
+/** 已订阅态：渐变会员卡（crown + 等级名 + 生效中/已过期 + 权益 checklist） */
 function MemberCard({
   tierName,
   subtitle,
   entitlements,
   summary,
+  expired = false,
 }: Readonly<{
   tierName: string;
   subtitle: string;
   entitlements: readonly string[];
   summary: string;
+  /** 订阅行 expired（webhook 到期/冻结）→ 徽章与底色切警示语义 */
+  expired?: boolean;
 }>) {
   const { t } = useTranslation('membership');
   const { palette } = usePreferences();
@@ -418,8 +448,20 @@ function MemberCard({
       <View style={localStyles.memberHead}>
         <AppIcon name="crown" color={palette.achievement} size={28} />
         <Text style={localStyles.memberName} numberOfLines={1}>{tierName}</Text>
-        <View style={localStyles.memberBadge}>
-          <Text style={localStyles.memberBadgeText}>{t('memberBadgeActive')}</Text>
+        <View
+          style={[
+            localStyles.memberBadge,
+            expired && { backgroundColor: palette.warningSoft },
+          ]}
+        >
+          <Text
+            style={[
+              localStyles.memberBadgeText,
+              expired && { color: palette.warning },
+            ]}
+          >
+            {expired ? t('memberBadgeExpired') : t('memberBadgeActive')}
+          </Text>
         </View>
       </View>
       <Text style={localStyles.memberSubtitle}>{subtitle}</Text>

@@ -32,6 +32,7 @@ export type IconName =
   | 'play'
   | 'plus'
   | 'minus'
+  | 'rotate-ccw'
   | 'settings'
   | 'sliders'
   | 'stop'
@@ -93,6 +94,7 @@ const paths: Record<Exclude<IconName, 'user' | 'palette'>, string[]> = {
   lamp: ['M9 3h6l2.2 7H6.8L9 3Z', 'M12 10v8', 'M8.5 21h7'],
   lock: ['M8 10V7a4 4 0 0 1 8 0v3'],
   minus: ['M5 12h14'],
+  'rotate-ccw': ['M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5'],
   moon: ['M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'],
   pause: ['M10 4.5v15', 'M14 4.5v15'],
   plant: [

@@ -32,6 +32,10 @@ export const membership = {
   emptyPlans: 'No plans are set up for this app yet.',
   // Member card (subscribed state)
   memberBadgeActive: 'Active',
+  memberBadgeExpired: 'Expired',
+  renewsOn: 'Renews on {{date}}',
+  subscriptionExpiredHint: 'Your subscription has lapsed. Renew to keep your benefits',
+  memberRenew: 'Renew',
   memberFallbackTitle: 'Member',
   memberCardSubtitle: 'Your benefits are live and ready',
   memberManage: 'Manage subscription',

@@ -33,6 +33,10 @@ export const membership = {
   emptyPlans: '当前 App 暂未配置可售方案。',
   // 会员卡（已订阅态）
   memberBadgeActive: '生效中',
+  memberBadgeExpired: '已过期',
+  renewsOn: '下次续费 {{date}}',
+  subscriptionExpiredHint: '订阅已到期，续费后权益继续生效',
+  memberRenew: '续费',
   memberFallbackTitle: '会员',
   memberCardSubtitle: '权益已生效，随时可用',
   memberManage: '管理订阅',

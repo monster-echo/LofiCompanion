@@ -514,6 +514,10 @@ export const apiClient = {
   ),
   getSkinOrder: (orderId: string) =>
     requestBiz<SkinOrderRemote>(`/api/v1/store/skin-orders/${orderId}`),
+  // 我的皮肤订单（订单中心列表；created_at 倒序 ≤100，线格式同 getSkinOrder）。
+  skinOrders: () => requestBiz<{ orders: readonly SkinOrderRemote[] }>(
+    '/api/v1/store/skin-orders',
+  ),
   // 皮肤订单验证（biz；与下方会员 verifyPurchase 分流——皮肤所有权归 biz）。
   verifySkinOrder: (orderId: string, receipt: unknown) => requestBiz<SkinOrderRemote>(
     '/api/v1/purchases/verify',

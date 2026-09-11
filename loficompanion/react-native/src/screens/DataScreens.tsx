@@ -6,15 +6,13 @@ import {
   OfflineBanner,
   PageHeader,
 } from '../design-system/components';
-import { NotificationItem, OrderView } from '../domain/models';
-import type { OrderStatus } from '../payment/paymentModels';
+import { NotificationItem } from '../domain/models';
 import { AppRoute } from '../navigation/routes';
 import { useApp } from '../state/AppStore';
 import { styles } from '../theme/styles';
 import { NotificationCard } from '../notifications/NotificationCard';
 import { spacing } from '../theme/tokens';
 import { useTranslation } from 'react-i18next';
-import { currentLanguage, i18n } from '../i18n/core';
 
 export function NotificationsScreen() {
   const {
@@ -78,33 +76,7 @@ export function NotificationsScreen() {
   );
 }
 
-export function OrdersScreen() {
-  const { user, loadOrders } = useApp();
-  const { t } = useTranslation('profile');
-  const [orders, setOrders] = useState<readonly OrderView[]>([]);
-  useEffect(() => {
-    if (user) void loadOrders().then(setOrders);
-  }, [loadOrders, user]);
-  return (
-    <View style={styles.page}>
-      <PageHeader title={t('rowOrders')} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {orders.map((order) => (
-          <AppCard key={order.id}>
-            <ListRow label={order.planId} value={statusLabel(order.status)} />
-            <Text style={styles.secondary}>
-              {formatMoney(order.amountMinor, order.currency)} · {order.provider}
-            </Text>
-            <Text style={styles.caption}>{formatDate(order.createdAt)}</Text>
-          </AppCard>
-        ))}
-        {!orders.length ? (
-          <Text style={styles.secondary}>{user ? t('ordersEmpty') : t('ordersSignInRequired')}</Text>
-        ) : null}
-      </ScrollView>
-    </View>
-  );
-}
+// 订单页已迁至 features/orders（OrderCenterScreen，订单中心）。
 
 export function AboutScreen() {
   const { config, online } = useApp();
@@ -131,23 +103,6 @@ export function AboutScreen() {
 
 function isAppRoute(value: string | null): value is AppRoute {
   return Boolean(value && !value.includes('://'));
-}
-
-// 模块级工具（非组件）：文案在渲染/构造时经 i18n 实例解析，不在顶层取值。
-const statusLabel = (status: OrderStatus): string => ({
-  pending: i18n.t('profile:orderPending'),
-  processing: i18n.t('profile:orderProcessing'),
-  success: i18n.t('profile:orderSuccess'),
-  failed: i18n.t('profile:orderFailed'),
-  refunded: i18n.t('profile:orderRefunded'),
-}[status] ?? status);
-
-function formatMoney(amount: number, currency: string) {
-  return new Intl.NumberFormat(currentLanguage(), { style: 'currency', currency }).format(amount / 100);
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString(currentLanguage());
 }
 
 const notificationStyles = StyleSheet.create({

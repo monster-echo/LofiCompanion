@@ -12,6 +12,7 @@ import { focus as enFocus } from './locales/en-US/focus';
 import { settings as enSettings } from './locales/en-US/settings';
 import { skins as enSkins } from './locales/en-US/skins';
 import { store as enStore } from './locales/en-US/store';
+import { orders as enOrders } from './locales/en-US/orders';
 import { studyroom as enStudyroom } from './locales/en-US/studyroom';
 import { achievements as zhAchievements } from './locales/zh-CN/achievements';
 import { leaderboards as zhLeaderboards } from './locales/zh-CN/leaderboards';
@@ -27,6 +28,7 @@ import { focus as zhFocus } from './locales/zh-CN/focus';
 import { settings as zhSettings } from './locales/zh-CN/settings';
 import { skins as zhSkins } from './locales/zh-CN/skins';
 import { store as zhStore } from './locales/zh-CN/store';
+import { orders as zhOrders } from './locales/zh-CN/orders';
 import { studyroom as zhStudyroom } from './locales/zh-CN/studyroom';
 
 // 命名空间集中注册（i18next 资源要求单一类型根）：命名空间粒度沿用
@@ -47,6 +49,7 @@ export const resources = {
     studyroom: zhStudyroom,
     skins: zhSkins,
     store: zhStore,
+    orders: zhOrders,
     focus: zhFocus,
     achievements: zhAchievements,
     leaderboards: zhLeaderboards,
@@ -64,6 +67,7 @@ export const resources = {
     studyroom: enStudyroom,
     skins: enSkins,
     store: enStore,
+    orders: enOrders,
     focus: enFocus,
     achievements: enAchievements,
     leaderboards: enLeaderboards,
