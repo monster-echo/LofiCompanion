@@ -1,9 +1,12 @@
 import { File, Directory, Paths } from 'expo-file-system';
-import { apiClient, resolveAssetUrl } from '../../../data/apiClient';
+import {
+  apiClient,
+  skinStatePosterUrl,
+  skinStateVideoUrl,
+  type SkinSummaryRemote,
+} from '../../../data/apiClient';
 import { telemetry } from '../../../telemetry/Telemetry';
 import { materializeManifest } from '../domain/remoteSkinMaterialize';
-import { deriveThumbKey } from '../domain/thumbKey';
-import type { SkinSummaryRemote } from '../../../data/apiClient';
 import type { SkinManifest } from '../domain/types';
 
 /**
@@ -12,9 +15,10 @@ import type { SkinManifest } from '../domain/types';
  *    （目录一大全量预下载不可持续；媒体获取收敛到用户主动的 downloadSkinPack）。
  *    目录失败回退磁盘缓存；单皮肤清单不可达（付费 401/403 门禁、网络抖动、
  *    服务端 bump 版本）时回退该 slug 磁盘上最高且齐套的版本——已获包不失联。
- *  - downloadSkinPack：单包按需下载（全有或全无）——清单 → 缺失资产下载到
- *    `.part` 临时文件、成功后 rename 就位（杜绝半截文件冒充齐套：启动不再
- *    自动重下，坏包会永久占位），全部就位后持久化原始 manifest 并清旧版本。
+ *  - downloadSkinPack：单包按需下载（全有或全无）——清单 → 缺失资产经 biz
+ *    匿名公开端点（海报/视频 302 → 预签对象存储，游客可下）下载到 `.part`
+ *    临时文件、成功后 rename 就位（杜绝半截文件冒充齐套：启动不再自动重下，
+ *    坏包会永久占位），全部就位后持久化原始 manifest 并清旧版本。
  *
  * 卡片缩略图（<state>.thumb.jpg，biz 发布管线生成的 960 宽 JPEG）best-effort
  * 附加下载：失败不影响皮肤可用，卡片回落全图 poster；沉浸面/详情永远用全图。
@@ -43,12 +47,20 @@ export interface PackProgress {
   readonly ratio: number;
 }
 
+/** 单状态的公开资产地址（biz 匿名 302 端点；游客可下，不依赖 auth 登录态） */
+export interface PublicAssetUrls {
+  readonly poster: string;
+  readonly thumb: string;
+  readonly video: string;
+}
+
 export interface RemoteSkinsDeps {
   /** 缺省走 apiClient.skins / apiClient.skinManifest（测试注入桩） */
   fetchCatalog?: () => Promise<readonly SkinSummaryRemote[]>;
   fetchManifest?: (skinIdOrSlug: string) => Promise<Record<string, unknown>>;
-  /** 资产 objectKey → 可下载 URL（缺省 resolveAssetUrl；测试注入） */
-  resolveAssetUrl?: (objectKey: string) => Promise<string | null>;
+  /** 资产 URL 解析（缺省 biz 公开海报/视频端点按 slug+state 直取；测试注入）。
+   *  此前走 auth /storage/urls 换签（要登录）——游客下载免费包 401 秒失败 */
+  resolvePublicUrls?: (slug: string, state: string) => PublicAssetUrls;
   /** 落盘下载（缺省 File.createDownloadTask 带字节进度；测试注入内存盘） */
   download?: (
     url: string,
@@ -61,7 +73,11 @@ function defaultDeps(): Required<RemoteSkinsDeps> {
   return {
     fetchCatalog: async () => (await apiClient.skins()).skins,
     fetchManifest: async (key) => (await apiClient.skinManifest(key)).manifest,
-    resolveAssetUrl: (objectKey) => resolveAssetUrl(objectKey),
+    resolvePublicUrls: (slug, state) => ({
+      poster: skinStatePosterUrl(slug, state),
+      thumb: skinStatePosterUrl(slug, state, 'thumb'),
+      video: skinStateVideoUrl(slug, state),
+    }),
     download: async (url, targetUri, onProgress) => {
       await File.createDownloadTask(url, new File(targetUri), {
         onProgress: (data) => onProgress?.(data.bytesWritten, data.totalBytes),
@@ -318,27 +334,24 @@ export async function downloadSkinPack(
   const raw = await deps.fetchManifest(slug);
   const materialized = materializeManifest(raw, stateFileUri, videoFileUri);
   if (!materialized) throw new Error(`清单物化失败: ${slug}`);
-  const { manifest, posterKeys, videoKeys } = materialized;
+  const { manifest } = materialized;
   const versionDir = ensureDir(manifest.slug, manifest.manifestVersion);
   clearPartFiles(versionDir);
 
-  // 海报+视频齐套才产出：缺任一资产都放弃该皮肤（不做半套渲染）
+  // 海报+视频齐套才产出：缺任一资产都放弃该皮肤（不做半套渲染）。
+  // URL 由 slug+state 直取 biz 匿名公开端点（302 → 预签对象存储）——解析
+  // 不再依赖 auth 登录态，游客也能下载免费包；端点不可达在下载步报错。
   const missing: PendingDownload[] = [];
   for (const asset of manifest.states) {
+    const urls = deps.resolvePublicUrls(manifest.slug, asset.state);
     const posterUri = (asset.poster as { readonly uri: string }).uri;
     if (!fileReady(posterUri)) {
-      const objectKey = posterKeys[asset.state] ?? '';
-      const url = objectKey ? await deps.resolveAssetUrl(objectKey) : null;
-      if (!url) throw new Error(`海报地址解析失败: ${asset.state}`);
-      missing.push({ uri: posterUri, partUri: `${posterUri}.part`, url });
+      missing.push({ uri: posterUri, partUri: `${posterUri}.part`, url: urls.poster });
     }
     if (asset.loopVideo) {
       const videoUri = (asset.loopVideo as { readonly uri: string }).uri;
       if (!fileReady(videoUri)) {
-        const objectKey = videoKeys[asset.state] ?? '';
-        const url = objectKey ? await deps.resolveAssetUrl(objectKey) : null;
-        if (!url) throw new Error(`视频地址解析失败: ${asset.state}`);
-        missing.push({ uri: videoUri, partUri: `${videoUri}.part`, url });
+        missing.push({ uri: videoUri, partUri: `${videoUri}.part`, url: urls.video });
       }
     }
   }
@@ -401,15 +414,13 @@ export async function downloadSkinPack(
   }
 
   // 卡片缩略图 best-effort（全图齐套之后才轮到它；失败不放弃皮肤，卡片
-  // 回落全图）。thumb objectKey 与服务端双端同约（domain/thumbKey.ts）。
+  // 回落全图）。thumb 变体走同一海报端点 ?v=thumb（未生成时服务端回落原图）。
   const thumbDownloads: PendingDownload[] = [];
   for (const asset of manifest.states) {
-    const posterKey = posterKeys[asset.state] ?? '';
-    const thumbKey = posterKey ? deriveThumbKey(posterKey) : null;
+    const urls = deps.resolvePublicUrls(manifest.slug, asset.state);
     const thumbUri = stateThumbFileUri(manifest.slug, manifest.manifestVersion, asset.state);
-    if (!thumbKey || fileReady(thumbUri)) continue;
-    const url = await deps.resolveAssetUrl(thumbKey);
-    if (url) thumbDownloads.push({ uri: thumbUri, partUri: `${thumbUri}.part`, url });
+    if (fileReady(thumbUri)) continue;
+    thumbDownloads.push({ uri: thumbUri, partUri: `${thumbUri}.part`, url: urls.thumb });
   }
   if (thumbDownloads.length > 0) {
     await Promise.all(thumbDownloads.map((item) => downloadToPart(deps, item)))

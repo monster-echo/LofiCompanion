@@ -119,7 +119,8 @@ vi.mock('../../../telemetry/Telemetry', () => ({ telemetry: { track: trackMock }
 // 仓储只在缺省 deps 时触达 apiClient；测试一律注入桩，工厂 mock 防真模块加载
 vi.mock('../../../data/apiClient', () => ({
   apiClient: { skins: vi.fn(), skinManifest: vi.fn() },
-  resolveAssetUrl: vi.fn(),
+  skinStatePosterUrl: vi.fn(),
+  skinStateVideoUrl: vi.fn(),
 }));
 
 import {
@@ -201,7 +202,11 @@ function depsWith(options: {
         if (options.manifestFor) return options.manifestFor(slug);
         return rawManifest(slug);
       },
-      resolveAssetUrl: async (objectKey: string) => `https://cdn.example/${objectKey}`,
+      resolvePublicUrls: (slug: string, state: string) => ({
+        poster: `https://cdn.example/${slug}/${state}.png`,
+        thumb: `https://cdn.example/${slug}/${state}.thumb.jpg`,
+        video: `https://cdn.example/${slug}/videos/${state}.mp4`,
+      }),
       download: async (
         url: string,
         targetUri: string,
@@ -334,7 +339,11 @@ describe('downloadSkinPack（单包按需下载）', () => {
     const progress: PackProgress[] = [];
     const deps: RemoteSkinsDeps = {
       fetchManifest: async () => rawManifest('alpha'),
-      resolveAssetUrl: async (objectKey) => `https://cdn.example/${objectKey}`,
+      resolvePublicUrls: (slug: string, state: string) => ({
+        poster: `https://cdn.example/${slug}/${state}.png`,
+        thumb: `https://cdn.example/${slug}/${state}.thumb.jpg`,
+        video: `https://cdn.example/${slug}/videos/${state}.mp4`,
+      }),
       download: (url, targetUri, onProgress) => {
         // 缩略图批量立即完成：只把三个全图资产挂起，mid 断言后手动放行
         if (url.includes('.thumb.jpg')) {
@@ -367,7 +376,7 @@ describe('downloadSkinPack（单包按需下载）', () => {
   it('任一资产失败即放弃：不产出清单（无 manifest.json）、.part 清理；已完成的合法资产保留', async () => {
     const { deps } = depsWith({
       catalog: [summary('alpha')],
-      failUrls: new Set(['https://cdn.example/loficompanion/production/skins/alpha/focusing.png']),
+      failUrls: new Set(['https://cdn.example/alpha/focusing.png']),
     });
     await expect(downloadSkinPack('alpha', {}, deps)).rejects.toThrow('下载失败');
     expect(fs.files.has(`${DOC}/skins/alpha/v1/manifest.json`)).toBe(false);
@@ -400,9 +409,7 @@ describe('downloadSkinPack（单包按需下载）', () => {
   it('缩略图 best-effort：失败不放弃包，卡片回落全图', async () => {
     const { deps } = depsWith({
       catalog: [summary('alpha')],
-      failUrls: new Set([
-        'https://cdn.example/loficompanion/production/skins/alpha/ready.thumb.jpg',
-      ]),
+      failUrls: new Set(['https://cdn.example/alpha/ready.thumb.jpg']),
     });
     const manifest = await downloadSkinPack('alpha', {}, deps);
     expect(manifest.states[0]?.cardPoster).toBeUndefined();

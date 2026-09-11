@@ -17,7 +17,8 @@ import { rainyStudyRoomManifest } from './rainyStudyRoom.generated';
  * 健康排程、英文名；缺省段回退内置默认值（事件空表、默认主题色）。
  */
 
-/** 物化产物：manifest（poster/video=缓存 uri）+ 每状态的 OSS objectKey（换签下载用） */
+/** 物化产物：manifest（poster/video=缓存 uri）+ 每状态的 OSS objectKey
+ *  （键契约产物：物化校验的副产物；客户端下载已改走 biz 匿名公开端点）。 */
 export interface MaterializedSkin {
   manifest: SkinManifest;
   posterKeys: Readonly<Record<string, string>>;
