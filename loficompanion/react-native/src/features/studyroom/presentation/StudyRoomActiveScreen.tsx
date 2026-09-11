@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TouchableWithoutFeedback,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,12 +26,13 @@ import { radii, semantic, space, type, type ThemeColors } from '../../../theme/t
 import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { getMusicController } from '../../music/data/expoAudioMusicController';
 import { telemetry } from '../../../telemetry/Telemetry';
-import { skinPosterUrl } from '../../../data/apiClient';
+import { skinPosterUrl, skinStateVideoUrl } from '../../../data/apiClient';
 import { useMusicLibrary } from '../../music/application/useMusicLibrary';
 import { useFocus } from '../../focus/application/FocusStore';
 import { useFocusQuickPrefs } from '../../focus/presentation/focusQuickPrefs';
 import { ImmersiveMediaSurface } from '../../skins/presentation/ImmersiveMediaSurface';
 import { DEFAULT_SKIN_MANIFEST, findSkinManifestByIdOrSlug } from '../../skins/domain/registry';
+import { DetailPreviewVideo } from '../../store/presentation/DetailPreviewVideo';
 import { SheetOverlay } from '../../focus/presentation/SheetOverlay';
 import { useStudyRoom, useStudyRoomState } from '../application/StudyRoomStore';
 import { roomForId, roomName, type StudyRoomId } from '../domain/rooms';
@@ -85,13 +87,20 @@ export function StudyRoomActiveScreen() {
   const weakenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 路由参数 roomId → 房间定义（未知 id 落回默认房间）；房间媒体从皮肤注册表
-  // 解析。未购/未拉取的付费皮肤 manifest 不存在——此前静默回落雨夜书房会
-  // 「进 Midnight 房间看到的却是雨夜素材」，现在改为公开海报 + 解锁引导。
+  // 解析。未物化的房间（付费未购/资源包未落盘）走公开预览视频流——任何房间
+  // 给到视频场景而非贴图；海报只做流加载中/失败的垫底帧（reducedMotion 时
+  // 不挂流，与详情页同纪律）。解锁引导 pill 保留（转化入口）。
   const roomId = (route.params as { roomId?: string } | undefined)?.roomId;
   const room = roomForId(roomId ?? '');
   const roomSkin = findSkinManifestByIdOrSlug(skins, room.id);
   const roomManifest = roomSkin ?? DEFAULT_SKIN_MANIFEST;
   const roomDisplayName = roomName(room, locale);
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  // 进房遥测读 ref：去商店购买/下载后返回房间时 useFocusEffect 重挂的是旧闭包
+  // （deps 只随 roomId），skins 已更新但闭包里的 roomSkin 还是进房时的快照——
+  // 恰好污染 media 维度要量化的「看到→试用→购买」链路
+  const roomSkinRef = useRef(roomSkin);
+  roomSkinRef.current = roomSkin;
 
   // 进房 = 建连（弹幕/presence）+ 音乐在场（ambient：无需专注会话）；退出全部释放
   const enteredAt = useRef(0);
@@ -102,7 +111,12 @@ export function StudyRoomActiveScreen() {
       music.setScreenActive(true);
       music.setAmbientActive(true);
       enteredAt.current = Date.now();
-      telemetry.track('studyroom_enter', { room_id: roomId ?? room.id });
+      telemetry.track('studyroom_enter', {
+        room_id: roomId ?? room.id,
+        // 转化漏斗「看到→试用→购买」的曝光环：pack=已物化本地视频；
+        // preview=未解锁房的公开流陈列（进详情页试用/购买的入口场景）
+        media: roomSkinRef.current ? 'pack' : 'preview',
+      });
       return () => {
         telemetry.track('studyroom_leave', {
           room_id: roomId ?? room.id,
@@ -237,12 +251,20 @@ export function StudyRoomActiveScreen() {
             />
           ) : (
             <>
+              {/* 公开海报垫底（视频就绪前/加载失败的兜底帧）+ 预览视频流 */}
               <Image
                 source={{ uri: skinPosterUrl(room.id) }}
                 style={styles.mediaFill}
                 resizeMode="cover"
-                blurRadius={2}
               />
+              {!reducedMotion ? (
+                <DetailPreviewVideo
+                  source={{ uri: skinStateVideoUrl(room.id, room.displayState) }}
+                  active
+                  width={windowWidth}
+                  height={windowHeight}
+                />
+              ) : null}
               <PressableScale
                 accessibilityRole="link"
                 accessibilityLabel={t('themeLockedCta')}
