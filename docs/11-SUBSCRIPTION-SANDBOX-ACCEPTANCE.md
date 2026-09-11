@@ -139,17 +139,13 @@ Play 侧没有 Apple 式自动加速：验收续订/到期用**短周期免费�
 - [ ] **3.3 事件矩阵注入**（每条注入后跑对应断言）：
 
 ```bash
-# 构造 DeveloperNotification 并发布（TOKEN 用 §3.1 的真实 purchaseToken）
-python3 -c '
-import base64, json, sys
-payload = {
+# 发布 DeveloperNotification（⚠️ --message 传原始 JSON 字符串，gcloud 会自行
+# base64；勿再手动 base64 一层，双重编码会让服务端 data 解码失败 401）
+gcloud pubsub topics publish <TOPIC> --project=loficompanion --message='{
   "packageName": "<PKG>",
-  "subscriptionNotification": {"notificationType": int(sys.argv[1]),
-    "purchaseToken": sys.argv[2], "subscriptionId": "<SKU>"},
-}
-print(base64.b64encode(json.dumps(payload).encode()).decode())' <NT> <TOKEN> > /tmp/msg.b64
-
-gcloud pubsub topics publish <TOPIC> --message="$(cat /tmp/msg.b64)"
+  "subscriptionNotification": {"notificationType": <NT>,
+    "purchaseToken": "<TOKEN>", "subscriptionId": "<SKU>"}
+}'
 ```
 
 | NT | 事件 | 注入后断言 |
