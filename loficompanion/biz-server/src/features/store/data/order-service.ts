@@ -1,17 +1,26 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { ApiError } from '@/lib/apiError';
 import { getDb } from '@/db';
-import { findSkinProductBySkinId, type SkinProductView } from './product-repository';
+import {
+  findSkinProductBySkinId,
+  findSkinProductsBySkinIds,
+  type SkinProductView,
+} from './product-repository';
 import {
   completeSkinOrder,
   failSkinOrder,
   findSkinOrderById,
   insertSkinOrderIfAbsent,
+  listSkinOrdersByUser,
   markSkinOrderProcessing,
   type SkinOrderRow,
   type SkinOrderStatus,
 } from './order-repository';
-import { grantSkinEntitlementInTx, hasActiveSkinEntitlement } from './entitlement-service';
+import {
+  grantSkinEntitlementInTx,
+  hasActiveSkinEntitlement,
+  listActiveSkinEntitlementKeys,
+} from './entitlement-service';
 import {
   fetchMembershipEntitlementKeys,
   isPlusKeys,
@@ -86,7 +95,7 @@ export function resolvePriceMinor(
     : product.priceMinor;
 }
 
-function toSkinOrderView(
+export function toSkinOrderView(
   order: SkinOrderRow,
   product: SkinProductView,
   slug: string,
@@ -217,6 +226,65 @@ export type GetSkinOrderInput = Readonly<{
   orderId: string;
   platform: ClientPlatform;
 }>;
+
+// 订单中心列表装配：订单行已存的 store_product_id 是历史真源（下单时的
+// Plus 折扣 SKU/当期映射），优先回显；仅历史空行（旧单/mock）按当前目录
+// 解析，目录已改/未映射时降级空串展示，绝不因装配抛错。
+export function pickStoreProductId(
+  order: Pick<SkinOrderRow, 'store_product_id'>,
+  product: SkinProductView,
+  platform: ClientPlatform,
+): string {
+  if (order.store_product_id) return order.store_product_id;
+  if (product.provider === 'mock') return product.id;
+  try {
+    return resolveStoreProductId(product, platform);
+  } catch {
+    return '';
+  }
+}
+
+export type ListSkinOrdersInput = Readonly<{
+  userId: string;
+  platform: ClientPlatform;
+}>;
+
+// 我的皮肤订单（订单中心数据源）：3 次查询装配（orders → 批量商品 → 拥有
+// 键集），无 N+1。entitled 以当前权益表为准——退款撤销后自然回落 false；
+// 商品行缺失（历史下架清表）降级为最小视图，列表不缺行。
+export async function listSkinOrders(input: ListSkinOrdersInput): Promise<SkinOrderView[]> {
+  const orders = await listSkinOrdersByUser(input.userId);
+  if (orders.length === 0) return [];
+  const products = await findSkinProductsBySkinIds([...new Set(orders.map((o) => o.skin_id))]);
+  const productById = new Map(products.map((p) => [p.skinId, p]));
+  const ownedKeys = new Set(await listActiveSkinEntitlementKeys(input.userId));
+  return orders.map((order) => {
+    const product = productById.get(order.skin_id);
+    if (!product) {
+      return {
+        orderId: order.id,
+        skinId: order.skin_id,
+        slug: order.skin_id,
+        entitlementKey: order.entitlement_key,
+        priceMinor: order.amount_minor,
+        currency: order.currency,
+        status: order.status as SkinOrderStatus,
+        provider: order.provider,
+        storeProductId: order.store_product_id,
+        createdAt: order.created_at,
+        completedAt: order.completed_at,
+        entitled: ownedKeys.has(order.entitlement_key),
+      };
+    }
+    return toSkinOrderView(
+      order,
+      product,
+      product.slug,
+      pickStoreProductId(order, product, input.platform),
+      ownedKeys.has(order.entitlement_key),
+    );
+  });
+}
 
 // 查单（支付中断恢复轮询）：订单状态 + 权益是否已生效。跨用户一律 404。
 export async function getSkinOrder(input: GetSkinOrderInput): Promise<SkinOrderView> {

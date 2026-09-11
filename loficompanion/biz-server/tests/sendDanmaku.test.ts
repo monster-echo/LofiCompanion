@@ -54,7 +54,7 @@ test('too_long → TOO_LONG ApiError(400)', async () => {
 });
 
 test('cooldown within window → COOLDOWN(429) with retryAfterSeconds', async () => {
-  let nowMs = 1_000_000;
+  const nowMs = 1_000_000;
   const gate = new CooldownGate(() => nowMs, 3000);
   gate.tryAcquire(identity.userId); // 占位
   await assert.rejects(

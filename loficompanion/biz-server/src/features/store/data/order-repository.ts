@@ -59,6 +59,15 @@ export async function findSkinOrderById(orderId: string): Promise<SkinOrderRow |
   return row ?? undefined;
 }
 
+/** 我的皮肤订单（订单中心列表；created_at 倒序，上限 take，对齐 focus-history 惯例）。 */
+export async function listSkinOrdersByUser(userId: string, take = 100): Promise<SkinOrderRow[]> {
+  return await getDb().skinOrder.findMany({
+    where: { user_id: userId },
+    orderBy: { created_at: 'desc' },
+    take,
+  });
+}
+
 export async function markSkinOrderProcessing(orderId: string): Promise<void> {
   await getDb().skinOrder.updateMany({
     where: { id: orderId, status: 'pending' },

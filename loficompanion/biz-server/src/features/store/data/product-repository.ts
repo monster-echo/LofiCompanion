@@ -68,6 +68,17 @@ export async function findSkinProductBySkinId(skinId: string): Promise<SkinProdu
   return row ? toView(row) : undefined;
 }
 
+/** 批量按 skin_id 取商品（订单中心列表装配用；一次查询，无 N+1）。 */
+export async function findSkinProductsBySkinIds(
+  skinIds: readonly string[],
+): Promise<SkinProductView[]> {
+  if (skinIds.length === 0) return [];
+  const rows = await getDb().skinProduct.findMany({
+    where: { skin_id: { in: [...skinIds] } },
+  });
+  return rows.map(toView);
+}
+
 /** 发布/登记通道的幂等 upsert：未提供的 provider/storeProductIds/窗口保留现值。 */
 export async function upsertSkinProduct(input: {
   skinId: string;
