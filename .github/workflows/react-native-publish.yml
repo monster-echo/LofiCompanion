@@ -53,8 +53,12 @@ jobs:
       - name: 安装依赖
         run: npm ci --legacy-peer-deps
 
-      - name: 版本一致性校验（tag 必须等于 package.json 版本）
+      - name: 版本一致性校验（tag push 强制；手动 dispatch 视为测试跑，跳过）
         run: |
+          if [ "$GITHUB_EVENT_NAME" != "push" ]; then
+            echo "workflow_dispatch 测试跑：跳过 tag↔version 校验"
+            exit 0
+          fi
           PKG_VERSION="$(node -p "require('./package.json').version")"
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
@@ -100,8 +104,12 @@ jobs:
       - name: 安装依赖
         run: npm ci --legacy-peer-deps
 
-      - name: 版本一致性校验（tag 必须等于 package.json 版本）
+      - name: 版本一致性校验（tag push 强制；手动 dispatch 视为测试跑，跳过）
         run: |
+          if [ "$GITHUB_EVENT_NAME" != "push" ]; then
+            echo "workflow_dispatch 测试跑：跳过 tag↔version 校验"
+            exit 0
+          fi
           PKG_VERSION="$(node -p "require('./package.json').version")"
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
