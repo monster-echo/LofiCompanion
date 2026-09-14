@@ -70,7 +70,12 @@ jobs:
       - name: 写入 Firebase 配置（eas --local 不评估 EAS 文件环境变量）
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
+        run: |
+          printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
+          # EAS 归档遵循 .gitignore——临时解除忽略，否则配置进不了构建包
+          sed -i 's|^loficompanion/react-native/google-services.json|# unignored for eas local archive|' $GITHUB_WORKSPACE/.gitignore
+          sed -i 's|^\*\*/google-services.json|# unignored for eas local archive|' $GITHUB_WORKSPACE/loficompanion/.gitignore
+          git check-ignore google-services.json && exit 1 || echo "配置已解除忽略"
 
       - name: Gradle 缓存
         uses: actions/cache@v4
@@ -121,7 +126,11 @@ jobs:
       - name: 写入 Firebase 配置（iOS 无占位，缺真配置让 prebuild 报错）
         env:
           GOOGLE_SERVICES_INFO_PLIST: ${{ secrets.GOOGLE_SERVICES_INFO_PLIST }}
-        run: printf '%s' "$GOOGLE_SERVICES_INFO_PLIST" > GoogleService-Info.plist
+        run: |
+          printf '%s' "$GOOGLE_SERVICES_INFO_PLIST" > GoogleService-Info.plist
+          sed -i '' 's|^loficompanion/react-native/GoogleService-Info.plist|# unignored for eas local archive|' $GITHUB_WORKSPACE/.gitignore
+          sed -i '' 's|^\*\*/GoogleService-Info.plist|# unignored for eas local archive|' $GITHUB_WORKSPACE/loficompanion/.gitignore
+          git check-ignore GoogleService-Info.plist && exit 1 || echo "配置已解除忽略"
 
       - name: EAS 本地构建 IPA（不消耗 EAS 配额）
         run: npx --yes eas-cli@latest build --profile production --platform ios --local --non-interactive --output app.ipa
