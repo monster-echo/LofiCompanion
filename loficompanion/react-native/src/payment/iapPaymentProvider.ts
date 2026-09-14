@@ -1,14 +1,16 @@
 /**
  * RN IAP provider — server-authoritative。
  *
- * iOS：优先回传 JWS（transactionReceipt）→ 服务端本地根 CA 验签，零网络
- * 依赖；无 JWS 时回传 transactionId → 服务端走 App Store Server API 回查。
- * Android：回传 {productId, purchaseToken} → 服务端走 Play Developer API。
+ * iOS：优先回传 JWS（v16 统一在 purchaseToken）→ 服务端本地根 CA 验签，
+ * 零网络依赖；无 JWS 时回传 transactionId → 服务端走 App Store Server API
+ * 回查。Android：回传 {productId, purchaseToken} → 服务端走 Play Developer API。
  * finishTransaction 在服务端 verify 成功后由调用方触发（未完成交易经
  * purchaseUpdatedListener 自愈）。
  *
- * react-native-iap v16（Nitro Modules）需要 dev client/prebuild 运行时；
- * 懒加载 require——包缺失时 IapPaymentProvider 退化为显式不可用。
+ * react-native-iap v16（openiap/Nitro Modules）需要 dev client/prebuild 运行
+ * 时；懒加载 require——包缺失时 IapPaymentProvider 退化为显式不可用。
+ * v16 破坏性变更对齐：requestPurchase 改 {request:{apple|google}, type}、
+ * getProducts→fetchProducts、JWS 从 transactionReceipt 移到 purchaseToken。
  */
 import { Platform } from 'react-native';
 
@@ -89,15 +91,15 @@ export class IapPaymentProvider implements PaymentProvider {
   }
 
   /**
-   * 平台差异归一：iOS 优先取 JWS（transactionReceipt，StoreKit 2 签名交易），
-   * 服务端可本地根 CA 验签、零网络依赖；transactionId 仅作无 JWS 时的兜底
-   * （走 App Store Server API 回查）。Android 取 purchaseToken。
+   * 平台差异归一：iOS 优先取 JWS（v16 统一在 purchaseToken，StoreKit 2 签名
+   * 交易），服务端可本地根 CA 验签、零网络依赖；transactionId 仅作无 JWS 时
+   * 的兜底（走 App Store Server API 回查）。Android 取 purchaseToken。
    */
   private static toResult(purchase: any): PurchaseResult {
     const productId = String(purchase?.productId ?? '');
     if (Platform.OS === 'ios') {
-      const jws = String(purchase.transactionReceipt ?? '');
-      const txn = String(purchase.transactionId ?? '');
+      const jws = String(purchase.purchaseToken ?? '');
+      const txn = String(purchase.id ?? purchase.transactionId ?? '');
       const receipt = jws.startsWith('eyJ') ? jws : (txn || jws);
       return { storeProductId: productId, receipt };
     }
@@ -112,7 +114,7 @@ export class IapPaymentProvider implements PaymentProvider {
     await IapPaymentProvider.ensureInit();
     const target = this.store === 'apple' ? mapping.apple : mapping.google;
     if (!target) return [];
-    const products = await RNIap.getProducts({ skus: [target] });
+    const products = await RNIap.fetchProducts({ skus: [target], type: 'in-app' });
     return (products as readonly { id?: string; productId?: string; title?: string; displayPrice?: string; localizedPrice?: string }[])
       .map((p) => ({
         storeProductId: String(p.id ?? p.productId ?? ''),
@@ -137,12 +139,14 @@ export class IapPaymentProvider implements PaymentProvider {
       IapPaymentProvider.pending.set(storeProductId, { resolve, reject, timer });
     });
     try {
-      // iOS 形态 { sku }；Android（Nitro 版）形态 { request: { skus: [...] } }
-      if (Platform.OS === 'ios') {
-        await RNIap.requestPurchase({ sku: storeProductId });
-      } else {
-        await RNIap.requestPurchase({ request: { skus: [storeProductId] } });
-      }
+      // v16 openiap 形态：{ request: { apple: {sku} | google: {skus} }, type }。
+      // 老版 { sku } 形态在 v16 会同步拒绝（表现为 iap_unavailable 瞬败）。
+      await RNIap.requestPurchase({
+        request: this.store === 'apple'
+          ? { apple: { sku: storeProductId } }
+          : { google: { skus: [storeProductId] } },
+        type: 'in-app',
+      });
     } catch (error) {
       IapPaymentProvider.pending.delete(storeProductId);
       throw new IapError('unavailable', String((error as Error)?.message ?? error));

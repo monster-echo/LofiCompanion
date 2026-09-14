@@ -262,11 +262,18 @@ export function SkinDetailScreen() {
         showToast(t('purchaseFailed'), 'error');
       }
     } catch (error) {
+      // iap 错误带原始 message（截 180）：iap_unavailable 只是分类，定位需要
+      // 原生层真实报错（模块缺失 / SKU 不可用 / 参数被拒是三种完全不同的修法）
+      if (error instanceof IapError) {
+        console.warn('[purchase] IAP error:', error.kind, error.message);
+      }
       telemetry.track('purchase_failed', {
         plan_id: target.skinId, platform: Platform.OS,
         reason: error instanceof IapError ? `iap_${error.kind}`
           : error instanceof ApiClientError ? (error.status === 0 ? 'offline' : 'api_error')
             : 'exception',
+        ...(error instanceof IapError
+          ? { error_message: error.message.slice(0, 180) } : {}),
         kind: 'skin',
       });
       // 中断：本地记录保留，下次进入本页自动恢复终态（CTA 期间已防重复点击）

@@ -19,21 +19,21 @@ const toResult = (purchase: unknown) =>
 const JWS = 'eyJhbGciOiJFUzI1NiIsImtleXM6IiwiYWxnIjoiRVMyNTYifQ.sig.payload';
 
 describe('iapPaymentProvider.toResult 平台归一', () => {
-  it('iOS：JWS 存在时优先于 transactionId（服务端本地验签零网络依赖）', () => {
+  it('iOS：JWS（v16 purchaseToken）存在时优先于 transactionId（服务端本地验签零网络依赖）', () => {
     mockPlatform.os = 'ios';
-    const r = toResult({ productId: 'p1', transactionReceipt: JWS, transactionId: '123' });
+    const r = toResult({ productId: 'p1', purchaseToken: JWS, id: 'txn-9', transactionId: '123' });
     expect(r).toEqual({ storeProductId: 'p1', receipt: JWS });
   });
 
   it('iOS：无 JWS 时回落 transactionId（走 Server API 回查）', () => {
     mockPlatform.os = 'ios';
-    const r = toResult({ productId: 'p1', transactionReceipt: '', transactionId: '123' });
+    const r = toResult({ productId: 'p1', purchaseToken: '', transactionId: '123' });
     expect(r).toEqual({ storeProductId: 'p1', receipt: '123' });
   });
 
-  it('iOS：transactionReceipt 非 JWS 形态时回落 transactionId', () => {
+  it('iOS：purchaseToken 非 JWS 形态时回落 transactionId', () => {
     mockPlatform.os = 'ios';
-    const r = toResult({ productId: 'p1', transactionReceipt: 'legacy-blob', transactionId: '123' });
+    const r = toResult({ productId: 'p1', purchaseToken: 'legacy-blob', transactionId: '123' });
     expect(r).toEqual({ storeProductId: 'p1', receipt: '123' });
   });
 

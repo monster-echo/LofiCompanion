@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { apiClient } from '../../../data/apiClient';
 import type { SkinProductRemote } from '../../../data/apiClient';
 import { AppIcon } from '../../../design-system/AppIcon';
@@ -55,24 +56,40 @@ export function SkinGalleryScreen() {
   const [productsBySlug, setProductsBySlug] = useState<
     Readonly<Record<string, SkinProductRemote>>
   >({});
-  useEffect(() => {
-    let mounted = true;
-    void (async () => {
-      try {
-        const { products } = await apiClient.skinProducts();
-        if (!mounted) return;
-        const bySlug: Record<string, SkinProductRemote> = {};
-        for (const product of products) bySlug[product.slug] = product;
-        setProductsBySlug(bySlug);
-      } catch { /* 离线浏览：无价格胶囊 */ }
-      try {
-        // 会员键（auth）∪ 皮肤键（biz）聚合，皮肤判拥有两域都看
-        const keys = await apiClient.ownedEntitlementKeys();
-        if (mounted) setEntitlementKeys(keys);
-      } catch { /* 未登录/离线：按未拥有处理 */ }
-    })();
-    return () => { mounted = false; };
+  // 目录 + 拥有键拉取：挂载与回焦共用。回焦刷新——商店购买成功后本屏缓存
+  // 的权益键不感知，不重拉会一直显示未拥有。
+  const refreshOwned = useCallback(async (mounted: { current: boolean }) => {
+    try {
+      const { products } = await apiClient.skinProducts();
+      if (!mounted.current) return;
+      const bySlug: Record<string, SkinProductRemote> = {};
+      for (const product of products) bySlug[product.slug] = product;
+      setProductsBySlug(bySlug);
+    } catch { /* 离线浏览：无价格胶囊 */ }
+    try {
+      // 会员键（auth）∪ 皮肤键（biz）聚合，皮肤判拥有两域都看
+      const keys = await apiClient.ownedEntitlementKeys();
+      if (mounted.current) setEntitlementKeys(keys);
+    } catch { /* 未登录/离线：按未拥有处理 */ }
   }, []);
+
+  useEffect(() => {
+    const mounted = { current: true };
+    void refreshOwned(mounted);
+    return () => { mounted.current = false; };
+  }, [refreshOwned]);
+
+  // 回焦刷新（跳过首次：挂载 effect 已拉过）
+  const focusedOnceRef = useRef(false);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+  useFocusEffect(useCallback(() => {
+    if (!focusedOnceRef.current) {
+      focusedOnceRef.current = true;
+      return;
+    }
+    void refreshOwned(mountedRef);
+  }, [refreshOwned]));
 
   /** 已拥有判定：免费恒真；付费/Plus 看服务端权益键（目录外按未拥有降级）。
    *  试用中皮肤视同可用（24h 窗口内可应用；到期由首页回落守卫收尾）。 */

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Pressable,
@@ -8,6 +8,7 @@ import {
 } from "react-native";
 // Pressable 仅剩媒体入口（absoluteFill，无按压视觉）使用；可按压控件走 PressableScale
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiClient } from "../../../data/apiClient";
 import type { SkinProductRemote } from "../../../data/apiClient";
@@ -74,27 +75,44 @@ export function FocusHomeScreen() {
   >({});
   const [ownedKeys, setOwnedKeys] = useState<readonly string[]>([]);
   const [ownedKnown, setOwnedKnown] = useState(user === null);
-  useEffect(() => {
-    let mounted = true;
-    void (async () => {
-      try {
-        const { products } = await apiClient.skinProducts();
-        if (!mounted) return;
-        const bySlug: Record<string, SkinProductRemote> = {};
-        for (const product of products) bySlug[product.slug] = product;
-        setProductsBySlug(bySlug);
-      } catch { /* 离线：无法判锁，快切保持可用 */ }
-      if (user === null) return;
-      try {
-        // 会员键（auth）∪ 皮肤键（biz）聚合，快切判锁两域都看
-        const keys = await apiClient.ownedEntitlementKeys();
-        if (!mounted) return;
-        setOwnedKeys(keys);
-        setOwnedKnown(true);
-      } catch { /* 权益未知：不判锁 */ }
-    })();
-    return () => { mounted = false; };
+  // 目录 + 拥有键拉取：挂载（user 变化）与回焦共用。回焦刷新的动机——
+  // 去商店购买成功后，详情页只改自己的本地状态，本屏若不重拉会一直判锁。
+  const refreshOwned = useCallback(async (mounted: { current: boolean }) => {
+    try {
+      const { products } = await apiClient.skinProducts();
+      if (!mounted.current) return;
+      const bySlug: Record<string, SkinProductRemote> = {};
+      for (const product of products) bySlug[product.slug] = product;
+      setProductsBySlug(bySlug);
+    } catch { /* 离线：无法判锁，快切保持可用 */ }
+    if (user === null) return;
+    try {
+      // 会员键（auth）∪ 皮肤键（biz）聚合，快切判锁两域都看
+      const keys = await apiClient.ownedEntitlementKeys();
+      if (!mounted.current) return;
+      setOwnedKeys(keys);
+      setOwnedKnown(true);
+    } catch { /* 权益未知：不判锁 */ }
   }, [user]);
+
+  useEffect(() => {
+    const mounted = { current: true };
+    void refreshOwned(mounted);
+    return () => { mounted.current = false; };
+  }, [refreshOwned]);
+
+  // 回焦刷新（跳过首次：挂载 effect 已拉过）。回调闭包要活——ref 跨 focus
+  // 传递 mounted 标记，防旧闭包写状态（对齐 StudyRoomActiveScreen 的教训）。
+  const focusedOnceRef = useRef(false);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+  useFocusEffect(useCallback(() => {
+    if (!focusedOnceRef.current) {
+      focusedOnceRef.current = true;
+      return;
+    }
+    void refreshOwned(mountedRef);
+  }, [refreshOwned]));
 
   // 未拥有的付费皮肤（未登录恒锁；登录后以权益键为准，未知时不判锁）。
   // 试用中皮肤放行——24h 窗口内等同可用（到期由回落守卫收尾）。

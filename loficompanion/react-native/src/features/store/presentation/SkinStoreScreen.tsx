@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -18,6 +18,7 @@ import { radii, space, type, type ThemeColors } from '../../../theme/tokens';
 import { useThemeStyles } from '../../../theme/useThemeStyles';
 import { useFocus } from '../../focus/application/FocusStore';
 import { useAsyncRefresh } from '../../leaderboards/application/useAsyncRefresh';
+import { useFocusEffect } from '@react-navigation/native';
 import { findSkinManifestByIdOrSlug, skinDisplayName } from '../../skins/domain/registry';
 import {
   buildStoreSections,
@@ -71,7 +72,7 @@ export function SkinStoreScreen() {
   const [ownedOnly, setOwnedOnly] = useState(false);
   const [ownedKeys, setOwnedKeys] = useState<readonly string[]>([]);
 
-  const { state, reload } = useAsyncRefresh(async () => {
+  const { state, reload, poll } = useAsyncRefresh(async () => {
     // 目录公开；权益仅登录后拉取（失败不阻塞目录——按未拥有降级重拉一次）。
     // 会员键（auth）∪ 皮肤键（biz）聚合
     let keys: readonly string[] = [];
@@ -82,6 +83,18 @@ export function SkinStoreScreen() {
     const { products } = await apiClient.skinProducts();
     return { products } as const;
   }, [signedIn]);
+
+  // 详情页购买成功只改详情页本地 ownedKeys，本屏缓存不感知——回焦时静默
+  // 重拉（poll：失败保留旧数据、无 loading 闪烁）。跳过首次 focus：挂载时
+  // useAsyncRefresh 已拉过，避免重复请求。
+  const focusedOnceRef = useRef(false);
+  useFocusEffect(useCallback(() => {
+    if (!focusedOnceRef.current) {
+      focusedOnceRef.current = true;
+      return;
+    }
+    poll();
+  }, [poll]));
 
   const sections = useMemo(() => {
     if (state.status !== 'ready') return null;
