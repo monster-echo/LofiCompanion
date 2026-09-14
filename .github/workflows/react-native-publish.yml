@@ -1,10 +1,14 @@
 name: React Native Publish
 
-# 统一发布链路：tools/release.sh 打 tag v<version> → 本 workflow 经 EAS 构建
+# 统一发布链路：tools/release.sh 打 tag v<version> → 本 workflow 在 GitHub
+# runner 上跑 eas build --local（不消耗 EAS 构建配额，公开仓库 Actions 免费）
 # 并自动提交 App Store Connect + Google Play（production profile，双平台）。
+#
 # 版本唯一真源是 loficompanion/react-native/package.json 的 version，签名凭证
 # 全部托管在 EAS 服务端（iOS 证书/描述文件、Android keystore、ASC API Key、
-# Play 服务账号），CI 只需要一个 EXPO_TOKEN。
+# Play 服务账号，经 EXPO_TOKEN 取用）。Firebase 真配置经 GitHub secrets
+# GOOGLE_SERVICES_JSON / GOOGLE_SERVICES_INFO_PLIST 注入（eas build --local
+# 不评估 EAS 文件环境变量，且归档遵循 .gitignore，必须由 CI 显式落盘）。
 on:
   push:
     tags: ["v*"]
@@ -24,8 +28,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  publish-android:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'android' }}
     defaults:
       run:
         working-directory: loficompanion/react-native
@@ -40,7 +45,11 @@ jobs:
           cache: npm
           cache-dependency-path: loficompanion/react-native/package-lock.json
 
-      # eas build 上传前会在本地解析 app.config.js（config plugins），必须有 node_modules
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: 安装依赖
         run: npm ci --legacy-peer-deps
 
@@ -54,30 +63,60 @@ jobs:
           fi
           echo "版本一致性 OK: v$TAG_VERSION"
 
-      # 原生版本位同步：仓库是 CNG（ios/ android/ 不入库），CI 上 managed prebuild
-      # 直接取 package.json 版本，此步在 CI 会跳过原生文件；仅本地构建时有意义
-      # （与 eas-build-post-install 同语义，构建期自愈）。
-      - name: 同步原生版本文件
-        run: node ./scripts/sync-version.mjs
+      - name: 写入 Firebase 配置（eas --local 不评估 EAS 文件环境变量）
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
 
-      # Firebase 占位文件：两文件均被 gitignore，仅供 eas build 在 runner 上本地求值
-      # config（iOS entitlements 要读 REVERSED_CLIENT_ID）使用，不会被上传；真实配置
-      # 由 EAS 文件环境变量 GOOGLE_SERVICES_JSON / GOOGLE_SERVICES_INFO_PLIST 在构建
-      # 服务端注入（见 eas env:list --environment production）。
-      - name: Provide Firebase placeholders (local config eval only)
-        run: |
-          [ -f google-services.json ] || printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"placeholder"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"tech.zhongbei.loficompanion"}},"oauth_client":[],"api_key":[{"current_key":"placeholder"}],"services":{}}],"configuration_version":"1"}' > google-services.json
-          [ -f GoogleService-Info.plist ] || printf '%s' '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CLIENT_ID</key><string>0-placeholder.apps.googleusercontent.com</string><key>REVERSED_CLIENT_ID</key><string>com.googleusercontent.apps.0-placeholder</string><key>BUNDLE_ID</key><string>tech.zhongbei.loficompanion</string></dict></plist>' > GoogleService-Info.plist
+      - name: Gradle 缓存
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('loficompanion/react-native/package-lock.json') }}
 
-      - name: EAS build + 双商店提交
+      - name: EAS 本地构建 AAB（不消耗 EAS 配额）
+        run: npx --yes eas-cli@latest build --profile production --platform android --local --non-interactive --output app.aab
+
+      - name: 提交 Google Play
+        run: npx --yes eas-cli@latest submit --platform android --path app.aab --profile production --non-interactive
+
+  publish-ios:
+    runs-on: macos-latest
+    if: ${{ github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'ios' }}
+    defaults:
+      run:
+        working-directory: loficompanion/react-native
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: loficompanion/react-native/package-lock.json
+
+      - name: 安装依赖
+        run: npm ci --legacy-peer-deps
+
+      - name: 版本一致性校验（tag 必须等于 package.json 版本）
         run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo "::error::EXPO_TOKEN 未配置：在 https://expo.dev/settings/access-tokens 创建 Access Token 后执行 gh secret set EXPO_TOKEN"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::tag v$TAG_VERSION 与 package.json 版本 $PKG_VERSION 不一致；版本唯一真源是 package.json，请用 tools/release.sh 发版"
             exit 1
           fi
-          PLATFORM="${{ inputs.platform || 'all' }}"
-          npx --yes eas-cli@latest build \
-            --profile production \
-            --platform "$PLATFORM" \
-            --auto-submit-with-profile=production \
-            --non-interactive
+          echo "版本一致性 OK: v$TAG_VERSION"
+
+      - name: 写入 Firebase 配置（iOS 无占位，缺真配置让 prebuild 报错）
+        env:
+          GOOGLE_SERVICES_INFO_PLIST: ${{ secrets.GOOGLE_SERVICES_INFO_PLIST }}
+        run: printf '%s' "$GOOGLE_SERVICES_INFO_PLIST" > GoogleService-Info.plist
+
+      - name: EAS 本地构建 IPA（不消耗 EAS 配额）
+        run: npx --yes eas-cli@latest build --profile production --platform ios --local --non-interactive --output app.ipa
+
+      - name: 提交 App Store Connect
+        run: npx --yes eas-cli@latest submit --platform ios --path app.ipa --profile production --non-interactive
